@@ -9,7 +9,7 @@ class Integer:Type {
 	}
 }
 Integer p = new Integer;
-function test(int cislo) -> string { 
+function test(int cislo) -> int { 
 	int ret = cislo; 
 	return ret;
 }

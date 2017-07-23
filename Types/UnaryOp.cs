@@ -11,17 +11,20 @@ namespace Compilator
         Token token, op, name;
         Types expr;
         ParameterList plist;
+        Block block;
 
-        public UnaryOp(Token op, Types expr)
+        public UnaryOp(Token op, Types expr, Block block = null)
         {
             this.op = this.token = op;
             this.expr = expr;
+            this.block = block;
         }
-        public UnaryOp(Token op, Token name, ParameterList plist = null)
+        public UnaryOp(Token op, Token name, ParameterList plist = null, Block block = null)
         {
             this.op = this.token = op;
             this.name = name;
             this.plist = plist;
+            this.block = block;
         }
 
         public String Op { get { return Variable.GetOperatorStatic(op.type); } }
@@ -34,13 +37,13 @@ namespace Compilator
             string o = Variable.GetOperatorStatic(op.type);
             if (o == "new")
             {
-                return tbs+"new " + name.Value + "(" + plist?.Compile(0) + ")";
+                return tbs+"new " + name.Value + "(" + plist?.Compile() + ")";
             }
             if(o == "return")
             {
-                return tbs + "return " + expr.Compile(0) + ";";
+                return tbs + "return " + expr.Compile() + ";";
             }
-            return tbs + Variable.GetOperatorStatic(op.type) + expr.Compile(0);
+            return tbs + Variable.GetOperatorStatic(op.type) + expr.Compile();
         }
 
         public override void Semantic()

@@ -16,6 +16,7 @@ namespace Compilator
         Token current_modifer;
         char current_char;
         Block current_block;
+        Block.BlockType current_block_type = Block.BlockType.NONE;
         //public SymbolTable symbolTable;
         public static List<Error> semanticError = new List<Compilator.Error>();
         public enum ErrorType { INFO, WARNING, ERROR };
@@ -396,10 +397,12 @@ namespace Compilator
                 return DeclareFunction();
             else if (current_token.type == Token.Type.RETURN)
             {
+                if (current_block_type != Block.BlockType.FUNCTION)
+                    Error("return can be used only inside function block");
                 Token token = current_token;
                 Eat(Token.Type.RETURN);
                 Types returnv = Expr();
-                return new UnaryOp(token, returnv);
+                return new UnaryOp(token, returnv, current_block);
             }
             else if(current_token.type == Token.Type.STATIC)
             {
@@ -431,7 +434,13 @@ namespace Compilator
                     Error("Date type " + current_token.Value + " is unkown!");
                 Eat(Token.Type.CLASS);
             }
+
+            Block.BlockType last_block_type = current_block_type;
+            current_block_type = Block.BlockType.FUNCTION;
             Types block = Statement();
+            ((Block)block).Type = Block.BlockType.FUNCTION;
+            current_block_type = last_block_type;
+
             Function func = new Function(name, block, p, returnt, this);
             if (current_modifer?.type == Token.Type.STATIC)
                 func.isStatic = true;
@@ -460,7 +469,13 @@ namespace Compilator
                 }
             }
             Eat(Token.Type.BEGIN);
-            Block block = (Block)CompoundStatement();            
+
+            Block.BlockType last_block_type = current_block_type;
+            current_block_type = Block.BlockType.CLASS;
+            Block block = (Block)CompoundStatement();
+            block.Type = Block.BlockType.CLASS;
+            current_block_type = last_block_type;
+
             Class c = new Class(name, block, parents);
             current_block.SymbolTable.Add(name.Value, c);
             Eat(Token.Type.END);

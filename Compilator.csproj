@@ -45,8 +45,6 @@
     <Compile Include="InternalTypes\TypeInt.cs" />
     <Compile Include="InternalTypes\TypeObject.cs" />
     <Compile Include="InternalTypes\TypeString.cs" />
-    <Compile Include="NodeVisitor.cs" />
-    <Compile Include="Real.cs" />
     <Compile Include="Types\Assign.cs" />
     <Compile Include="Types\Block.cs" />
     <Compile Include="Types\Class.cs" />

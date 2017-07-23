@@ -60,6 +60,7 @@ namespace Compilator
             if (assignTo == "" && isStatic)
                 Interpreter.semanticError.Add(new Error("Static modifier outside class is useless", Interpreter.ErrorType.WARNING));
             block.Semantic();
+            block.CheckReturnType(returnt.Value);
         }
     }
 }

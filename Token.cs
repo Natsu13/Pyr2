@@ -45,11 +45,8 @@ namespace Compilator
         {
 
         }
-
-        public string Value
-        {
-            get { return value; }
-        }
+        
+        public string Value { get { return value; } }
 
         public override string ToString()
         {

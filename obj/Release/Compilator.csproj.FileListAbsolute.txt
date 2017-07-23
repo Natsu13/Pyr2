@@ -1,0 +1,5 @@
+C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Release\Compilator.exe.config
+C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Release\Compilator.exe
+C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Release\Compilator.pdb
+C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\obj\Release\Compilator.exe
+C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\obj\Release\Compilator.pdb

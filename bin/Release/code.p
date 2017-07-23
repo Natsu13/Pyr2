@@ -1,0 +1,15 @@
+class Type { 
+	int test = 1;
+}
+class Integer:Type {
+	int internal = 5;
+
+	function sayWho(string name){
+		string p = 'none';
+	}
+}
+Integer p = new Integer;
+function test(int cislo) -> string { 
+	int ret = cislo; 
+	return ret;
+}

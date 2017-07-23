@@ -4,12 +4,12 @@ class Type {
 class Integer:Type {
 	int internal = 5;
 
-	function sayWho(string name){
+	static function sayWho(string name){
 		string p = 'none';
 	}
 }
 Integer p = new Integer;
-function test(int cislo) -> int { 
+function test(int cislo) -> int {
 	int ret = cislo; 
 	return ret;
 }

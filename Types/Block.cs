@@ -17,10 +17,10 @@ namespace Compilator
         public enum BlockType { NONE, FUNCTION, CLASS };
         BlockType type = BlockType.NONE;
 
-        public Block(Interpreter interpret)
+        public Block(Interpreter interpret, bool first = false)
         {
             this.interpret = interpret;
-            symbolTable = new SymbolTable(interpret, this);
+            symbolTable = new SymbolTable(interpret, this, first);
         }        
         public Block Parent { get { return parent; } set { parent = value; } }
         public BlockType Type { get { return type; } set { type = value; } }
@@ -94,7 +94,7 @@ namespace Compilator
             foreach (Types child in children)
             {
                 child.assignTo = blockAssignTo;
-                child.assingBlock = this;
+                //child.assingBlock = this;
                 string p = child.Compile((tabs > 0?tabs-1:tabs));
                 if(p != "")
                     ret += tbs + p + "\n";

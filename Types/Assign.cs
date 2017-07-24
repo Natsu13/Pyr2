@@ -10,14 +10,18 @@ namespace Compilator
     {
         Types left, right;
         Token op, token;
-        public Assign(Types left, Token op, Types right)
+        public Assign(Types left, Token op, Types right, Block current_block = null)
         {
             this.left = left;
             this.op = this.token = op;
             this.right = right;
             string name = ((Variable)left).Value;
             ((Variable)left).Block.variables[name] = this;
+            left.assingBlock = current_block;
         }
+
+        public Types Left { get { return left; } } 
+        public Types Right { get { return right; } }
 
         public override int Visit()
         {            

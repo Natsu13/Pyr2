@@ -1,24 +1,32 @@
-'use strict';
-var Type = function(){
-	this.test = 1;
-}
+var module = function (_){
+  'use strict';
+  var Type = function(){
+  	this.test = 1;
+  }
+  
+  var Integer = function(){
+  	Type.call(this);
+  	this.internal = 5;
+  }
+  Integer.prototype.sayWho = function(name){
+    var p = 'none ' + name + '';
+    alert('ahoj');
+    return p;
+  }
+  
+  
+  function main(){
+    var p = new Integer();
+    p.sayWho('test');
+    return 0;
+  }
+  
+  
+  _.Type = Type;
+  _.Integer = Integer;
+  _.main = main;
 
-var Integer = function(){
-	Type.call(this);
-	this.internal = 5;
-}
-Integer.sayWho = function(name){
-	var p = 'none ' + name + '';
-	alert('test');
-	return p;
-}
+  main();
 
-
-var p = new Integer();
-function test(cislo){
-	var ret = cislo;
-	return ret;
-}
-
-test(5);
-
+  return _;
+}(typeof module === 'undefined' ? {} : module);

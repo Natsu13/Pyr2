@@ -31,7 +31,7 @@ namespace Compilator
             pos = 0;
             current_char = text[pos];
             current_file = filename;
-            current_block = new Block(this);
+            current_block = new Block(this, true);
             current_token = GetNextToken();                       
         }
         
@@ -148,6 +148,8 @@ namespace Compilator
             string result = "";
             while (current_char != '\0' && current_char != end)
             {
+                if ((current_char == '"' && end == '\'') || (current_char == '\'' && end == '\"'))
+                    result += '\\';
                 result += current_char;
                 Advance();
             }
@@ -158,7 +160,7 @@ namespace Compilator
         public Token Id()
         {
             string result = "";
-            while(current_char != '\0' && (Char.IsLetterOrDigit(current_char) || current_char == '_'))
+            while(current_char != '\0' && (Char.IsLetterOrDigit(current_char) || current_char == '_' || current_char == '.'))
             {
                 result += current_char;
                 Advance();
@@ -391,13 +393,14 @@ namespace Compilator
             return result;
         }
 
-        public Types Statement()
+        public Types Statement(bool eatEnd = true)
         {
             if (current_token.type == Token.Type.BEGIN)
             {
                 Eat(Token.Type.BEGIN);
                 Types node = CompoundStatement();
-                Eat(Token.Type.END);
+                if(eatEnd)
+                    Eat(Token.Type.END);
                 return node;
             }            
             else if (current_token.type == Token.Type.ID)
@@ -501,7 +504,7 @@ namespace Compilator
                 Block.BlockType last_block_type = current_block_type;
                 current_block_type = Block.BlockType.FUNCTION;
                 Block save_block = current_block;
-                Types block = Statement();                
+                Types block = Statement(false);
                 if (!(block is Block))
                 {
                     _bloc = new Block(this);
@@ -525,6 +528,8 @@ namespace Compilator
                 func._external = getModifer(Token.Type.EXTERNAL);
             }
             current_block.SymbolTable.Add(name.Value, func);
+            if(current_token.type == Token.Type.END)
+                Eat(Token.Type.END);
             return func;
         }
 
@@ -593,7 +598,7 @@ namespace Compilator
                 Token token = current_token;
                 Eat(Token.Type.ASIGN);
                 Types right = Expr();
-                Types node = new Assign(left, token, right);
+                Types node = new Assign(left, token, right, current_block);
                 return node;
             }
             else
@@ -612,7 +617,7 @@ namespace Compilator
             }
             Eat(Token.Type.ASIGN); 
             Types right = Expr();
-            Types node = new Assign(left, token, right);
+            Types node = new Assign(left, token, right, current_block);
             return node;
         }
 

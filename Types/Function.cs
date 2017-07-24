@@ -22,6 +22,7 @@ namespace Compilator
             this.name = name;
             this.block = _block;
             this.block.assignTo = name.Value;
+            this.block.assingBlock = this.block;
             //this.block.blockAssignTo = name.Value;
             this.paraml = paraml;
             this.paraml.assingBlock = this.block;

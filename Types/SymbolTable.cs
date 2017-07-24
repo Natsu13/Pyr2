@@ -13,16 +13,18 @@ namespace Compilator
         Interpreter interpret;
         Block assigment_block;
 
-        public SymbolTable(Interpreter interpret, Block assigment_block)
+        public SymbolTable(Interpreter interpret, Block assigment_block, bool first = false)
         {
             this.interpret = interpret;
             this.assigment_block = assigment_block;
-
-            Add("null",     typeof(TypeNull));
-            Add("int",      typeof(TypeInt));
-            Add("string",   typeof(TypeString));            
+            if (first)
+            {
+                Add("null", typeof(TypeNull));
+                Add("int", typeof(TypeInt));
+                Add("string", typeof(TypeString));
+            }
         }
-
+        public Dictionary<string, Types> Table { get { return table; } }
         public void Add(string name, Type type)
         {
             table.Add(name, (Types)Activator.CreateInstance(typeof(Class<>).MakeGenericType(type), name));
@@ -36,6 +38,31 @@ namespace Compilator
 
         public bool Find(string name)
         {
+            if (name.Contains('.'))
+            {
+                string[] nams = name.Split('.');
+                if (Find(nams[0]))
+                {
+                    Types found = Get(nams[0]);
+                    if(found is Function)
+                        return ((Function)found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
+                    else if(found is Class)
+                        return ((Class)found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
+                    return Find(string.Join(".", nams.Skip(1)));
+                }
+                else if(assigment_block.variables.ContainsKey(nams[0]))
+                {
+                    Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
+                    if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                    {
+                        if (uop.Op == "new")
+                        {
+                            return Find(uop.Name.Value + "." + string.Join(".", nams.Skip(1)));
+                        }
+                    }
+                    return vr.assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
+                }
+            }
             if (table.ContainsKey(name))
                 return true;
             else
@@ -60,6 +87,39 @@ namespace Compilator
 
         public Types Get(string name)
         {
+            if (name.Contains('.'))
+            {
+                string[] nams = name.Split('.');
+                if (Find(nams[0]))
+                {
+                    Types found = Get(nams[0]);
+                    if (found is Function)
+                        return ((Function)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)));
+                    else if (found is Class)
+                        return ((Class)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)));
+                    return Get(string.Join(".", nams.Skip(1)));
+                }
+                else if (assigment_block.variables.ContainsKey(nams[0]))
+                {
+                    Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
+                    if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                    {
+                        if (uop.Op == "new")
+                        {
+                            return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)));
+                        }
+                    }
+                    return vr.assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)));
+                }
+            }
+            if (table.ContainsKey(name))
+                return table[name];
+            else
+            {
+                if (assigment_block.Parent != null)
+                    return assigment_block.Parent.SymbolTable.Get(name);
+            }
+            /*
             if(table.ContainsKey(name))
                 return table[name];
             else
@@ -67,6 +127,7 @@ namespace Compilator
                 if (assigment_block.Parent != null)
                     return assigment_block.Parent.SymbolTable.Get(name);
             }
+            */
             return new Error("Internal error #100");
         }
         public Type GetType(string name)

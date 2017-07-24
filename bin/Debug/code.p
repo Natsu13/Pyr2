@@ -1,4 +1,5 @@
 external function alert(string message) -> void;
+external function js(string code) -> void;
 
 class Type { 
 	int test = 1;
@@ -7,17 +8,15 @@ class Type {
 class Integer : Type {
 	int internal = 5;
 
-	static function sayWho(string name) {
+	function sayWho(string name) {
 		string p = 'none {$name}';
-		alert("test");		
+		js("alert('ahoj')");		
 		return p;
 	}
 }
 
-Integer p = new Integer;
-
-function test(int cislo) -> int {
-	int ret = cislo; 
-	return ret;
+function main() -> int {
+	Integer p = new Integer;
+	p.sayWho("test");
+	return 0;
 }
-test(5);

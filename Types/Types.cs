@@ -16,7 +16,7 @@ namespace Compilator
         public string DoTabs(int tabs)
         {
             string r = "";
-            for(int i=0; i < tabs; i++) { r += "\t"; }
+            for(int i=0; i < tabs; i++) { r += "  "; }
             return r;
         }
     }

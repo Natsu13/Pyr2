@@ -39,10 +39,15 @@ namespace Compilator
             string tbs = DoTabs(tabs);
             string o = Variable.GetOperatorStatic(op.type);
             if(o == "call")
-            {
+            {                
                 if (!block.SymbolTable.Find(name.Value))
                 {                    
                     return "";
+                }
+                if (name.Value == "js")
+                {
+                    string pl = plist.Compile();
+                    return pl.Substring(1, pl.Length - 2).Replace("\\", "") + (pl.Substring(pl.Length - 2, 1) != ";"?";":"");
                 }
                 if (plist == null)
                     return tbs + name.Value + "()" + (endit ? ";" : "");
@@ -66,10 +71,10 @@ namespace Compilator
             string o = Variable.GetOperatorStatic(op.type);
             if (o == "call")
             {
-                if (!block.SymbolTable.Find(name.Value))
-                {
-                    Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));                    
-                }
+                if(block.Parent?.Parent == null)
+                    Interpreter.semanticError.Add(new Error("Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
+                if (!block.assingBlock.SymbolTable.Find(name.Value))
+                    Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
             }
         }
 

@@ -17,6 +17,7 @@ namespace Compilator
             this.name = name;
             this.block = block;
             this.block.blockAssignTo = name.Value;
+            this.assingBlock = block;
             this.parents = parents;
         }
         public override string Compile(int tabs = 0)

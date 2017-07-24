@@ -17,7 +17,22 @@ namespace Compilator
             string text = File.ReadAllText(@"code.p");
             Interpreter interpret = new Interpreter(text, "code.p");
             Block block = (Block)interpret.Interpret();
-            string compiled = "'use strict';\n" + block.Compile();
+            string compiled = block.Compile();
+            compiled = compiled.Replace("\n", "\n  ");
+            string outcom = "var module = function (_){\n  'use strict';\n";            
+            outcom += "  "+ compiled.Substring(0, compiled.Length) + "\n";
+            foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
+            {
+                if (t.Key == "int" || t.Key == "string" || t.Key == "null")
+                    continue;
+                if (t.Value is Function && ((Function)t.Value).isExternal)
+                    continue;
+                outcom += "  _." + t.Key + " = " + t.Key+";\n";
+            }
+            if (block.SymbolTable.Find("main"))
+                outcom += "\n  main();\n";
+            outcom += "\n  return _;\n";
+            outcom += "}(typeof module === 'undefined' ? {} : module);";
             Interpreter.semanticError.Clear();
             block.Semantic();
             bool iserror = false;
@@ -41,7 +56,7 @@ namespace Compilator
             if (!iserror)
             {
                 System.IO.StreamWriter file = new System.IO.StreamWriter("output.js");
-                file.WriteLine(compiled);
+                file.WriteLine(outcom);
                 file.Close();                
                 Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec");
             }

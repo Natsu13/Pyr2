@@ -21,6 +21,8 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
+            right.assingBlock = block;
+            left.assingBlock = block;
             return left.Compile(0) + Variable.GetOperatorStatic(op.type) + right.Compile(0); 
         }
 
@@ -31,15 +33,15 @@ namespace Compilator
                 Variable v = new Variable(((Number)left).Token, block, new Token(Token.Type.CLASS, "int"));
                 if (!v.SupportOp(op.type))
                 {
-                    Interpreter.semanticError.Add(new Error("Varible type 'int' not support operator " + v.GetOperator(op.type), Interpreter.ErrorType.ERROR));
+                    Interpreter.semanticError.Add(new Error("Varible type 'int' not support operator " + v.GetOperator(op.type), Interpreter.ErrorType.ERROR, ((Number)left).Token));
                 }
             }
             else if (left is CString)
             {
-                Variable v = new Variable(((CString)left).Token, block, new Token(Token.Type.CLASS, "int"));
+                Variable v = new Variable(((CString)left).Token, block, new Token(Token.Type.CLASS, "string"));
                 if (!v.SupportOp(op.type))
                 {
-                    Interpreter.semanticError.Add(new Error("Varible type 'int' not support operator " + v.GetOperator(op.type), Interpreter.ErrorType.ERROR));
+                    Interpreter.semanticError.Add(new Error("Varible type 'int' not support operator " + v.GetOperator(op.type), Interpreter.ErrorType.ERROR, ((Number)left).Token));
                 }
             }
         }

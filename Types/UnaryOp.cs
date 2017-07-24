@@ -27,6 +27,7 @@ namespace Compilator
             this.block = block;
         }
 
+        public Token Token { get { return token; } }
         public String Op { get { return Variable.GetOperatorStatic(op.type); } }
         public Types  Expr { get { return expr; } }
         public Token Name { get { return name; } }

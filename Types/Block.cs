@@ -27,7 +27,7 @@ namespace Compilator
         public Interpreter Interpret { get { return this.interpret; } }
         public SymbolTable SymbolTable { get { return symbolTable; } }
 
-        public void CheckReturnType(string type)
+        public void CheckReturnType(string type, bool isNull)
         {
             foreach (Types child in children)
             {
@@ -35,23 +35,39 @@ namespace Compilator
                 UnaryOp uop = (UnaryOp)child;
                 if(uop.Op == "return")
                 {
+                    if (isNull)
+                    {
+                        Function asfunc = (Function)SymbolTable.Get(assignTo);
+                        Interpreter.semanticError.Add(new Error("Because your function "+assignTo+"("+ asfunc.ParameterList.List() + ") return void you can't return value", Interpreter.ErrorType.ERROR, uop.Token));
+                        continue;
+                    }
                     if (uop.Expr is Variable) {
-                        if(((Variable)uop.Expr).Type == "dynamic")
+                        if (((Variable)uop.Expr).Type == "dynamic")
                         {
                             Assign ava = FindVariable(((Variable)uop.Expr).Value);
                             if (ava == null)
                             {
-                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " not exists", Interpreter.ErrorType.ERROR));
+                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " not exists", Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).Token));
                                 continue;
                             }
-                            if(ava.GetType() != type)
-                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " with type " + ava.GetType() + " can't be converted to " + type, Interpreter.ErrorType.ERROR));
-                        }                            
-                        else if (((Variable)uop.Expr).Type != type)
-                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " with type " + ((Variable)uop.Expr).Type + " can't be converted to " + type, Interpreter.ErrorType.ERROR));
+                            if (type != null && ava.GetType() != type)
+                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " with type " + ava.GetType() + " can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).Token));
+                            if (type == null) type = ava.GetType();
+                        }
+                        else if (type != null && ((Variable)uop.Expr).Type != type)
+                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " with type " + ((Variable)uop.Expr).Type + " can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).Token));
+                        else if (type == null)
+                            type = ((Variable)uop.Expr).Type;
                     }
-                    else if((uop.Expr is Number && type != "int") || (uop.Expr is CString && type != "string"))
-                        Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " with type " + ((Variable)uop.Expr).Type + " can't be converted to " + type, Interpreter.ErrorType.ERROR));
+                    else if(type != null && (uop.Expr is Number && type != "int"))
+                        Interpreter.semanticError.Add(new Error("int can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Number)uop.Expr).Token));
+                    else if(type != null && (uop.Expr is CString && type != "string"))
+                        Interpreter.semanticError.Add(new Error("string can't be converted to " + type, Interpreter.ErrorType.ERROR, ((CString)uop.Expr).Token));
+                    else if(type == null)
+                    {
+                        if (uop.Expr is Number) type = "int";
+                        if (uop.Expr is CString) type = "string";
+                    }                        
                 }
             }
         }
@@ -75,6 +91,7 @@ namespace Compilator
             foreach (Types child in children)
             {
                 child.assignTo = blockAssignTo;
+                child.assingBlock = this;
                 string p = child.Compile((tabs > 0?tabs-1:tabs));
                 if(p != "")
                     ret += tbs + p + "\n";

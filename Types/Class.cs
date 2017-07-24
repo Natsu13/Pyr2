@@ -43,7 +43,11 @@ namespace Compilator
 
         public override void Semantic()
         {
-            
+            foreach (KeyValuePair<string, Assign> var in block.variables)
+            {
+                var.Value.Semantic();
+            }
+            block.Semantic();
         }
 
         public override int Visit()

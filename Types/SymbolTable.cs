@@ -18,8 +18,9 @@ namespace Compilator
             this.interpret = interpret;
             this.assigment_block = assigment_block;
 
-            Add("int", typeof(TypeInt));
-            Add("string", typeof(TypeString));
+            Add("null",     typeof(TypeNull));
+            Add("int",      typeof(TypeInt));
+            Add("string",   typeof(TypeString));            
         }
 
         public void Add(string name, Type type)

@@ -9,6 +9,7 @@ namespace Compilator
     public abstract class Types
     {
         public string assignTo = "";
+        public Block assingBlock;
         public abstract int Visit();
         public abstract string Compile(int tabs = 0);
         public abstract void Semantic();

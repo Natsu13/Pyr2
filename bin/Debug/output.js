@@ -7,8 +7,9 @@ var Integer = function(){
 	Type.call(this);
 	this.internal = 5;
 }
-Integer.prototype.sayWho = function(name){
-	var p = 'none';
+Integer.sayWho = function(name){
+	var p = 'none ' + name + '';
+	return p;
 }
 
 

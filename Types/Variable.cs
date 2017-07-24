@@ -46,6 +46,7 @@ namespace Compilator
         public string Value { get { return value; } }
         public string Type { get { return dateType.Value; } }
         public Block  Block { get { return block; } }
+        public Token Token { get { return token; } }
 
         public override string Compile(int tabs = 0)
         {

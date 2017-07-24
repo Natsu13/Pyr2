@@ -13,22 +13,16 @@ namespace Compilator
         ParameterList paraml;
         Token returnt;
         public bool isStatic = false;
+        public Token _static;
 
-        public Function(Token name, Types _block, ParameterList paraml, Token returnt, Interpreter interpret)
+        public Function(Token name, Block _block, ParameterList paraml, Token returnt, Interpreter interpret)
         {
             this.name = name;
-            if(!(_block is Block))
-            {
-                block = new Block(interpret);
-                block.children.Add(_block);
-            }
-            else
-            {
-                block = (Block)_block;
-            }
-            block.assignTo = name.Value;
+            this.block = _block;
+            this.block.assignTo = name.Value;
             //this.block.blockAssignTo = name.Value;
             this.paraml = paraml;
+            this.paraml.assingBlock = this.block;
             this.returnt = returnt;
         }
         public ParameterList ParameterList { get { return paraml; } }
@@ -58,9 +52,9 @@ namespace Compilator
         public override void Semantic()
         {
             if (assignTo == "" && isStatic)
-                Interpreter.semanticError.Add(new Error("Static modifier outside class is useless", Interpreter.ErrorType.WARNING));
+                Interpreter.semanticError.Add(new Error("Static modifier outside class is useless", Interpreter.ErrorType.WARNING, _static));
             block.Semantic();
-            block.CheckReturnType(returnt.Value);
+            block.CheckReturnType(returnt?.Value, (returnt?.type == Token.Type.VOID?true:false));
         }
     }
 }

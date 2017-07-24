@@ -10,18 +10,43 @@ namespace Compilator
     {
         string error = "";
         Interpreter.ErrorType errorType;
+        Token token;
+        int line, position, lenght;
+        string message;
 
-        public Error(string error)
-        {
-            this.error = error;
-        }
-
-        public Error(string error, Interpreter.ErrorType errorType)
+        public Error(string error, Interpreter.ErrorType errorType = Interpreter.ErrorType.INFO, Token token = null)
         {
             this.error = error;
             this.errorType = errorType;
-        }
+            this.token = token;
 
+            if (token == null || token.Pos == -1 || token.File == "") { }
+            else
+            {
+                int pos = token.Pos + token.Value.Length;
+                string rerr = error;
+                string[] splt = Interpreter.fileList[token.File].Split('\n');
+                rerr += "\n";
+                int startl = Interpreter.fileList[token.File].Substring(0, pos).Count(t => t == '\n');
+                rerr += " " + splt[startl].TrimStart();
+                rerr += "\n";
+                int alltl = 0;
+                for (int q = 0; q < startl; q++) { alltl += splt[q].Length + 1; }
+                for (int q = -1 + alltl + (splt[startl].TakeWhile(Char.IsWhiteSpace).Count()); q < pos - token.Value.Length; q++) rerr += " ";
+                for (int q = 0; q < token.Value.Length; q++) rerr += "^";
+                rerr += "\n";
+                rerr += "Found at " + (startl + 1) + ":" + ((pos - token.Value.Length) - (0 + alltl));
+                line = startl + 1;
+                position = ((pos - token.Value.Length) - (0 + alltl));
+                lenght = token.Value.Length;
+                message = token.File + "(" + line + ":" + position + ")";
+            }
+        }        
+
+        public int Line { get { return line; } }
+        public int Position { get { return position; } }
+        public int Lenght { get { return lenght; } }
+        public string Place { get { return message; } }         
         public string Message { get { return error; } }
         public Interpreter.ErrorType Type { get { return errorType; } }
 

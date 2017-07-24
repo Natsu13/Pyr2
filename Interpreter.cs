@@ -16,18 +16,23 @@ namespace Compilator
         Token current_modifer;
         char current_char;
         Block current_block;
+        int current_token_pos;
         Block.BlockType current_block_type = Block.BlockType.NONE;
+        string current_file = "";
         //public SymbolTable symbolTable;
         public static List<Error> semanticError = new List<Compilator.Error>();
         public enum ErrorType { INFO, WARNING, ERROR };
+        public static Dictionary<string, string> fileList = new Dictionary<string, string>();
 
-        public Interpreter(string text)
+        public Interpreter(string text, string filename = "")
         {
-            this.text = text;           
+            this.text = text;
+            fileList.Add(filename, text);
             pos = 0;
             current_char = text[pos];
+            current_file = filename;
             current_token = GetNextToken();
-            current_block = new Block(this);               
+            current_block = new Block(this);            
         }
         
         public void Error(string error = "Error parsing input")
@@ -69,6 +74,8 @@ namespace Compilator
                     SkipComments();
                 }
 
+                current_token_pos = pos;
+
                 if (Char.IsDigit(current_char))
                     return Number();
 
@@ -82,25 +89,25 @@ namespace Compilator
 
                 if (current_char == '-' && Peek() == '>') {
                     Advance(); Advance();
-                    return new Token(Token.Type.DEFINERETURN, "->");
+                    return new Token(Token.Type.DEFINERETURN, "->", current_token_pos, current_file);
                 }
-                if (current_char == '=') { Advance(); return new Token(Token.Type.ASIGN, '='); }
-                if (current_char == ';') { Advance(); return new Token(Token.Type.SEMI, ';'); }
-                if (current_char == ':') { Advance(); return new Token(Token.Type.COLON, ':'); }
-                if (current_char == ',') { Advance(); return new Token(Token.Type.COMMA, ','); }
-                if (current_char == '.') { Advance(); return new Token(Token.Type.DOT, '.'); }
-                if (current_char == '+') { Advance(); return new Token(Token.Type.PLUS, '+'); }
-                if (current_char == '-') { Advance(); return new Token(Token.Type.MINUS, '-'); }
-                if (current_char == '*') { Advance(); return new Token(Token.Type.MUL, '*'); }
-                if (current_char == '/') { Advance(); return new Token(Token.Type.DIV, '/'); }
-                if (current_char == '(') { Advance(); return new Token(Token.Type.LPAREN, '('); }
-                if (current_char == ')') { Advance(); return new Token(Token.Type.RPAREN, ')'); }
-                if (current_char == '{') { Advance(); return new Token(Token.Type.BEGIN, '{'); }
-                if (current_char == '}') { Advance(); return new Token(Token.Type.END, '}'); }               
+                if (current_char == '=') { Advance(); return new Token(Token.Type.ASIGN,    '=', current_token_pos, current_file); }
+                if (current_char == ';') { Advance(); return new Token(Token.Type.SEMI,     ';', current_token_pos, current_file); }
+                if (current_char == ':') { Advance(); return new Token(Token.Type.COLON,    ':', current_token_pos, current_file); }
+                if (current_char == ',') { Advance(); return new Token(Token.Type.COMMA,    ',', current_token_pos, current_file); }
+                if (current_char == '.') { Advance(); return new Token(Token.Type.DOT,      '.', current_token_pos, current_file); }
+                if (current_char == '+') { Advance(); return new Token(Token.Type.PLUS,     '+', current_token_pos, current_file); }
+                if (current_char == '-') { Advance(); return new Token(Token.Type.MINUS,    '-', current_token_pos, current_file); }
+                if (current_char == '*') { Advance(); return new Token(Token.Type.MUL,      '*', current_token_pos, current_file); }
+                if (current_char == '/') { Advance(); return new Token(Token.Type.DIV,      '/', current_token_pos, current_file); }
+                if (current_char == '(') { Advance(); return new Token(Token.Type.LPAREN,   '(', current_token_pos, current_file); }
+                if (current_char == ')') { Advance(); return new Token(Token.Type.RPAREN,   ')', current_token_pos, current_file); }
+                if (current_char == '{') { Advance(); return new Token(Token.Type.BEGIN,    '{', current_token_pos, current_file); }
+                if (current_char == '}') { Advance(); return new Token(Token.Type.END,      '}', current_token_pos, current_file); }               
 
                 Error("Unexpeced token found");
             }            
-            return new Token(Token.Type.EOF, "");
+            return new Token(Token.Type.EOF, "" , current_token_pos, current_file);
         }
 
         public void Eat(Token.Type tokenType, string errorMessage = "")
@@ -144,7 +151,7 @@ namespace Compilator
                 Advance();
             }
             Advance();
-            return new Token(Token.Type.STRING, result);
+            return new Token(Token.Type.STRING, result, current_token_pos, current_file);
         }
 
         public Token Id()
@@ -157,11 +164,11 @@ namespace Compilator
             }
 
             if (Token.Reserved.ContainsKey(result))
-                return Token.Reserved[result];
+                return new Token(Token.Reserved[result], current_token_pos, current_file);
             else if (current_block.SymbolTable.Find(result))
-                return new Token(Token.Type.CLASS, result);
+                return new Token(Token.Type.CLASS, result, current_token_pos, current_file);
             else
-                return new Token(Token.Type.ID, result);
+                return new Token(Token.Type.ID, result, current_token_pos, current_file);
         }
         
         public void SkipWhiteSpace()
@@ -196,11 +203,11 @@ namespace Compilator
                     result += current_char;
                     Advance();
                 }
-                return new Token(Token.Type.REAL, result);
+                return new Token(Token.Type.REAL, result, current_token_pos, current_file);
             }
             else
             {
-                return new Token(Token.Type.INTEGER, result);
+                return new Token(Token.Type.INTEGER, result, current_token_pos, current_file);
             }
         }
 
@@ -432,18 +439,35 @@ namespace Compilator
                 returnt = current_token;
                 if (current_token.type == Token.Type.ID)
                     Error("Date type " + current_token.Value + " is unkown!");
-                Eat(Token.Type.CLASS);
+                if(current_token.type == Token.Type.VOID)
+                {
+                    Eat(Token.Type.VOID);
+                }
+                else
+                    Eat(Token.Type.CLASS);
             }
 
             Block.BlockType last_block_type = current_block_type;
             current_block_type = Block.BlockType.FUNCTION;
+            Block save_block = current_block;
             Types block = Statement();
+            Block _bloc;
+            if (!(block is Block))
+            {
+                _bloc = new Block(this);
+                _bloc.children.Add(block);
+            }
+            else _bloc = (Block)block;
+            _bloc.Parent = save_block;
             ((Block)block).Type = Block.BlockType.FUNCTION;
             current_block_type = last_block_type;
 
-            Function func = new Function(name, block, p, returnt, this);
+            Function func = new Function(name, _bloc, p, returnt, this);
             if (current_modifer?.type == Token.Type.STATIC)
+            {
                 func.isStatic = true;
+                func._static = current_modifer;
+            }
             current_block.SymbolTable.Add(name.Value, func);
             return func;
         }
@@ -510,7 +534,7 @@ namespace Compilator
         {
             Types left = Variable();
             Token token = current_token;
-            Eat(Token.Type.ASIGN);
+            Eat(Token.Type.ASIGN); 
             Types right = Expr();
             Types node = new Assign(left, token, right);
             return node;

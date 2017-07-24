@@ -27,14 +27,31 @@ namespace Compilator
             return null;
         }
 
+        public string List()
+        {
+            string ret = "";
+            foreach (Types par in parameters)
+            {
+                if (ret != "") ret += ", ";
+                if (par is Variable)
+                    ret += ((Variable)par).Type + " " + ((Variable)par).Value;
+            }
+            return ret;
+        }
+
         public override string Compile(int tabs = 0)
         {
             string ret = "";            
             foreach(Types par in parameters)
-            {
+            {                
+                if(par is Variable && assingBlock != null)
+                {
+                    assingBlock.variables.Add(((Variable)par).Value, new Assign(((Variable)par), new Token(Token.Type.ASIGN, '='), new Null()));                    
+                }
                 if (ret != "") ret += ", ";                
-                ret += par.Compile(0);
+                ret += par.Compile(0);                
             }
+            assingBlock = null;
             return ret;
         }
 

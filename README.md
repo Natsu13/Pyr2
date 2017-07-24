@@ -4,19 +4,27 @@ New type of Pyr Language more optimized and writed in C# can be compiled to JS f
 Example code:
 ```
 external function alert(string message) -> void;
+external function js(string code) -> void;
+
 class Type { 
 	int test = 1;
 }
-class Integer:Type {
+
+class Integer : Type {
 	int internal = 5;
 
-	function sayWho(string name){
-		string p = 'none';
+	function sayWho(string name) {
+		string p = 'none {$name}';
+		js("alert('ahoj')");		
+		return p;
 	}
 }
-Integer p = new Integer;
-function test(int cislo) -> string { 
-	int ret = cislo; 
-	return ret;
+
+function main() -> int {
+	Integer p = new Integer;
+	p.sayWho("test");
+	return 0;
 }
 ```
+
+js is external function defined in C# compiler

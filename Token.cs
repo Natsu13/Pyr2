@@ -14,10 +14,10 @@ namespace Compilator
             INTEGER, STRING, DYNAMIC, REAL,
             COMMA, SEMI, DOT, COLON, 
             PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN,
-            CLASS, ID,
+            CLASS, ID, FUNCTION, 
             NEWCLASS, NEWFUNCTION,
-            LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN,
-            STATIC, VOID
+            LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL, 
+            STATIC, VOID, EXTERNAL
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
@@ -27,6 +27,7 @@ namespace Compilator
             { "function",   new Token(Type.NEWFUNCTION, "function") },
             { "return",     new Token(Type.RETURN, "return") },
             { "static",     new Token(Type.STATIC, "static") },
+            { "external",   new Token(Type.EXTERNAL, "external") }, 
             { "void",       new Token(Type.VOID, "void") }    
         };
 

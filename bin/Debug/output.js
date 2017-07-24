@@ -9,6 +9,7 @@ var Integer = function(){
 }
 Integer.sayWho = function(name){
 	var p = 'none ' + name + '';
+	alert('test');
 	return p;
 }
 
@@ -19,4 +20,5 @@ function test(cislo){
 	return ret;
 }
 
+test(5);
 

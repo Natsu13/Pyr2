@@ -13,7 +13,7 @@ namespace Compilator
         int pos = 0;
         Token current_token;
         Token previous_token;
-        Token current_modifer;
+        List<Token> current_modifer = new List<Token>();
         char current_char;
         Block current_block;
         int current_token_pos;
@@ -31,8 +31,8 @@ namespace Compilator
             pos = 0;
             current_char = text[pos];
             current_file = filename;
-            current_token = GetNextToken();
-            current_block = new Block(this);            
+            current_block = new Block(this);
+            current_token = GetNextToken();                       
         }
         
         public void Error(string error = "Error parsing input")
@@ -72,6 +72,7 @@ namespace Compilator
                 {
                     Advance(); Advance();
                     SkipComments();
+                    continue;
                 }
 
                 current_token_pos = pos;
@@ -166,7 +167,12 @@ namespace Compilator
             if (Token.Reserved.ContainsKey(result))
                 return new Token(Token.Reserved[result], current_token_pos, current_file);
             else if (current_block.SymbolTable.Find(result))
+            {
+                Types tp = current_block.SymbolTable.Get(result);
+                if(tp is Function)
+                    return new Token(Token.Type.FUNCTION, result, current_token_pos, current_file);
                 return new Token(Token.Type.CLASS, result, current_token_pos, current_file);
+            }
             else
                 return new Token(Token.Type.ID, result, current_token_pos, current_file);
         }
@@ -393,11 +399,15 @@ namespace Compilator
                 Types node = CompoundStatement();
                 Eat(Token.Type.END);
                 return node;
-            }
+            }            
             else if (current_token.type == Token.Type.ID)
                 return AssignmentStatement();
             else if (current_token.type == Token.Type.CLASS)
                 return DeclareVariable();
+            else if (current_token.type == Token.Type.FUNCTION)
+            {
+                return FunctionCatch();
+            }
             else if (current_token.type == Token.Type.NEWCLASS)
                 return DeclareClass();
             else if (current_token.type == Token.Type.NEWFUNCTION)
@@ -408,22 +418,56 @@ namespace Compilator
                     Error("return can be used only inside function block");
                 Token token = current_token;
                 Eat(Token.Type.RETURN);
-                Types returnv = Expr();
+                Types returnv = null;
+                if (current_token.type != Token.Type.SEMI)
+                    returnv = Expr();
                 return new UnaryOp(token, returnv, current_block);
             }
             else if(current_token.type == Token.Type.STATIC)
             {
-                current_modifer = current_token;
+                Token modifer = current_token;
+                current_modifer.Add(current_token);
                 Eat(Token.Type.STATIC);
                 if (current_token.type == Token.Type.NEWCLASS || current_token.type == Token.Type.NEWFUNCTION || current_token.type == Token.Type.ID)
                 {
                     Types type = Statement();
-                    current_modifer = null;
+                    current_modifer.Remove(modifer);
                     return type;
                 }
                 Error("The static modifer can modify only class, function or variable");
             }
+            else if (current_token.type == Token.Type.EXTERNAL)
+            {
+                Token modifer = current_token;
+                current_modifer.Add(current_token);
+                Eat(Token.Type.EXTERNAL);
+                if (current_token.type == Token.Type.STATIC || current_token.type == Token.Type.NEWCLASS || current_token.type == Token.Type.NEWFUNCTION || current_token.type == Token.Type.ID)
+                {
+                    Types type = Statement();
+                    current_modifer.Remove(modifer);
+                    return type;
+                }
+                Error("The external modifer can modify only class, function or variable and must be before static modifer");
+            }
             return new NoOp();
+        }
+
+        public Types FunctionCatch(Token fname = null)
+        {
+            if (fname == null)
+            {
+                fname = current_token;
+                Eat(Token.Type.FUNCTION);
+            }
+            if (current_token.type == Token.Type.SEMI)
+            { 
+                return new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, null, current_block, true);
+            }
+            else
+            {
+                ParameterList p = Parameters();
+                return new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, p, current_block, true);
+            }
         }
 
         public Types DeclareFunction()
@@ -447,29 +491,57 @@ namespace Compilator
                     Eat(Token.Type.CLASS);
             }
 
-            Block.BlockType last_block_type = current_block_type;
-            current_block_type = Block.BlockType.FUNCTION;
-            Block save_block = current_block;
-            Types block = Statement();
             Block _bloc;
-            if (!(block is Block))
+            if (isModifer(Token.Type.EXTERNAL))
             {
                 _bloc = new Block(this);
-                _bloc.children.Add(block);
             }
-            else _bloc = (Block)block;
-            _bloc.Parent = save_block;
-            ((Block)block).Type = Block.BlockType.FUNCTION;
-            current_block_type = last_block_type;
+            else
+            {
+                Block.BlockType last_block_type = current_block_type;
+                current_block_type = Block.BlockType.FUNCTION;
+                Block save_block = current_block;
+                Types block = Statement();                
+                if (!(block is Block))
+                {
+                    _bloc = new Block(this);
+                    _bloc.children.Add(block);
+                }
+                else _bloc = (Block)block;
+                _bloc.Parent = save_block;
+                ((Block)block).Type = Block.BlockType.FUNCTION;
+                current_block_type = last_block_type;
+            }
 
             Function func = new Function(name, _bloc, p, returnt, this);
-            if (current_modifer?.type == Token.Type.STATIC)
+            if (isModifer(Token.Type.STATIC))
             {
                 func.isStatic = true;
-                func._static = current_modifer;
+                func._static = getModifer(Token.Type.STATIC);
+            }
+            if (isModifer(Token.Type.EXTERNAL))
+            {
+                func.isExternal = true;
+                func._external = getModifer(Token.Type.EXTERNAL);
             }
             current_block.SymbolTable.Add(name.Value, func);
             return func;
+        }
+
+        public bool isModifer(Token.Type type)
+        {
+            foreach (Token t in current_modifer)
+                if (t.type == type)
+                    return true;
+            return false;
+        }
+
+        public Token getModifer(Token.Type type)
+        {
+            foreach (Token t in current_modifer)
+                if (t.type == type)
+                    return t;
+            return null;
         }
 
         public Types DeclareClass()
@@ -515,7 +587,7 @@ namespace Compilator
                 return null;
             }
             Eat(Token.Type.CLASS);
-            Types left = Variable(dateType);
+            Types left = Variable(dateType);            
             if(current_token.type == Token.Type.ASIGN)
             {
                 Token token = current_token;
@@ -534,6 +606,10 @@ namespace Compilator
         {
             Types left = Variable();
             Token token = current_token;
+            if (current_token.type == Token.Type.LPAREN)
+            {
+                return FunctionCatch(((Variable)left).Token);
+            }
             Eat(Token.Type.ASIGN); 
             Types right = Expr();
             Types node = new Assign(left, token, right);

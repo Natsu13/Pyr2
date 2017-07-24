@@ -72,6 +72,7 @@ namespace Compilator
             if (op == Token.Type.MUL) o = "*";
             if (op == Token.Type.NEW) o = "new";
             if (op == Token.Type.RETURN) o = "return";
+            if (op == Token.Type.CALL) o = "call";
             return o;
         }
         public string GetOperator(Token.Type op)

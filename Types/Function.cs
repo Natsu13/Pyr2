@@ -14,6 +14,8 @@ namespace Compilator
         Token returnt;
         public bool isStatic = false;
         public Token _static;
+        public bool isExternal = false;
+        public Token _external;
 
         public Function(Token name, Block _block, ParameterList paraml, Token returnt, Interpreter interpret)
         {
@@ -29,19 +31,22 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
-            string tbs = DoTabs(tabs);
             string ret = "";
-            if (assignTo == "")
-                ret += tbs + "function " + name.Value + "(" + paraml.Compile(0) + "){\n";
-            else
+            if (!isExternal)
             {
-                if (isStatic)
-                    ret += tbs + assignTo + "." + name.Value + " = function(" + paraml.Compile(0) + "){\n";
+                string tbs = DoTabs(tabs);                
+                if (assignTo == "")
+                    ret += tbs + "function " + name.Value + "(" + paraml.Compile(0) + "){\n";
                 else
-                    ret += tbs + assignTo + ".prototype." + name.Value + " = function(" + paraml.Compile(0) + "){\n";
+                {
+                    if (isStatic)
+                        ret += tbs + assignTo + "." + name.Value + " = function(" + paraml.Compile(0) + "){\n";
+                    else
+                        ret += tbs + assignTo + ".prototype." + name.Value + " = function(" + paraml.Compile(0) + "){\n";
+                }
+                ret += block.Compile(tabs + 1);
+                ret += tbs + "}\n";
             }
-            ret += block.Compile(tabs + 1);
-            ret += tbs + "}\n";          
             return ret;
         }
         public override int Visit()

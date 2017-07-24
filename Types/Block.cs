@@ -37,8 +37,11 @@ namespace Compilator
                 {
                     if (isNull)
                     {
-                        Function asfunc = (Function)SymbolTable.Get(assignTo);
-                        Interpreter.semanticError.Add(new Error("Because your function "+assignTo+"("+ asfunc.ParameterList.List() + ") return void you can't return value", Interpreter.ErrorType.ERROR, uop.Token));
+                        if (uop.Expr != null)
+                        {
+                            Function asfunc = (Function)SymbolTable.Get(assignTo);
+                            Interpreter.semanticError.Add(new Error("Because your function " + assignTo + "(" + asfunc.ParameterList.List() + ") return void you can't return value", Interpreter.ErrorType.ERROR, uop.Token));                            
+                        }
                         continue;
                     }
                     if (uop.Expr is Variable) {

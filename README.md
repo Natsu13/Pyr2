@@ -3,6 +3,7 @@ New type of Pyr Language more optimized and writed in C# can be compiled to JS f
 
 Example code:
 ```
+external function alert(string message) -> void;
 class Type { 
 	int test = 1;
 }

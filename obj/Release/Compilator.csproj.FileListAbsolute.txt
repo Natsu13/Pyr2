@@ -1,5 +1,0 @@
-C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Release\Compilator.pdb
-C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\obj\Release\Compilator.pdb
-C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Release\Compilator.dll.config
-C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Release\Compilator.dll
-C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\obj\Release\Compilator.dll

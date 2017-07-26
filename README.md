@@ -15,14 +15,18 @@ class Integer : Type {
 
 	function sayWho(string name) {
 		string p = 'none {$name}';
-		js("alert('ahoj')");		
+		if(name + "oj" == "ahoj" && 1 == 1){
+			js("alert('ahoj')");
+		}else{
+			p = "nope";
+		}
 		return p;
 	}
 }
 
 function main() -> int {
 	Integer p = new Integer;
-	p.sayWho("test");
+	p.sayWho("ahoj");
 	return 0;
 }
 ```

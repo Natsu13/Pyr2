@@ -10,14 +10,21 @@ var module = function (_){
   }
   Integer.prototype.sayWho = function(name){
     var p = 'none ' + name + '';
-    alert('ahoj');
+    
+    if(name + 'oj' == 'ahoj' && 1 == 1) {
+      alert('ahoj');
+    }
+    else {
+      var p = 'nope';
+    }
+  
     return p;
   }
   
   
   function main(){
     var p = new Integer();
-    p.sayWho('test');
+    p.sayWho('ahoj');
     return 0;
   }
   

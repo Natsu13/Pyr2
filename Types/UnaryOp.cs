@@ -73,7 +73,7 @@ namespace Compilator
             {
                 if(block.Parent?.Parent == null)
                     Interpreter.semanticError.Add(new Error("Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
-                if (!block.assingBlock.SymbolTable.Find(name.Value))
+                if (block.assingBlock != null && !block.assingBlock.SymbolTable.Find(name.Value))
                     Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
             }
         }

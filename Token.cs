@@ -17,7 +17,9 @@ namespace Compilator
             CLASS, ID, FUNCTION, 
             NEWCLASS, NEWFUNCTION,
             LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL, 
-            STATIC, VOID, EXTERNAL
+            STATIC, VOID, EXTERNAL,
+            IF, ELSE, ELSEIF,
+            EQUAL, NOTEQUAL, AND, OR
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
@@ -28,7 +30,10 @@ namespace Compilator
             { "return",     new Token(Type.RETURN, "return") },
             { "static",     new Token(Type.STATIC, "static") },
             { "external",   new Token(Type.EXTERNAL, "external") }, 
-            { "void",       new Token(Type.VOID, "void") }    
+            { "void",       new Token(Type.VOID, "void") },
+            { "if",         new Token(Type.IF, "if") },
+            { "elseif",     new Token(Type.ELSEIF, "elseif") },
+            { "else",       new Token(Type.ELSE, "else") },
         };
 
         public Type type;

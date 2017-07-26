@@ -66,6 +66,11 @@ namespace Compilator
         public static string GetOperatorStatic(Token.Type op)
         {
             string o = "";
+            if (op == Token.Type.EQUAL) o = "==";
+            if (op == Token.Type.NOTEQUAL) o = "!=";
+            if (op == Token.Type.AND) o = "&&";
+            if (op == Token.Type.OR) o = "||";
+
             if (op == Token.Type.PLUS) o = "+";
             if (op == Token.Type.MINUS) o = "-";
             if (op == Token.Type.DIV) o = "/";

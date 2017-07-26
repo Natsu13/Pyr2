@@ -9,13 +9,15 @@ using System.Threading.Tasks;
 namespace Compilator
 {
     class Program
-    {
+    {        
         static void Main(string[] args)
         {            
             var stopwatch = new Stopwatch();
             stopwatch.Start();
             string text = File.ReadAllText(@"code.p");
             Interpreter interpret = new Interpreter(text, "code.p");
+            interpret.isConsole = true;
+
             Block block = (Block)interpret.Interpret();
             string compiled = block.Compile();
             compiled = compiled.Replace("\n", "\n  ");

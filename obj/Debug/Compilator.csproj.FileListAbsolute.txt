@@ -1,6 +1,6 @@
-c:\users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Debug\Compilator.exe.config
-c:\users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Debug\Compilator.exe
 c:\users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Debug\Compilator.pdb
-c:\users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\obj\Debug\Compilator.csprojResolveAssemblyReference.cache
-c:\users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\obj\Debug\Compilator.exe
 c:\users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\obj\Debug\Compilator.pdb
+C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\obj\Debug\Compilator.csprojResolveAssemblyReference.cache
+C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Debug\Compilator.exe.config
+C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\bin\Debug\Compilator.exe
+C:\Users\kubat\documents\visual studio 2017\Projects\Compilator\Compilator\obj\Debug\Compilator.exe

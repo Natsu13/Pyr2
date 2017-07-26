@@ -31,6 +31,9 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -50,6 +53,7 @@
     <Compile Include="Types\Block.cs" />
     <Compile Include="Types\Class.cs" />
     <Compile Include="Types\Function.cs" />
+    <Compile Include="Types\If.cs" />
     <Compile Include="Types\NoOp.cs" />
     <Compile Include="Types\Null.cs" />
     <Compile Include="Types\ParameterList.cs" />

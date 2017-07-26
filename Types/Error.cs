@@ -11,7 +11,7 @@ namespace Compilator
         string error = "";
         Interpreter.ErrorType errorType;
         Token token;
-        int line, position, lenght;
+        int line, position, lenght, rpos;
         string message;
 
         public Error(string error, Interpreter.ErrorType errorType = Interpreter.ErrorType.INFO, Token token = null)
@@ -24,6 +24,7 @@ namespace Compilator
             else
             {
                 int pos = token.Pos + token.Value.Length;
+                rpos = token.Pos;
                 string rerr = error;
                 string[] splt = Interpreter.fileList[token.File].Split('\n');
                 rerr += "\n";
@@ -43,6 +44,7 @@ namespace Compilator
             }
         }        
 
+        public int RPos { get { return rpos; } }
         public int Line { get { return line; } }
         public int Position { get { return position; } }
         public int Lenght { get { return lenght; } }

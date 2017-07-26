@@ -23,7 +23,7 @@ namespace Compilator
         {
             right.assingBlock = block;
             left.assingBlock = block;
-            return left.Compile(0) + Variable.GetOperatorStatic(op.type) + right.Compile(0); 
+            return left.Compile(0) + " "+ Variable.GetOperatorStatic(op.type) + " " + right.Compile(0); 
         }
 
         public override void Semantic()

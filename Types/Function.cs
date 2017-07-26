@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Compilator
 {
-    class Function:Types
+    public class Function:Types
     {
         Token name;
         Block block;
@@ -21,8 +21,11 @@ namespace Compilator
         {
             this.name = name;
             this.block = _block;
-            this.block.assignTo = name.Value;
-            this.block.assingBlock = this.block;
+            if (_block != null)
+            {
+                this.block.assignTo = name.Value;
+                this.block.assingBlock = this.block;
+            }
             //this.block.blockAssignTo = name.Value;
             this.paraml = paraml;
             this.paraml.assingBlock = this.block;
@@ -59,8 +62,11 @@ namespace Compilator
         {
             if (assignTo == "" && isStatic)
                 Interpreter.semanticError.Add(new Error("Static modifier outside class is useless", Interpreter.ErrorType.WARNING, _static));
-            block.Semantic();
-            block.CheckReturnType(returnt?.Value, (returnt?.type == Token.Type.VOID?true:false));
+            if (!isExternal)
+            {
+                block.Semantic();
+                block.CheckReturnType(returnt?.Value, (returnt?.type == Token.Type.VOID ? true : false));
+            }
         }
     }
 }

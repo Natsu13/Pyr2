@@ -28,8 +28,8 @@ namespace Compilator
             this.block = block;
             this.endit = endit;
         }
-
-        public Token Token { get { return token; } }
+        
+        public override Token getToken() { return token; }
         public String Op { get { return Variable.GetOperatorStatic(op.type); } }
         public Types  Expr { get { return expr; } }
         public Token Name { get { return name; } }
@@ -39,7 +39,7 @@ namespace Compilator
             string tbs = DoTabs(tabs);
             string o = Variable.GetOperatorStatic(op.type);
             if(o == "call")
-            {                
+            {
                 if (!block.SymbolTable.Find(name.Value))
                 {                    
                     return "";

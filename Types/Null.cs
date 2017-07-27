@@ -14,7 +14,7 @@ namespace Compilator
         }
         public int Value { get { return 0; } }
         public Token.Type Type { get { return Token.Type.NULL; } }
-        public Token Token { get { return new Token(Token.Type.NULL, "null"); } }
+        public override Token getToken() { return new Token(Token.Type.NULL, "null"); }
 
         public override string Compile(int tabs = 0)
         {

@@ -8,6 +8,8 @@ namespace Compilator
 {
     public abstract class Types
     {
+        //public abstract Token Token { get; }
+        public abstract Token getToken();
         public string assignTo = "";
         public Block assingBlock;
         public abstract int Visit();
@@ -18,6 +20,16 @@ namespace Compilator
             string r = "";
             for(int i=0; i < tabs; i++) { r += "  "; }
             return r;
+        }
+        public Variable TryVariable()
+        {
+            if (this is Number)
+                return new Variable(((Number)this).getToken(), this.assingBlock, new Token(Token.Type.CLASS, "int"));
+            if (this is CString)
+                return new Variable(((CString)this).getToken(), this.assingBlock, new Token(Token.Type.CLASS, "string"));
+            if (this is BinOp)
+                return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((BinOp)this).OutputType);
+            return (Variable)this;
         }
     }
 }

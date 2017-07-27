@@ -27,5 +27,7 @@ namespace Compilator
         {
             return 0;
         }
+
+        public override Token getToken() { return null; }
     }
 }

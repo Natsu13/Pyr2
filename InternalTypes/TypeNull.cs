@@ -8,6 +8,8 @@ namespace Compilator
 {
     public class TypeNull : TypeObject
     {
+        public new string Name { get { return "null"; } }
+
         public override bool SupportOp(string op)
         {
             return true;

@@ -17,7 +17,7 @@ namespace Compilator
         }
         public int Value { get { return value; } }
         public Token.Type Type { get { return token.type; } }
-        public Token Token { get { return token; } }
+        public override Token getToken() { return token; }
 
         public override string Compile(int tabs = 0)
         {

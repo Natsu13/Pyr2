@@ -16,6 +16,8 @@ namespace Compilator
             this.declare = declare;
         }
 
+        public override Token getToken() { return null; }
+
         public Variable Find(string name)
         {
             foreach(Types par in parameters)

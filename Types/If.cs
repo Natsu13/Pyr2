@@ -41,6 +41,7 @@ namespace Compilator
             }
             return ret;
         }
+        public override Token getToken() { return null; }
 
         public override void Semantic()
         {

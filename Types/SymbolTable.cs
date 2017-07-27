@@ -19,9 +19,10 @@ namespace Compilator
             this.assigment_block = assigment_block;
             if (first)
             {
-                Add("null", typeof(TypeNull));
-                Add("int", typeof(TypeInt));
-                Add("string", typeof(TypeString));
+                Add("null",     typeof(TypeNull));
+                Add("int",      typeof(TypeInt));
+                Add("string",   typeof(TypeString));
+                Add("bool",     typeof(TypeBool));
             }
         }
         public Dictionary<string, Types> Table { get { return table; } }

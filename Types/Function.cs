@@ -32,6 +32,7 @@ namespace Compilator
             this.returnt = returnt;
         }
         public ParameterList ParameterList { get { return paraml; } }
+        public override Token getToken() { return null; }
 
         public override string Compile(int tabs = 0)
         {

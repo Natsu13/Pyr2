@@ -51,6 +51,7 @@ namespace Compilator
         public string Place { get { return message; } }         
         public string Message { get { return error; } }
         public Interpreter.ErrorType Type { get { return errorType; } }
+        public override Token getToken() { return null; }
 
         public override string Compile(int tabs = 0)
         {

@@ -417,8 +417,10 @@ namespace Compilator
                 }
                 result = new BinOp(result, token, Comp(), current_block);
             }
-            return result;
+            return result; 
         }
+
+        public void t() {  }
 
         public Types Parse()
         {
@@ -751,7 +753,7 @@ namespace Compilator
             Token token = current_token;
             if (current_token.type == Token.Type.LPAREN)
             {
-                return FunctionCatch(((Variable)left).Token);
+                return FunctionCatch(((Variable)left).getToken());
             }
             Eat(Token.Type.ASIGN); 
             Types right = Expr();
@@ -762,7 +764,12 @@ namespace Compilator
         public Types Variable(Token dateType = null)
         {            
             Types node = new Variable(current_token, current_block, dateType);
-            Eat(Token.Type.ID);
+            if (current_token.type == Token.Type.TRUE)
+                Eat(Token.Type.TRUE);
+            else if (current_token.type == Token.Type.FALSE)
+                Eat(Token.Type.FALSE);
+            else
+                Eat(Token.Type.ID);
             return node;
         }        
     }

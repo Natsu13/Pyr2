@@ -42,6 +42,8 @@ namespace Compilator
             return ret;
         }
 
+        public override Token getToken() { return null; }
+
         public override void Semantic()
         {
             foreach (KeyValuePair<string, Assign> var in block.variables)
@@ -69,6 +71,7 @@ namespace Compilator
         }       
 
         public T Inter { get { return intr; } }
+        public override Token getToken() { return null; }
 
         public override string Compile(int tabs = 0)
         {

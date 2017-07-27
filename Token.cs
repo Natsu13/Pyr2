@@ -10,16 +10,17 @@ namespace Compilator
     {
         public enum Type
         {
-            NONE, ERROR, EOF, NULL, 
-            INTEGER, STRING, DYNAMIC, REAL,
-            COMMA, SEMI, DOT, COLON, 
+            NONE, ERROR, EOF, NULL,
+            INTEGER, STRING, DYNAMIC, REAL, BOOL, AUTO,
+            COMMA, SEMI, DOT, COLON,
             PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN,
-            CLASS, ID, FUNCTION, 
+            CLASS, ID, FUNCTION,
             NEWCLASS, NEWFUNCTION,
-            LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL, 
+            LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL,
             STATIC, VOID, EXTERNAL,
             IF, ELSE, ELSEIF,
-            EQUAL, NOTEQUAL, AND, OR
+            EQUAL, NOTEQUAL, AND, OR,
+            TRUE, FALSE
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
@@ -29,17 +30,20 @@ namespace Compilator
             { "function",   new Token(Type.NEWFUNCTION, "function") },
             { "return",     new Token(Type.RETURN, "return") },
             { "static",     new Token(Type.STATIC, "static") },
-            { "external",   new Token(Type.EXTERNAL, "external") }, 
+            { "external",   new Token(Type.EXTERNAL, "external") },
             { "void",       new Token(Type.VOID, "void") },
             { "if",         new Token(Type.IF, "if") },
             { "elseif",     new Token(Type.ELSEIF, "elseif") },
             { "else",       new Token(Type.ELSE, "else") },
+            { "true",       new Token(Type.TRUE, "true") },
+            { "false",      new Token(Type.FALSE, "false") },
         };
 
         public Type type;
         string value = "";
         int pos;
         string file;
+        int endpos = -1;
 
         public Token(Type type, string value, int pos = -1, string file = "")
         {
@@ -48,7 +52,7 @@ namespace Compilator
             this.pos = pos;
             this.file = file;
         }
-        public Token(Type type, char value, int pos = -1, string file = ""): this(type, value.ToString(), pos, file)
+        public Token(Type type, char value, int pos = -1, string file = "") : this(type, value.ToString(), pos, file)
         {
 
         }
@@ -59,6 +63,15 @@ namespace Compilator
         public Token(Token token, int pos = -1, string file = "") : this(token.type, token.value.ToString(), pos, file)
         {
 
+        }
+        public Token(Type type, string value, int pos, int endpos, string file = "") : this(type, value, pos, file)
+        {
+            this.endpos = endpos;
+        }
+
+        public static Token Combine(Token t1, Token t2)
+        {
+            return new Token(t1.type, t1.value + t2.value, t1.pos, t2.pos+t2.value.Length, t1.file);
         }
 
         public int Pos { get { return pos; } }

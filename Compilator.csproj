@@ -45,6 +45,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="InternalTypes\TypeBool.cs" />
     <Compile Include="InternalTypes\TypeInt.cs" />
     <Compile Include="InternalTypes\TypeNull.cs" />
     <Compile Include="InternalTypes\TypeObject.cs" />

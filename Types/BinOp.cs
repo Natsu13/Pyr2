@@ -11,6 +11,7 @@ namespace Compilator
         Types left, right;
         Token op, token;
         Block block;
+        Token outputType;
         public BinOp(Types left, Token op, Types right, Block block)
         {
             this.left = left;
@@ -18,39 +19,61 @@ namespace Compilator
             this.right = right;
             this.block = block;
         }
+        
+        public override Token getToken() { return Token.Combine(this.left.getToken(), this.right.getToken()); }
 
         public override string Compile(int tabs = 0)
         {
             right.assingBlock = block;
             left.assingBlock = block;
+
+            if (right is Variable) ((Variable)right).Check();
+            if (left is Variable) ((Variable)left).Check();
+
+            if (left is Number)
+            {
+                Variable v = new Variable(((Number)left).getToken(), block, new Token(Token.Type.CLASS, "int"));
+                outputType = v.OutputType(op.type, left, right);
+            }
+            else if (left is CString)
+            {
+                Variable v = new Variable(((CString)left).getToken(), block, new Token(Token.Type.CLASS, "string"));
+                outputType = v.OutputType(op.type, left, right);
+            }
+            else if(left is Variable)
+            {
+                outputType = ((Variable)left).OutputType(op.type, left, right);
+            }
             return left.Compile(0) + " "+ Variable.GetOperatorStatic(op.type) + " " + right.Compile(0); 
         }
 
         public override void Semantic()
         {
-            if (left is Number)
+            left.Semantic();
+            right.Semantic();
+
+            Variable v = left.TryVariable();
+            Variable r = right.TryVariable();
+
+            this.outputType = v.OutputType(op.type, v, r);
+
+            if (!v.SupportOp(op.type))
             {
-                Variable v = new Variable(((Number)left).Token, block, new Token(Token.Type.CLASS, "int"));
-                if (!v.SupportOp(op.type))
-                {
-                    Interpreter.semanticError.Add(new Error("Varible type 'int' not support operator " + v.GetOperator(op.type), Interpreter.ErrorType.ERROR, ((Number)left).Token));
-                }
+                Interpreter.semanticError.Add(new Error("Varible type '" + v.Type + "' not support operator " + Variable.GetOperatorStatic(op.type), Interpreter.ErrorType.ERROR, left.getToken()));
             }
-            else if (left is CString)
+            if (!v.SupportSecond(right, r))
             {
-                Variable v = new Variable(((CString)left).Token, block, new Token(Token.Type.CLASS, "string"));
-                if (!v.SupportOp(op.type))
-                {
-                    Interpreter.semanticError.Add(new Error("Varible type 'int' not support operator " + v.GetOperator(op.type), Interpreter.ErrorType.ERROR, ((Number)left).Token));
-                }
+                Interpreter.semanticError.Add(new Error("Operator " + Variable.GetOperatorStatic(op.type) + " cannot be applied for '" + v.Type + "' and '" + r.Type + "'", Interpreter.ErrorType.ERROR, op));
             }
         }
+
+        public Token OutputType { get { return outputType; } }
 
         public override int Visit()
         {
             if(left is Number)
             {
-                Variable v = new Variable(((Number)left).Token, block, new Token(Token.Type.CLASS, "int"));
+                Variable v = new Variable(((Number)left).getToken(), block, new Token(Token.Type.CLASS, "int"));
                 if (v.SupportOp(op.type))
                 {
                     return (int)v.Operator(op.type, ((Number)left).Value, ((Number)right).Value);
@@ -62,7 +85,7 @@ namespace Compilator
             }
             else if (left is CString)
             {
-                Variable v = new Variable(((CString)left).Token, block, new Token(Token.Type.CLASS, "int"));
+                Variable v = new Variable(((CString)left).getToken(), block, new Token(Token.Type.CLASS, "int"));
                 if (v.SupportOp(op.type))
                 {
                     return (int)v.Operator(op.type, ((CString)left).Value, ((CString)right).Value);

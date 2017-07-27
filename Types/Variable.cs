@@ -53,9 +53,14 @@ namespace Compilator
         {
             if (this.dateType.Value == "auto")
             {
+                Types fvar = this.block.FindVariable(this.value);
                 if (this.block.SymbolTable.Find(this.value))
                 {
                     this.dateType = ((Variable)this.block.FindVariable(this.value).Left).dateType;
+                }
+                else if (fvar != null)
+                {
+                    this.dateType = ((Variable)((Assign)fvar).Left).dateType;
                 }
                 else if (this.token.type == Token.Type.TRUE || this.token.type == Token.Type.FALSE)
                 {
@@ -122,19 +127,21 @@ namespace Compilator
         }
         public Token OutputType(Token.Type op, object first, object second)
         {
-            return _class.OutputType(GetOperator(op), first, second);
+            return _class?.OutputType(GetOperator(op), first, second);
         }
         public bool SupportOp(Token.Type op)
         {
-            return _class.SupportOp(GetOperator(op));
+            object o = _class?.SupportOp(GetOperator(op));
+            return (o is null ? false : (bool)o);
         }
         public bool SupportSecond(object second, object secondAsVariable)
         {
-            return _class.SupportSecond(second, secondAsVariable);
+            object o = _class?.SupportSecond(second, secondAsVariable);
+            return (o is null ? false : (bool)o);
         }          
         public object Operator(Token.Type op, object first, object second)
         {
-            return _class.Operator(GetOperator(op), first, second);
+            return _class?.Operator(GetOperator(op), first, second);
         }
 
         public override void Semantic()

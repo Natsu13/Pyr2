@@ -10,13 +10,31 @@ namespace Compilator
     {
         Types left, right;
         Token op, token;
+        bool isDeclare = false;
+        bool isMismash = false;
+        string originlDateType = "";
         public Assign(Types left, Token op, Types right, Block current_block = null)
         {
             this.left = left;
             this.op = this.token = op;
             this.right = right;
-            string name = ((Variable)left).Value;
-            ((Variable)left).Block.variables[name] = this;
+            if (left is Variable) {
+                string name = ((Variable)left).Value;
+                if (!((Variable)left).Block.variables.ContainsKey(name))
+                {
+                    isDeclare = true;
+                    ((Variable)left).Block.variables[name] = this;
+                }
+                else
+                {
+                    Variable v = ((Variable)((Variable)left).Block.variables[name].Left);
+                    if (v.getType().type != ((Variable)this.left).getType().type)
+                    {
+                        originlDateType = v.getType().Value;
+                        isMismash = true;
+                    }
+                }               
+            }
             left.assingBlock = current_block;
         }
 
@@ -46,25 +64,29 @@ namespace Compilator
             if (left is Variable)
             {
                 if (((Variable)left).Block.blockAssignTo != "") return "";
-                right.assingBlock = ((Variable)left).Block;
-                return DoTabs(tabs) + "var " + left.Compile(0) + " = " + right.Compile(0) + ";";
+                    right.assingBlock = ((Variable)left).Block;
+                if (right is UnaryOp)
+                    ((UnaryOp)right).endit = false;
+                return DoTabs(tabs) + (isDeclare?"var ":"") + left.Compile(0) + " = " + right.Compile(0) + ";";
             }
             else
                 return DoTabs(tabs) + left.Compile(0) + " = " + right.Compile(0) + ";";
         }
 
         public override void Semantic()
-        {
+        {            
             if (left is Variable)
             {
                 if (((Variable)left).Type == "auto")
                 {
-                    if (right is Variable && ((Variable)right).getToken().type == Token.Type.TRUE)
-                        ((Variable)left).setType(((Variable)right).getToken());
-                    else if (right is Variable && ((Variable)right).getToken().type == Token.Type.FALSE)
-                        ((Variable)left).setType(((Variable)right).getToken());
-                    if (right is Variable)
+                    if (right is Variable && (((Variable)right).getToken().type == Token.Type.TRUE || ((Variable)right).getToken().type == Token.Type.FALSE))
+                        ((Variable)left).setType(new Token(Token.Type.BOOL, "bool"));
+                    else if (right is Variable)
                         ((Variable)left).setType(((Variable)right).getType());
+                    else if(right is Number)
+                        ((Variable)left).setType(new Token(Token.Type.INTEGER, "int"));
+                    else if (right is CString)
+                        ((Variable)left).setType(new Token(Token.Type.STRING, "string"));                        
                 }
                 else
                 {
@@ -111,6 +133,11 @@ namespace Compilator
                         if (((Variable)left).Type != ((UnaryOp)right).Name.Value)
                             Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type " + ((Variable)left).Type + " can't be implicitly converted to " + ((UnaryOp)right).Name.Value, Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                     }
+                }
+
+                if (isMismash)
+                {
+                    Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type " + ((Variable)left).Type + " can't be implicitly converted to " + originlDateType, Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                 }
             }
         }

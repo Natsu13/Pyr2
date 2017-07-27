@@ -333,6 +333,8 @@ namespace Compilator
                 Eat(Token.Type.RPAREN);
                 return result;
             }
+            else if (token.type == Token.Type.FUNCTION)
+                return FunctionCatch();
             else
             {
                 Types result = Variable();
@@ -419,8 +421,6 @@ namespace Compilator
             }
             return result; 
         }
-
-        public void t() {  }
 
         public Types Parse()
         {

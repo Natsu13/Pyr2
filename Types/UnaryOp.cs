@@ -12,7 +12,7 @@ namespace Compilator
         Types expr;
         ParameterList plist;
         Block block;
-        bool endit;
+        public bool endit;
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {

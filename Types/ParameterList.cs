@@ -45,8 +45,9 @@ namespace Compilator
         {
             string ret = "";            
             foreach(Types par in parameters)
-            {                
-                if(par is Variable && assingBlock != null)
+            {
+                par.endit = false;
+                if (par is Variable && assingBlock != null)
                 {
                     assingBlock.variables.Add(((Variable)par).Value, new Assign(((Variable)par), new Token(Token.Type.ASIGN, '='), new Null()));                    
                 }

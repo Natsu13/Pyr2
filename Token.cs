@@ -14,13 +14,13 @@ namespace Compilator
             INTEGER, STRING, DYNAMIC, REAL, BOOL, AUTO,
             COMMA, SEMI, DOT, COLON,
             PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN,
-            CLASS, ID, FUNCTION, INTERFACE, 
-            NEWCLASS, NEWFUNCTION, NEWINTERFACE, 
+            CLASS, ID, FUNCTION, INTERFACE, LAMBDA, 
+            NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,
             LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL,
             STATIC, VOID, EXTERNAL,
             IF, ELSE, ELSEIF,
             EQUAL, NOTEQUAL, AND, OR,
-            TRUE, FALSE
+            TRUE, FALSE            
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
@@ -38,7 +38,8 @@ namespace Compilator
             { "true",       new Token(Type.TRUE, "true") },
             { "false",      new Token(Type.FALSE, "false") },
             { "interface",  new Token(Type.NEWINTERFACE, "interface") },
-            { "null",       new Token(Type.NULL, "null") }
+            { "null",       new Token(Type.NULL, "null") },
+            { "lambda",     new Token(Type.NEWLAMBDA, "lambda") }
         };
 
         public Type type;

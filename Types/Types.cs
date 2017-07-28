@@ -11,6 +11,7 @@ namespace Compilator
         //public abstract Token Token { get; }
         public abstract Token getToken();
         public string assignTo = "";
+        public bool endit = true;
         public Block assingBlock;
         public abstract int Visit();
         public abstract string Compile(int tabs = 0);

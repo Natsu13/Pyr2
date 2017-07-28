@@ -12,7 +12,6 @@ namespace Compilator
         Types expr;
         ParameterList plist;
         Block block;
-        public bool endit;
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {
@@ -43,6 +42,13 @@ namespace Compilator
                 if (!block.SymbolTable.Find(name.Value))
                 {                    
                     return "";
+                }
+                Types t = block.SymbolTable.Get(name.Value);
+                if(t is Assign && ((Assign)t).Right is Lambda)
+                {
+                    if (plist == null)
+                        return tbs + "lambda$" + name.Value + "()" + (endit ? ";" : "");
+                    return tbs + "lambda$" + name.Value + "(" + plist.Compile() + ")" + (endit ? ";" : "");
                 }
                 if (name.Value == "js")
                 {

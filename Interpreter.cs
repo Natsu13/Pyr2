@@ -70,6 +70,7 @@ namespace Compilator
             }
             else
             {
+                current_char = '\0';
                 pos = text.Length + 1;
                 Error e = new Error(error, ErrorType.ERROR, current_token);
                 semanticError.Add(e);
@@ -104,7 +105,7 @@ namespace Compilator
                     return String(current_char);
                 }
 
-                if (Char.IsLetterOrDigit(current_char) || current_char == '_')
+                if (Char.IsLetterOrDigit(current_char) || current_char == '_' || current_char == '$')
                     return Id();
 
                 if (current_char == '-' && Peek() == '>') {
@@ -201,7 +202,7 @@ namespace Compilator
         public Token Id()
         {
             string result = "";
-            while(current_char != '\0' && (Char.IsLetterOrDigit(current_char) || current_char == '_' || current_char == '.'))
+            while(current_char != '\0' && (Char.IsLetterOrDigit(current_char) || current_char == '_' || current_char == '.' || current_char == '$'))
             {
                 result += current_char;
                 Advance();
@@ -214,14 +215,16 @@ namespace Compilator
                 Types tp = current_block.SymbolTable.Get(result);
                 if(tp is Assign)
                 {
-                    if(((Assign)tp).Right is Null)
+                    if (((Assign)tp).Right is Null)
                     {
-                        if(((Assign)tp).Left is Variable)
+                        if (((Assign)tp).Left is Variable)
                             return new Token(Token.Type.ID, result, current_token_pos, current_file);
                         else
                             return new Token(((Variable)((Assign)tp).Left).getToken().type, result, current_token_pos, current_file);
                     }
-                    else if(((Assign)tp).Right is UnaryOp)
+                    else if (((Assign)tp).Right is Lambda)
+                        return new Token(Token.Type.LAMBDA, result, current_token_pos, current_file);
+                    else if (((Assign)tp).Right is UnaryOp)
                         return new Token(Token.Type.ID, result, current_token_pos, current_file);
                     else
                         return new Token(Token.Type.ID, result, current_token_pos, current_file);
@@ -360,6 +363,8 @@ namespace Compilator
             }
             else if (token.type == Token.Type.FUNCTION)
                 return FunctionCatch();
+            else if (token.type == Token.Type.LAMBDA)
+                return FunctionCatch(null, true);
             else
             {
                 Types result = Variable();
@@ -514,11 +519,11 @@ namespace Compilator
             {
                 Eat(Token.Type.BEGIN);
                 Types node = CompoundStatement();
-                if(eatEnd)
+                if (eatEnd)
                     Eat(Token.Type.END);
                 return node;
-            }        
-            else if(current_token.type == Token.Type.IF)
+            }
+            else if (current_token.type == Token.Type.IF)
                 return ConditionCatch();
             else if (current_token.type == Token.Type.ID)
                 return AssignmentStatement();
@@ -534,6 +539,8 @@ namespace Compilator
                 return DeclareInterface();
             else if (current_token.type == Token.Type.NEWFUNCTION)
                 return DeclareFunction();
+            else if (current_token.type == Token.Type.NEWLAMBDA)
+                return DeclareLambda();
             else if (current_token.type == Token.Type.RETURN)
             {
                 if (current_block_type != Block.BlockType.FUNCTION)
@@ -548,7 +555,7 @@ namespace Compilator
                     returnv = Expr();
                 return new UnaryOp(token, returnv, current_block);
             }
-            else if(current_token.type == Token.Type.STATIC)
+            else if (current_token.type == Token.Type.STATIC)
             {
                 Token modifer = current_token;
                 current_modifer.Add(current_token);
@@ -567,10 +574,10 @@ namespace Compilator
                 Token modifer = current_token;
                 current_modifer.Add(current_token);
                 Eat(Token.Type.EXTERNAL);
-                if (current_token.type == Token.Type.STATIC || 
-                    current_token.type == Token.Type.NEWCLASS || 
-                    current_token.type == Token.Type.NEWFUNCTION || 
-                    current_token.type == Token.Type.ID || 
+                if (current_token.type == Token.Type.STATIC ||
+                    current_token.type == Token.Type.NEWCLASS ||
+                    current_token.type == Token.Type.NEWFUNCTION ||
+                    current_token.type == Token.Type.ID ||
                     current_token.type == Token.Type.NEWINTERFACE)
                 {
                     Types type = Statement();
@@ -581,6 +588,28 @@ namespace Compilator
                 return null;
             }
             return new NoOp();
+        }
+
+        public Types DeclareLambda()
+        {
+            Eat(Token.Type.NEWLAMBDA);
+            Variable id = new Variable(current_token, current_block, new Token(Token.Type.LAMBDA, "lambda"));
+            Eat(Token.Type.ID);
+            Eat(Token.Type.ASIGN);
+            bool inbegin = false;
+            if (current_token.type == Token.Type.BEGIN)
+            {
+                inbegin = true;
+                Eat(Token.Type.BEGIN);
+            }
+            ParameterList p = Parameters(true);
+            Eat(Token.Type.DEFINERETURN);
+            Types expresion = Expr();
+            if (inbegin)
+                Eat(Token.Type.END);
+            Lambda l =  new Lambda(id, expresion, p);
+
+            return l;
         }
 
         public Block CatchBlock(Block.BlockType btype, bool eatEnd = true)
@@ -641,12 +670,15 @@ namespace Compilator
             return new If(conditions);
         }
 
-        public Types FunctionCatch(Token fname = null)
+        public Types FunctionCatch(Token fname = null, bool isLambda = false)
         {
             if (fname == null)
             {
                 fname = current_token;
-                Eat(Token.Type.FUNCTION);
+                if (!isLambda)
+                    Eat(Token.Type.FUNCTION);
+                else
+                    Eat(Token.Type.LAMBDA);
             }
             if (current_token.type == Token.Type.SEMI)
             { 

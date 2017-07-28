@@ -26,6 +26,10 @@ namespace Compilator
         public bool isConsole = false;
         public bool brekall = false;
 
+        /// Interpret settings
+        public static bool _REDECLARATION = false;
+        public static bool _WAITFORPAGELOAD = true;
+
         public Interpreter(string text, string filename = "")
         {
             this.text = text;
@@ -208,8 +212,24 @@ namespace Compilator
             else if (current_block.SymbolTable.Find(result))
             {
                 Types tp = current_block.SymbolTable.Get(result);
+                if(tp is Assign)
+                {
+                    if(((Assign)tp).Right is Null)
+                    {
+                        if(((Assign)tp).Left is Variable)
+                            return new Token(Token.Type.ID, result, current_token_pos, current_file);
+                        else
+                            return new Token(((Variable)((Assign)tp).Left).getToken().type, result, current_token_pos, current_file);
+                    }
+                    else if(((Assign)tp).Right is UnaryOp)
+                        return new Token(Token.Type.ID, result, current_token_pos, current_file);
+                    else
+                        return new Token(Token.Type.ID, result, current_token_pos, current_file);
+                }
                 if(tp is Function)
                     return new Token(Token.Type.FUNCTION, result, current_token_pos, current_file);
+                if(tp is Interface)
+                    return new Token(Token.Type.INTERFACE, result, current_token_pos, current_file);
                 return new Token(Token.Type.CLASS, result, current_token_pos, current_file);
             }
             else
@@ -325,6 +345,11 @@ namespace Compilator
             {
                 Eat(Token.Type.STRING);
                 return new CString(token);
+            }
+            else if (token.type == Token.Type.NULL)
+            {
+                Eat(Token.Type.NULL);
+                return new Null();
             }
             else if(token.type == Token.Type.LPAREN)
             {
@@ -499,10 +524,14 @@ namespace Compilator
                 return AssignmentStatement();
             else if (current_token.type == Token.Type.CLASS)
                 return DeclareVariable();
+            else if (current_token.type == Token.Type.INTERFACE)
+                return DeclareVariable();
             else if (current_token.type == Token.Type.FUNCTION)
                 return FunctionCatch();
             else if (current_token.type == Token.Type.NEWCLASS)
                 return DeclareClass();
+            else if (current_token.type == Token.Type.NEWINTERFACE)
+                return DeclareInterface();
             else if (current_token.type == Token.Type.NEWFUNCTION)
                 return DeclareFunction();
             else if (current_token.type == Token.Type.RETURN)
@@ -538,13 +567,17 @@ namespace Compilator
                 Token modifer = current_token;
                 current_modifer.Add(current_token);
                 Eat(Token.Type.EXTERNAL);
-                if (current_token.type == Token.Type.STATIC || current_token.type == Token.Type.NEWCLASS || current_token.type == Token.Type.NEWFUNCTION || current_token.type == Token.Type.ID)
+                if (current_token.type == Token.Type.STATIC || 
+                    current_token.type == Token.Type.NEWCLASS || 
+                    current_token.type == Token.Type.NEWFUNCTION || 
+                    current_token.type == Token.Type.ID || 
+                    current_token.type == Token.Type.NEWINTERFACE)
                 {
                     Types type = Statement();
                     current_modifer.Remove(modifer);
                     return type;
                 }
-                Error("The external modifer can modify only class, function or variable and must be before static modifer");
+                Error("The external modifer can modify only class, interface, function or variable and must be before static modifer");
                 return null;
             }
             return new NoOp();
@@ -643,18 +676,22 @@ namespace Compilator
                     Error("Date type " + current_token.Value + " is unkown!");
                     return null;
                 }
-                if(current_token.type == Token.Type.VOID)
+                if (current_token.type == Token.Type.VOID)
                 {
                     Eat(Token.Type.VOID);
                 }
+                else if (current_token.type == Token.Type.INTERFACE)
+                    Eat(Token.Type.INTERFACE);
                 else
                     Eat(Token.Type.CLASS);
             }
 
             Block _bloc = CatchBlock(Block.BlockType.FUNCTION, false);
-            if (brekall) return null;
+            if (brekall) return null;            
 
             Function func = new Function(name, _bloc, p, returnt, this);
+            func.assingBlock = current_block;
+            func.assignTo = current_block.assignTo;
             if (isModifer(Token.Type.STATIC))
             {
                 func.isStatic = true;
@@ -687,6 +724,56 @@ namespace Compilator
             return null;
         }
 
+        public Types DeclareInterface()
+        {
+            Eat(Token.Type.NEWINTERFACE);
+            Token name = current_token;
+            Eat(Token.Type.ID);
+            List<Token> parents = new List<Token>();
+            if (current_token.type == Token.Type.COLON)
+            {
+                Eat(Token.Type.COLON);
+                Token parent = current_token;
+                parents.Add(parent);
+                if(current_token.type == Token.Type.CLASS)
+                    Eat(Token.Type.CLASS, "class or interface for inheritance not found");
+                else
+                    Eat(Token.Type.INTERFACE, "class or interface for inheritance not found");
+                while (current_token.type == Token.Type.COMMA)
+                {
+                    Eat(Token.Type.COMMA);
+                    parent = current_token;
+                    parents.Add(parent);
+                    if (current_token.type == Token.Type.CLASS)
+                        Eat(Token.Type.CLASS, "class or interface for inheritance not found");
+                    else
+                        Eat(Token.Type.INTERFACE, "class or interface for inheritance not found");
+                }
+            }
+            Eat(Token.Type.BEGIN);
+
+            Block.BlockType last_block_type = current_block_type;
+            current_block_type = Block.BlockType.INTERFACE;
+            Block block = (Block)CompoundStatement();
+            if (brekall) return null;
+            block.Type = Block.BlockType.INTERFACE;
+            block.assignTo = name.Value;
+            current_block_type = last_block_type;
+
+            Interface c = new Interface(name, block, parents);
+            c.assingBlock = block;
+
+            if (isModifer(Token.Type.EXTERNAL))
+            {
+                c.isExternal = true;
+                c._external = getModifer(Token.Type.EXTERNAL);
+            }
+
+            current_block.SymbolTable.Add(name.Value, c);
+            Eat(Token.Type.END);
+            return c;
+        }
+
         public Types DeclareClass()
         {
             Eat(Token.Type.NEWCLASS);
@@ -698,13 +785,19 @@ namespace Compilator
                 Eat(Token.Type.COLON);
                 Token parent = current_token;
                 parents.Add(parent);
-                Eat(Token.Type.CLASS, "class for inheritance not found");
-                while(current_token.type == Token.Type.COMMA)
+                if (current_token.type == Token.Type.CLASS)
+                    Eat(Token.Type.CLASS, "class or interface for inheritance not found");
+                else
+                    Eat(Token.Type.INTERFACE, "class or interface for inheritance not found");
+                while (current_token.type == Token.Type.COMMA)
                 {
                     Eat(Token.Type.COMMA);
                     parent = current_token;
                     parents.Add(parent);
-                    Eat(Token.Type.CLASS, "class for inheritance not found");
+                    if (current_token.type == Token.Type.CLASS)
+                        Eat(Token.Type.CLASS, "class or interface for inheritance not found");
+                    else
+                        Eat(Token.Type.INTERFACE, "class or interface for inheritance not found");
                 }
             }
             Eat(Token.Type.BEGIN);
@@ -718,6 +811,13 @@ namespace Compilator
 
             Class c = new Class(name, block, parents);
             c.assingBlock = block;
+
+            if (isModifer(Token.Type.EXTERNAL))
+            {
+                c.isExternal = true;
+                c._external = getModifer(Token.Type.EXTERNAL);
+            }
+
             current_block.SymbolTable.Add(name.Value, c);
             Eat(Token.Type.END);
             return c;
@@ -731,7 +831,10 @@ namespace Compilator
                 Error("The date type "+ dateType.Value+" not a found!");
                 return null;
             }
-            Eat(Token.Type.CLASS);
+            if (current_token.type == Token.Type.INTERFACE)
+                Eat(Token.Type.INTERFACE);
+            else
+                Eat(Token.Type.CLASS);
             Types left = Variable(dateType);            
             if(current_token.type == Token.Type.ASIGN)
             {
@@ -739,6 +842,13 @@ namespace Compilator
                 Eat(Token.Type.ASIGN);
                 Types right = Expr();
                 Types node = new Assign(left, token, right, current_block);
+                node.assingBlock = current_block;
+                return node;
+            }
+            else if (current_token.type == Token.Type.SEMI)
+            {
+                Types node = new Assign(left, new Token(Token.Type.ASIGN, "="), new Null(), current_block);
+                node.assingBlock = current_block;
                 return node;
             }
             else
@@ -758,6 +868,7 @@ namespace Compilator
             Eat(Token.Type.ASIGN); 
             Types right = Expr();
             Types node = new Assign(left, token, right, current_block);
+            node.assingBlock = current_block;
             return node;
         }
 

@@ -12,29 +12,43 @@ namespace Compilator
         Token op, token;
         bool isDeclare = false;
         bool isMismash = false;
+        bool isRedeclared = false;
         string originlDateType = "";
         public Assign(Types left, Token op, Types right, Block current_block = null)
         {
             this.left = left;
             this.op = this.token = op;
-            this.right = right;
+            this.right = right;        
             if (left is Variable) {
+                left.Semantic();
+
                 string name = ((Variable)left).Value;
                 if (!((Variable)left).Block.variables.ContainsKey(name))
                 {
                     isDeclare = true;
                     ((Variable)left).Block.variables[name] = this;
                 }
+                else if (((Variable)left).Type != "auto")
+                {
+                    Variable v = ((Variable)((Variable)left).Block.FindVariable(name).Left);
+                    if (!Interpreter._REDECLARATION && v.getType().Value != ((Variable)this.left).getType().Value)
+                    {
+                        originlDateType = v.getType().Value;
+                        isRedeclared = true;
+                    }
+                }
                 else
                 {
                     Variable v = ((Variable)((Variable)left).Block.variables[name].Left);
-                    if (v.getType().type != ((Variable)this.left).getType().type)
+                    if (v.getType().Value != ((Variable)this.left).getType().Value)
                     {
                         originlDateType = v.getType().Value;
                         isMismash = true;
                     }
-                }               
-            }
+                }
+                if (((Variable)left).Value.Contains("."))
+                    isDeclare = false;
+            }            
             left.assingBlock = current_block;
         }
 
@@ -60,7 +74,8 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
-
+            if ((((Variable)left).Block.Type == Block.BlockType.CONDITION && ((Variable)left).Block.Parent.variables.ContainsKey(((Variable)left).Value)))
+                isDeclare = false;
             if (left is Variable)
             {
                 if (((Variable)left).Block.blockAssignTo != "") return "";
@@ -79,7 +94,10 @@ namespace Compilator
             {
                 if (((Variable)left).Type == "auto")
                 {
-                    if (right is Variable && (((Variable)right).getToken().type == Token.Type.TRUE || ((Variable)right).getToken().type == Token.Type.FALSE))
+                    Types t = ((Variable)left).assingBlock.SymbolTable.Get(((Variable)left).Value);
+                    if(t != null)
+                        ((Variable)left).setType(((Variable)((Assign)t).Left).getType());
+                    else if (right is Variable && (((Variable)right).getToken().type == Token.Type.TRUE || ((Variable)right).getToken().type == Token.Type.FALSE))
                         ((Variable)left).setType(new Token(Token.Type.BOOL, "bool"));
                     else if (right is Variable)
                         ((Variable)left).setType(((Variable)right).getType());
@@ -105,7 +123,17 @@ namespace Compilator
                                 {
                                     Function asfunc = (Function)rblock.SymbolTable.Get(rblock.assignTo);
                                     Variable var = asfunc.ParameterList.Find(((Variable)right).Value);
-                                    if (var != null)
+                                    Types vaq = (Types)rblock.SymbolTable.Get(((Variable)right).Value);
+                                    if(vaq != null)
+                                    {
+                                        if(vaq is Assign)
+                                        {
+                                            right = vaq;
+                                        }
+                                        if(vaq is Error)
+                                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)right).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)right).getToken()));
+                                    }
+                                    else if (var != null)
                                     {
                                         right = var;
                                     }
@@ -114,30 +142,35 @@ namespace Compilator
                                 }
                             }
                             if (right is Variable && ((Variable)left).Type != ((Variable)right).Type)
-                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type " + ((Variable)left).Type + " can't be implicitly converted to " + ((Variable)right).Type, Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + ((Variable)right).Type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                         }
                         else
-                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type " + ((Variable)left).Type + " can't be implicitly converted to " + ((Variable)right).Type, Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + ((Variable)right).Type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                     }
                     else if (right is Number && ((Variable)left).Type != "int")
-                        Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type " + ((Variable)left).Type + " can't be implicitly converted to int", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                        Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to 'int'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                     else if (right is CString)
                     {
                         if(((Variable)left).Type != "string")
-                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type " + ((Variable)left).Type + " can't be implicitly converted to string", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));                        
+                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to 'string'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));                        
                         else
                             ((CString)right).Semantic();
                     }
                     else if (right is UnaryOp && ((UnaryOp)right).Op == "new")
                     {
                         if (((Variable)left).Type != ((UnaryOp)right).Name.Value)
-                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type " + ((Variable)left).Type + " can't be implicitly converted to " + ((UnaryOp)right).Name.Value, Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to " + ((UnaryOp)right).Name.Value + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                     }
                 }
 
-                if (isMismash)
+                if (isMismash && originlDateType != ((Variable)left).getType().Value)
                 {
-                    Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type " + ((Variable)left).Type + " can't be implicitly converted to " + originlDateType, Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                    Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + originlDateType + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                }
+
+                if (isRedeclared)
+                {
+                    Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' is alerady declared as '" + originlDateType+ "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                 }
             }
         }

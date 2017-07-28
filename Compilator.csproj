@@ -47,7 +47,6 @@
   <ItemGroup>
     <Compile Include="InternalTypes\TypeBool.cs" />
     <Compile Include="InternalTypes\TypeInt.cs" />
-    <Compile Include="InternalTypes\TypeNull.cs" />
     <Compile Include="InternalTypes\TypeObject.cs" />
     <Compile Include="InternalTypes\TypeString.cs" />
     <Compile Include="Types\Assign.cs" />
@@ -55,6 +54,7 @@
     <Compile Include="Types\Class.cs" />
     <Compile Include="Types\Function.cs" />
     <Compile Include="Types\If.cs" />
+    <Compile Include="Types\Interface.cs" />
     <Compile Include="Types\NoOp.cs" />
     <Compile Include="Types\Null.cs" />
     <Compile Include="Types\ParameterList.cs" />

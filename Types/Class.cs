@@ -11,6 +11,8 @@ namespace Compilator
         Token name;
         Block block;
         List<Token> parents;
+        public bool isExternal = false;
+        public Token _external;
 
         public Class(Token name, Block block, List<Token> parents)
         {
@@ -22,24 +24,28 @@ namespace Compilator
         }
         public override string Compile(int tabs = 0)
         {
-            string tbs = DoTabs(tabs);
-            string ret = tbs + "var " + name.Value + " = function(){";
-            if (block.variables.Count != 0 || parents.Count != 0) ret += "\n";
-            foreach(Token parent in parents)
+            if (!isExternal)
             {
-                ret += tbs + "\t" + parent.Value + ".call(this);\n";
+                string tbs = DoTabs(tabs);
+                string ret = tbs + "var " + name.Value + " = function(){";
+                if (block.variables.Count != 0 || parents.Count != 0) ret += "\n";
+                foreach (Token parent in parents)
+                {
+                    ret += tbs + "\t" + parent.Value + ".call(this);\n";
+                }
+                foreach (KeyValuePair<string, Assign> var in block.variables)
+                {
+                    //var.Key + " => ["+var.Value.GetType()+"] " + var.Value.GetVal()
+                    if (var.Value.GetType() == "string")
+                        ret += tbs + "\tthis." + var.Key + " = " + var.Value.Compile() + ";";
+                    else
+                        ret += tbs + "\tthis." + var.Key + " = " + var.Value.GetVal() + ";\n";
+                }
+                ret += tbs + "}\n";
+                ret += block.Compile(tabs);
+                return ret;
             }
-            foreach(KeyValuePair<string, Assign> var in block.variables)
-            {
-                //var.Key + " => ["+var.Value.GetType()+"] " + var.Value.GetVal()
-                if (var.Value.GetType() == "string")
-                    ret += tbs + "\tthis." + var.Key + " = NotImplemented();";
-                else
-                    ret += tbs + "\tthis." + var.Key + " = " + var.Value.GetVal() + ";\n";
-            }
-            ret += tbs + "}\n";
-            ret += block.Compile(tabs);
-            return ret;
+            return "";
         }
 
         public override Token getToken() { return null; }

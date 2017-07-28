@@ -31,6 +31,10 @@ namespace Compilator
                     _class = (TypeObject)Activator.CreateInstance(type);
                 }
             }
+            if(_class == null)
+            {
+                _class = new TypeObject();
+            }
         }        
         public void   setType(Token _type) {
             this.dateType = _type;
@@ -56,7 +60,7 @@ namespace Compilator
                 Types fvar = this.block.FindVariable(this.value);
                 if (this.block.SymbolTable.Find(this.value))
                 {
-                    this.dateType = ((Variable)this.block.FindVariable(this.value).Left).dateType;
+                    this.dateType = ((Variable)(((Assign)this.block.SymbolTable.Get(this.value)).Left)).dateType;
                 }
                 else if (fvar != null)
                 {
@@ -101,8 +105,7 @@ namespace Compilator
                 int val = Int32.Parse(block.variables[value].GetVal());
                 return val;
             }
-            else
-                throw new Exception("Variable " + value + " is not declared!");
+            return 0;
         }
         public static string GetOperatorStatic(Token.Type op)
         {

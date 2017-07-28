@@ -29,10 +29,19 @@ namespace Compilator
                     continue;
                 if (t.Value is Function && ((Function)t.Value).isExternal)
                     continue;
+                if (t.Value is Class && ((Class)t.Value).isExternal)
+                    continue;
+                if (t.Value is Interface && ((Interface)t.Value).isExternal)
+                    continue;
                 outcom += "  _." + t.Key + " = " + t.Key+";\n";
             }
             if (block.SymbolTable.Find("main"))
-                outcom += "\n  main();\n";
+            {
+                if(Interpreter._WAITFORPAGELOAD)
+                    outcom += "\n  window.onload = function(){ main(); };\n";
+                else
+                    outcom += "\n  main();\n";
+            }
             outcom += "\n  return _;\n";
             outcom += "}(typeof module === 'undefined' ? {} : module);";
             Interpreter.semanticError.Clear();

@@ -14,7 +14,7 @@ namespace Compilator
         public String blockAssignTo = "";
         Block parent = null;
         SymbolTable symbolTable;        
-        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION };
+        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE };
         BlockType type = BlockType.NONE;
 
         public Block(Interpreter interpret, bool first = false)
@@ -96,7 +96,7 @@ namespace Compilator
             foreach (Types child in children)
             {
                 if (child == null) continue;
-                child.assignTo = blockAssignTo;    
+                child.assignTo = (assingBlock == null?blockAssignTo:assingBlock.assignTo);    
                 if(!(child is Class))
                     child.assingBlock = this;
                 string p = child.Compile((tabs > 0?tabs-2:tabs));

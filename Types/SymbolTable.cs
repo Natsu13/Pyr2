@@ -19,7 +19,6 @@ namespace Compilator
             this.assigment_block = assigment_block;
             if (first)
             {
-                Add("null",     typeof(TypeNull));
                 Add("int",      typeof(TypeInt));
                 Add("string",   typeof(TypeString));
                 Add("bool",     typeof(TypeBool));
@@ -45,10 +44,27 @@ namespace Compilator
                 if (Find(nams[0]))
                 {
                     Types found = Get(nams[0]);
-                    if(found is Function)
+                    if (found is Assign)
+                    {
+                        Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
+                        if (vr.Type != "auto")
+                        {
+                            return Find(vr.Type + "." + string.Join(".", nams.Skip(1)));
+                        }
+                        if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                        {
+                            if (uop.Op == "new")
+                            {
+                                return Find(uop.Name.Value + "." + string.Join(".", nams.Skip(1)));
+                            }
+                        }
+                    }
+                    if (found is Function)
                         return ((Function)found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
                     else if(found is Class)
                         return ((Class)found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
+                    else if (found is Interface)
+                        return ((Interface)found).Block.SymbolTable.Find(string.Join(".", nams.Skip(1)));
                     return Find(string.Join(".", nams.Skip(1)));
                 }
                 else if(assigment_block.variables.ContainsKey(nams[0]))
@@ -68,8 +84,10 @@ namespace Compilator
                 return true;
             else
             {
+                if (assigment_block.variables.ContainsKey(name))
+                    return true;
                 if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.Find(name);
+                    return assigment_block.Parent.SymbolTable.Find(name);                
                 return false;
             }
         }
@@ -94,10 +112,27 @@ namespace Compilator
                 if (Find(nams[0]))
                 {
                     Types found = Get(nams[0]);
-                    if (found is Function)
+                    if(found is Assign)
+                    {
+                        Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
+                        if(vr.Type != "auto")
+                        {
+                            return Get(vr.Type + "." + string.Join(".", nams.Skip(1)));
+                        }
+                        if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                        {
+                            if (uop.Op == "new")
+                            {
+                                return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)));
+                            }
+                        }
+                    }
+                    else if (found is Function)
                         return ((Function)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)));
                     else if (found is Class)
                         return ((Class)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)));
+                    else if (found is Interface)
+                        return ((Interface)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)));
                     return Get(string.Join(".", nams.Skip(1)));
                 }
                 else if (assigment_block.variables.ContainsKey(nams[0]))
@@ -117,6 +152,8 @@ namespace Compilator
                 return table[name];
             else
             {
+                if (assigment_block.variables.ContainsKey(name))
+                    return assigment_block.variables[name];
                 if (assigment_block.Parent != null)
                     return assigment_block.Parent.SymbolTable.Get(name);
             }

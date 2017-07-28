@@ -14,8 +14,8 @@ namespace Compilator
             INTEGER, STRING, DYNAMIC, REAL, BOOL, AUTO,
             COMMA, SEMI, DOT, COLON,
             PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN,
-            CLASS, ID, FUNCTION,
-            NEWCLASS, NEWFUNCTION,
+            CLASS, ID, FUNCTION, INTERFACE, 
+            NEWCLASS, NEWFUNCTION, NEWINTERFACE, 
             LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL,
             STATIC, VOID, EXTERNAL,
             IF, ELSE, ELSEIF,
@@ -37,6 +37,8 @@ namespace Compilator
             { "else",       new Token(Type.ELSE, "else") },
             { "true",       new Token(Type.TRUE, "true") },
             { "false",      new Token(Type.FALSE, "false") },
+            { "interface",  new Token(Type.NEWINTERFACE, "interface") },
+            { "null",       new Token(Type.NULL, "null") }
         };
 
         public Type type;

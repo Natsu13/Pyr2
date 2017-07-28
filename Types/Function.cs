@@ -41,15 +41,16 @@ namespace Compilator
             {
                 string tbs = DoTabs(tabs);                
                 if (assignTo == "")
-                    ret += tbs + "function " + name.Value + "(" + paraml.Compile(0) + "){\n";
+                    ret += tbs + "function " + name.Value + "(" + paraml.Compile(0) + "){"+(block != null?"\n":"");
                 else
                 {
                     if (isStatic)
-                        ret += tbs + assignTo + "." + name.Value + " = function(" + paraml.Compile(0) + "){\n";
+                        ret += tbs + assignTo + "." + name.Value + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
                     else
-                        ret += tbs + assignTo + ".prototype." + name.Value + " = function(" + paraml.Compile(0) + "){\n";
+                        ret += tbs + assignTo + ".prototype." + name.Value + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
                 }
-                ret += block.Compile(tabs + 1);
+                if(block != null)
+                    ret += block.Compile(tabs + 1);
                 ret += tbs + "}\n";
             }
             return ret;
@@ -61,9 +62,15 @@ namespace Compilator
 
         public override void Semantic()
         {
-            if (assignTo == "" && isStatic)
+            if (isStatic && assingBlock.Type != Block.BlockType.INTERFACE)
                 Interpreter.semanticError.Add(new Error("Static modifier outside class is useless", Interpreter.ErrorType.WARNING, _static));
-            if (!isExternal)
+            else if(isStatic && assingBlock.Type == Block.BlockType.INTERFACE)
+                Interpreter.semanticError.Add(new Error("Illegal modifier for the interface static "+assingBlock.assignTo+"."+name.Value+"("+paraml.List()+")", Interpreter.ErrorType.ERROR, _static));
+            if (block == null && assingBlock.Type != Block.BlockType.INTERFACE && !isExternal)
+            {
+                Interpreter.semanticError.Add(new Error("The body of function " + assingBlock.assignTo + "." + name.Value + "(" + paraml.List() + ") must be defined", Interpreter.ErrorType.ERROR, _static));
+            }
+            else if (!isExternal && block != null)
             {
                 block.Semantic();
                 block.CheckReturnType(returnt?.Value, (returnt?.type == Token.Type.VOID ? true : false));

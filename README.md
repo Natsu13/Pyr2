@@ -11,7 +11,7 @@ external interface Element {
 	string id;
 	string className;
 	
-	function getAttribute(string name) -> int;
+	function getAttribute(string name) -> string;
 }
 
 external class Doctype {

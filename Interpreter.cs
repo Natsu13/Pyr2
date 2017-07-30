@@ -27,8 +27,13 @@ namespace Compilator
         public bool brekall = false;
 
         /// Interpret settings
-        public static bool _REDECLARATION = false;
-        public static bool _WAITFORPAGELOAD = true;
+        public static bool _REDECLARATION =     false;      //If you enable redeclaration
+        public static bool _WAITFORPAGELOAD =   true;       //If you want call main in window.onload
+        public static bool _WRITEDEBUG =        false;      //If you want with faul write the output to file
+
+        /// Language settings
+        public enum LANGUAGES { JAVASCRIPT };
+        public static LANGUAGES _LANGUAGE = LANGUAGES.JAVASCRIPT;
 
         public Interpreter(string text, string filename = "")
         {
@@ -38,6 +43,7 @@ namespace Compilator
             current_char = text[pos];
             current_file = filename;
             current_block = new Block(this, true);
+            current_block.SymbolTable.initialize();
             current_token = GetNextToken();                       
         }
         
@@ -289,7 +295,10 @@ namespace Compilator
                 if (declare)
                 {
                     vtype = current_token;
-                    Eat(Token.Type.CLASS);
+                    if (current_token.type == Token.Type.ID)
+                        Eat(Token.Type.ID);
+                    else
+                        Eat(Token.Type.CLASS);
                     Token vname = current_token;
                     Eat(Token.Type.ID);
                     plist.parameters.Add(new Variable(vname, current_block, vtype));
@@ -388,6 +397,7 @@ namespace Compilator
                     Eat(Token.Type.DIV);
                 }
                 result = new BinOp(result, token, Factor(), current_block);
+                result.assingBlock = current_block;
             }
             return result;
         }
@@ -408,6 +418,7 @@ namespace Compilator
                     Eat(Token.Type.MINUS);
                 }
                 result = new BinOp(result, token, Term(), current_block);
+                result.assingBlock = current_block;
             }
             return result;
         }
@@ -428,6 +439,7 @@ namespace Compilator
                     Eat(Token.Type.NOTEQUAL);
                 }
                 result = new BinOp(result, token, Math(), current_block);
+                result.assingBlock = current_block;
             }
             return result;
         }
@@ -448,6 +460,7 @@ namespace Compilator
                     Eat(Token.Type.OR);
                 }
                 result = new BinOp(result, token, Comp(), current_block);
+                result.assingBlock = current_block;                
             }
             return result; 
         }
@@ -529,6 +542,8 @@ namespace Compilator
                 return AssignmentStatement();
             else if (current_token.type == Token.Type.CLASS)
                 return DeclareVariable();
+            else if (current_token.type == Token.Type.FOR)
+                return DeclareFor();
             else if (current_token.type == Token.Type.INTERFACE)
                 return DeclareVariable();
             else if (current_token.type == Token.Type.FUNCTION)
@@ -560,7 +575,10 @@ namespace Compilator
                 Token modifer = current_token;
                 current_modifer.Add(current_token);
                 Eat(Token.Type.STATIC);
-                if (current_token.type == Token.Type.NEWCLASS || current_token.type == Token.Type.NEWFUNCTION || current_token.type == Token.Type.ID)
+                if (current_token.type == Token.Type.NEWCLASS || 
+                    current_token.type == Token.Type.NEWFUNCTION ||
+                    current_token.type == Token.Type.OPERATOR ||
+                    current_token.type == Token.Type.ID)
                 {
                     Types type = Statement();
                     current_modifer.Remove(modifer);
@@ -575,6 +593,7 @@ namespace Compilator
                 current_modifer.Add(current_token);
                 Eat(Token.Type.EXTERNAL);
                 if (current_token.type == Token.Type.STATIC ||
+                    current_token.type == Token.Type.OPERATOR ||
                     current_token.type == Token.Type.NEWCLASS ||
                     current_token.type == Token.Type.NEWFUNCTION ||
                     current_token.type == Token.Type.ID ||
@@ -587,7 +606,43 @@ namespace Compilator
                 Error("The external modifer can modify only class, interface, function or variable and must be before static modifer");
                 return null;
             }
+            else if (current_token.type == Token.Type.OPERATOR)
+            {
+                Token modifer = current_token;
+                current_modifer.Add(current_token);
+                Eat(Token.Type.OPERATOR);
+                if (current_token.type == Token.Type.NEWFUNCTION)
+                {
+                    Types type = Statement();
+                    current_modifer.Remove(modifer);
+                    return type;
+                }
+                Error("The operator modifer can modify only function");
+                return null;
+            }
             return new NoOp();
+        }
+
+        public Types DeclareFor()
+        {
+            Eat(Token.Type.FOR);
+            Eat(Token.Type.LPAREN);
+            if(current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE)
+            {
+                Token c = current_token;
+                if (current_token.type == Token.Type.INTERFACE) Eat(Token.Type.INTERFACE);
+                else Eat(Token.Type.CLASS);
+                Token n = current_token;
+                Eat(Token.Type.ID);
+                Eat(Token.Type.IN);
+                Token f = current_token;
+                Eat(Token.Type.ID);
+                Eat(Token.Type.RPAREN);
+                Block block = CatchBlock(Block.BlockType.FOR);
+                return new For(new Variable(n, current_block, c), f, block);
+            }
+            Eat(Token.Type.RPAREN);
+            return null;
         }
 
         public Types DeclareLambda()
@@ -719,8 +774,13 @@ namespace Compilator
             }
 
             Block _bloc = CatchBlock(Block.BlockType.FUNCTION, false);
-            if (brekall) return null;            
-
+            if (brekall) return null;
+            string sname = name.Value;
+            if (isModifer(Token.Type.OPERATOR))
+            {                
+                name = new Token(Token.Type.ID, "operator_" + name.Value, name.Pos, name.File);
+                sname = "operator " + sname;
+            }
             Function func = new Function(name, _bloc, p, returnt, this);
             func.assingBlock = current_block;
             func.assignTo = current_block.assignTo;
@@ -734,7 +794,11 @@ namespace Compilator
                 func.isExternal = true;
                 func._external = getModifer(Token.Type.EXTERNAL);
             }
-            current_block.SymbolTable.Add(name.Value, func);
+            if (isModifer(Token.Type.OPERATOR))
+            {
+                func.isOperator = true;
+            }
+            current_block.SymbolTable.Add(sname, func);
             if(current_token.type == Token.Type.END)
                 Eat(Token.Type.END);
             return func;
@@ -907,6 +971,7 @@ namespace Compilator
         public Types Variable(Token dateType = null)
         {            
             Types node = new Variable(current_token, current_block, dateType);
+            node.assingBlock = current_block;
             if (current_token.type == Token.Type.TRUE)
                 Eat(Token.Type.TRUE);
             else if (current_token.type == Token.Type.FALSE)

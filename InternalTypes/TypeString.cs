@@ -39,5 +39,11 @@ namespace Compilator
             if (op == "+") return f + second.ToString();
             return default(object);
         }
+        public override string ClassNameForLanguage()
+        {
+            if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
+                return "String";
+            return Name;
+        }
     }
 }

@@ -42,5 +42,11 @@ namespace Compilator
 
             return default(object);
         }
+        public override string ClassNameForLanguage()
+        {
+            if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
+                return "Number";
+            return Name;
+        }
     }
 }

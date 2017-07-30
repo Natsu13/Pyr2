@@ -17,10 +17,11 @@ namespace Compilator
             CLASS, ID, FUNCTION, INTERFACE, LAMBDA, 
             NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,
             LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL,
-            STATIC, VOID, EXTERNAL,
-            IF, ELSE, ELSEIF,
+            STATIC, VOID, EXTERNAL, OPERATOR, 
+            IF, ELSE, ELSEIF, FOR, 
             EQUAL, NOTEQUAL, AND, OR,
-            TRUE, FALSE            
+            TRUE, FALSE,
+            IN
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
@@ -39,7 +40,10 @@ namespace Compilator
             { "false",      new Token(Type.FALSE, "false") },
             { "interface",  new Token(Type.NEWINTERFACE, "interface") },
             { "null",       new Token(Type.NULL, "null") },
-            { "lambda",     new Token(Type.NEWLAMBDA, "lambda") }
+            { "lambda",     new Token(Type.NEWLAMBDA, "lambda") },
+            { "for",        new Token(Type.FOR, "for") },
+            { "in",         new Token(Type.IN, "in") },
+            { "operator",   new Token(Type.OPERATOR, "operator") }
         };
 
         public Type type;

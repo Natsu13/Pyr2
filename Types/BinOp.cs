@@ -24,27 +24,37 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
-            right.assingBlock = block;
-            left.assingBlock = block;
+            right.assingBlock = assingBlock;
+            left.assingBlock = assingBlock;
 
             if (right is Variable) ((Variable)right).Check();
             if (left is Variable) ((Variable)left).Check();
 
+            Variable v = null;
             if (left is Number)
             {
-                Variable v = new Variable(((Number)left).getToken(), block, new Token(Token.Type.CLASS, "int"));
+                v = new Variable(((Number)left).getToken(), block, new Token(Token.Type.CLASS, "int"));
                 outputType = v.OutputType(op.type, left, right);
             }
             else if (left is CString)
             {
-                Variable v = new Variable(((CString)left).getToken(), block, new Token(Token.Type.CLASS, "string"));
+                v = new Variable(((CString)left).getToken(), block, new Token(Token.Type.CLASS, "string"));
                 outputType = v.OutputType(op.type, left, right);
             }
             else if(left is Variable)
             {
+                v = ((Variable)left);
                 outputType = ((Variable)left).OutputType(op.type, left, right);
             }
-            return left.Compile(0) + " "+ Variable.GetOperatorStatic(op.type) + " " + right.Compile(0); 
+            if (v.class_.JSName != "")
+            {
+                return left.Compile(0) + " " + Variable.GetOperatorStatic(op.type) + " " + right.Compile(0);
+            }
+            else
+            {
+                Function opp = (Function)v.class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(op.type));
+                return left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ")";
+            }
         }
 
         public override void Semantic()
@@ -61,7 +71,7 @@ namespace Compilator
             {
                 Interpreter.semanticError.Add(new Error("Varible type '" + v.Type + "' not support operator " + Variable.GetOperatorStatic(op.type), Interpreter.ErrorType.ERROR, left.getToken()));
             }
-            if (!v.SupportSecond(right, r))
+            else if (!v.SupportSecond(op.type, right, r))
             {
                 Interpreter.semanticError.Add(new Error("Operator " + Variable.GetOperatorStatic(op.type) + " cannot be applied for '" + v.Type + "' and '" + r.Type + "'", Interpreter.ErrorType.ERROR, op));
             }

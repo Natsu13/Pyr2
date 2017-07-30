@@ -18,7 +18,8 @@ namespace Compilator
         {
             this.name = name;
             this.block = block;
-            this.block.blockAssignTo = name.Value;
+            if(block != null)
+                this.block.blockAssignTo = name.Value;
             this.assingBlock = block;
             this.parents = parents;
         }
@@ -55,11 +56,11 @@ namespace Compilator
 
         public override void Semantic()
         {
-            foreach (KeyValuePair<string, Assign> var in block.variables)
+            foreach (KeyValuePair<string, Assign> var in block?.variables)
             {
                 var.Value.Semantic();
             }
-            block.Semantic();
+            block?.Semantic();
         }
 
         public override int Visit()

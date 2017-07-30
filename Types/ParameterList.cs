@@ -58,6 +58,34 @@ namespace Compilator
             return ret;
         }
 
+        public List<Types> Parameters { get { return parameters; } }
+
+        public bool Equal(ParameterList b)
+        {
+            if (b is null) return false;
+            if (this.parameters.Count != b.parameters.Count)
+                return false;
+            int index = 0;
+            foreach (Types t in this.parameters)
+            {
+                Variable v1 = (Variable)t;
+                Variable v2 = (Variable)b.parameters[index];
+                if (v1.getDateType().Value != v2.getDateType().Value)
+                    return false;
+                index++;
+            }
+            return true;
+        }
+
+        static public bool operator ==(ParameterList a, ParameterList b)
+        {
+            return a.Equal(b);
+        }
+        static public bool operator !=(ParameterList a, ParameterList b)
+        {
+            return !a.Equal(b);
+        }
+
         public override void Semantic()
         {
             

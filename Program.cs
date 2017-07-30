@@ -27,7 +27,7 @@ namespace Compilator
             {
                 if (t.Key == "int" || t.Key == "string" || t.Key == "null")
                     continue;
-                if (t.Value is Function && ((Function)t.Value).isExternal)
+                if (t.Value is Function && (((Function)t.Value).isExternal || ((Function)t.Value).isExtending))
                     continue;
                 if (t.Value is Class && ((Class)t.Value).isExternal)
                     continue;
@@ -64,16 +64,19 @@ namespace Compilator
                 }
             }
             stopwatch.Stop();
-            if (!iserror)
+            if (!iserror || Interpreter._WRITEDEBUG)
             {
                 System.IO.StreamWriter file = new System.IO.StreamWriter("output.js");
                 file.WriteLine(outcom);
                 file.Close();                
-                Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec");
+                if(iserror && Interpreter._WRITEDEBUG)
+                    Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec, with error but writed to output!");
+                else
+                    Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec");                
             }
             else
             {
-                Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec with Errors.");
+                Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec, with errors.");
             }
             Console.ReadKey();
         }

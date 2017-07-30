@@ -55,9 +55,20 @@ namespace Compilator
                     string pl = plist.Compile();
                     return pl.Substring(1, pl.Length - 2).Replace("\\", "") + (pl.Substring(pl.Length - 2, 1) != ";"?";":"");
                 }
-                if (plist == null)
-                    return tbs + name.Value + "()" + (endit ? ";" : "");
-                return tbs + name.Value + "(" + plist.Compile() + ")" + (endit ? ";" : "");
+                if (name.Value.Contains("."))
+                {
+                    string[] nnaml = name.Value.Split('.');
+                    string nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t).Name;
+                    if (plist == null)
+                        return tbs + nname + "()" + (endit ? ";" : "");
+                    return tbs + nname + "(" + plist.Compile() + ")" + (endit ? ";" : "");
+                }
+                else
+                {
+                    if (plist == null)
+                        return tbs + name.Value + "()" + (endit ? ";" : "");
+                    return tbs + name.Value + "(" + plist.Compile() + ")" + (endit ? ";" : "");
+                }
             }
             if (o == "new")
             {

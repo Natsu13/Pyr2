@@ -42,8 +42,13 @@ namespace Compilator
                 if (left.type == Token.Type.TRUE || right.type == Token.Type.TRUE)
                     return true;
             }
-
             return false;
+        }
+        public override string ClassNameForLanguage()
+        {
+            if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
+                return "Boolean";
+            return Name;
         }
     }
 }

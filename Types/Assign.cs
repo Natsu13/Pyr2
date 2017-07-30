@@ -173,6 +173,9 @@ namespace Compilator
                     Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' is alerady declared as '" + originlDateType+ "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                 }
             }
+
+            left.Semantic();
+            right.Semantic();
         }
     }
 }

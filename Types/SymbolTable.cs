@@ -9,9 +9,10 @@ namespace Compilator
     public class SymbolTable
     {
         Dictionary<string, Types> table = new Dictionary<string, Types>();
+        Dictionary<string, int> tableCounter = new Dictionary<string, int>();
         Dictionary<string, Type> tableType = new Dictionary<string, Type>();
         Interpreter interpret;
-        Block assigment_block;
+        Block assigment_block;        
 
         public SymbolTable(Interpreter interpret, Block assigment_block, bool first = false)
         {
@@ -19,21 +20,84 @@ namespace Compilator
             this.assigment_block = assigment_block;
             if (first)
             {
+                Token TokenIIterable = new Token(Token.Type.ID, "IIterable");
+                Block BlockIIterable = new Block(interpret) { Parent = assigment_block };
+                Interface IIterable = new Interface(TokenIIterable, BlockIIterable, null)
+                {
+                    isExternal = true
+                };
+                Add("IIterable", IIterable);
+
+                /// Date type string implicit
+                // Add("string",   typeof(TypeString), new List<Token> { TokenIIterable });
+                Token TokenString = new Token(Token.Type.ID, "string");
+                Block BlockString = new Block(interpret) { Parent = assigment_block };
+                Class String = new Class(TokenString, BlockString, new List<Token> { TokenIIterable })
+                {
+                    isExternal = true,
+                    JSName = "String"
+                };
+                Add("string", String);
+
                 Add("int",      typeof(TypeInt));
-                Add("string",   typeof(TypeString));
-                Add("bool",     typeof(TypeBool));
+                Add("bool",     typeof(TypeBool));                
             }
         }
-        public Dictionary<string, Types> Table { get { return table; } }
-        public void Add(string name, Type type)
+
+        public void initialize()
         {
-            table.Add(name, (Types)Activator.CreateInstance(typeof(Class<>).MakeGenericType(type), name));
+            /// Initialize String Class
+            Block BlockString = ((Class)Get("string")).assingBlock;
+            //Operator Equal
+            Token FunctionStringOperatorEqualName = new Token(Token.Type.ID, "operator equal");
+            ParameterList plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockString, new Token(Token.Type.CLASS, "string")));
+            Function FunctionStringOperatorEqual = new Function(FunctionStringOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockString.SymbolTable.Add("operator equal", FunctionStringOperatorEqual);
+            //Operator Plus
+            Token FunctionStringOperatorPlusName = new Token(Token.Type.ID, "operator plus");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockString, new Token(Token.Type.CLASS, "string")));
+            Function FunctionStringOperatorPlus = new Function(FunctionStringOperatorPlusName, null, plist, new Token(Token.Type.CLASS, "string"), interpret) { isOperator = true };
+            BlockString.SymbolTable.Add("operator plus", FunctionStringOperatorPlus);
+        }
+
+        public Dictionary<string, Types> Table { get { return table; } }
+        public void Add(string name, Type type, List<Token> parent = null)
+        {
+            table.Add(name, (Types)Activator.CreateInstance(typeof(Class<>).MakeGenericType(type), this.interpret, this.assigment_block, name, parent));
             tableType.Add(name, type);
         }
 
         public void Add(string name, Types type)
         {
-            table.Add(name, type);
+            if (!tableCounter.ContainsKey(name))
+                tableCounter.Add(name, 1);
+            else
+                tableCounter[name] += 1;
+            if (tableCounter[name] != 1)
+            {                
+                table.Add(name + " " + (tableCounter[name]), type);
+            }
+            else
+                table.Add(name, type);
+        }
+
+        public List<Types> GetAll(string name)
+        {
+            List<Types> types = new List<Types>();
+            int index = 1;
+            if (!Find(name))
+                return null;
+            Types rt = Get(name);
+            types.Add(rt);
+
+            while (Find(name + " " + index))
+            {
+                types.Add(rt.assingBlock.SymbolTable.Get(name + " " + index));
+            }
+
+            return types;
         }
 
         public bool Find(string name)

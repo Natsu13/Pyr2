@@ -14,7 +14,7 @@ namespace Compilator
         public String blockAssignTo = "";
         Block parent = null;
         SymbolTable symbolTable;        
-        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE };
+        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR };
         BlockType type = BlockType.NONE;
 
         public Block(Interpreter interpret, bool first = false)
@@ -50,6 +50,8 @@ namespace Compilator
                         if (((Variable)uop.Expr).Type == "auto")
                         {
                             Assign ava = FindVariable(((Variable)uop.Expr).Value);
+                            if ((((Variable)uop.Expr).Value == "true" || ((Variable)uop.Expr).Value == "false") && type == "bool")
+                                continue;
                             if (ava == null)
                             {
                                 Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " not exists", Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).getToken()));

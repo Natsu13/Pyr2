@@ -12,7 +12,8 @@ namespace Compilator
         string value;
         Token dateType;
         Block block;
-        TypeObject _class;
+        public TypeObject   _class;
+        public Class        class_;
 
         public Variable(Token token, Types block, Token dateType = null)
         {
@@ -30,8 +31,12 @@ namespace Compilator
                     Type type = this.block.SymbolTable.GetType(dateType.Value);
                     _class = (TypeObject)Activator.CreateInstance(type);
                 }
+                else if (this.block.SymbolTable.Find(dateType.Value))
+                {
+                    class_ = (Class)this.block.SymbolTable.Get(dateType.Value);
+                }
             }
-            if(_class == null)
+            if(_class == null && class_ == null)
             {
                 _class = new TypeObject();
             }
@@ -52,9 +57,10 @@ namespace Compilator
         public string Type { get { return dateType.Value; } }
         public Block  Block { get { return block; } }
         public override Token getToken() { return token; }
+        public Token getDateType() { return dateType; }
 
         public void Check()
-        {
+        {           
             if (this.dateType.Value == "auto")
             {
                 Types fvar = this.block.FindVariable(this.value);
@@ -89,6 +95,10 @@ namespace Compilator
                 {
                     Type type = this.block.SymbolTable.GetType(dateType.Value);
                     _class = (TypeObject)Activator.CreateInstance(type);
+                }
+                else if (this.block.SymbolTable.Find(dateType.Value) && class_ == null)
+                {
+                    class_ = (Class)this.block.SymbolTable.Get(dateType.Value);
                 }
             }
         }
@@ -128,24 +138,60 @@ namespace Compilator
         {
             return GetOperatorStatic(op);
         }
+        public string GetOperatorName(Token.Type op)
+        {
+            return GetOperatorNameStatic(op);
+        }
+        public static string GetOperatorNameStatic(Token.Type op)
+        {
+            string o = "";
+            if (op == Token.Type.EQUAL)     o = "equal";
+            if (op == Token.Type.NOTEQUAL)  o = "equal";
+            if (op == Token.Type.AND)       o = "and";
+            if (op == Token.Type.OR)        o = "or";
+
+            if (op == Token.Type.PLUS)      o = "plus";
+            if (op == Token.Type.MINUS)     o = "minus";
+            if (op == Token.Type.DIV)       o = "divide";
+            if (op == Token.Type.MUL)       o = "multiple";
+            if (op == Token.Type.NEW)       o = "new";
+            if (op == Token.Type.RETURN)    o = "return";
+            if (op == Token.Type.CALL)      o = "invoke";
+            return o;
+        }        
         public Token OutputType(Token.Type op, object first, object second)
         {
-            return _class?.OutputType(GetOperator(op), first, second);
+            if (_class != null)
+                return _class.OutputType(GetOperator(op), first, second);
+            else if (class_ != null)
+                return class_.OutputType(GetOperatorName(op), first, second);
+            return null;
         }
         public bool SupportOp(Token.Type op)
         {
-            object o = _class?.SupportOp(GetOperator(op));
+            object o = null;
+            if (_class != null)
+                o = _class.SupportOp(GetOperator(op));
+            else if (class_ != null)
+                o = class_.SupportOp(GetOperatorName(op));
             return (o is null ? false : (bool)o);
         }
-        public bool SupportSecond(object second, object secondAsVariable)
+        public bool SupportSecond(Token.Type op, object second, object secondAsVariable)
         {
-            object o = _class?.SupportSecond(second, secondAsVariable);
+            object o = null;
+            if (_class != null)
+                o = _class.SupportSecond(second, secondAsVariable);
+            else if (class_ != null)
+                o = class_.SupportSecond(GetOperatorName(op), second, secondAsVariable);
             return (o is null ? false : (bool)o);
         }          
         public object Operator(Token.Type op, object first, object second)
         {
-            return _class?.Operator(GetOperator(op), first, second);
+            if(_class != null)
+                return _class?.Operator(GetOperator(op), first, second);
+            return "";
         }
+        public object GetClass() { return _class; }
 
         public override void Semantic()
         {

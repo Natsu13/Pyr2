@@ -16,10 +16,46 @@ namespace Compilator
         public Token _static;
         public bool isExternal = false;
         public Token _external;
+        public bool isExtending = false;
+        public string extendingClass = "";
+        public bool isOperator = false;
+
+        bool parentNotDefined = false;
+        bool parentIsNotClassOrInterface = false;        
 
         public Function(Token name, Block _block, ParameterList paraml, Token returnt, Interpreter interpret)
         {
             this.name = name;
+            if (name.Value.Contains("."))
+            {
+                string[] _name = name.Value.Split('.');
+                this.name = new Token(Token.Type.ID, _name.Last<string>(), name.Pos, name.File);
+                string _className = string.Join(".", _name.Take(_name.Length - 1));
+                extendingClass = _className;
+                if (_block.SymbolTable.Find(_className))
+                {
+                    isExtending = true;
+                    Types t = _block.SymbolTable.Get(_className);
+                    Type tg = _block.SymbolTable.GetType(_className);
+                    if (t is Class c)
+                    {
+                        c.assingBlock.SymbolTable.Add(this.name.Value, this);
+                        if (c.JSName != "")
+                            extendingClass = c.JSName;
+                    }
+                    else if (t is Interface i)
+                    {
+                        i.assingBlock.SymbolTable.Add(this.name.Value, this);
+                    }
+                    else if(tg != null)
+                    {
+                        dynamic dt = t;
+                        extendingClass = dt.Inter.ClassNameForLanguage();
+                    }
+                    else parentIsNotClassOrInterface = true;
+                }
+                else parentNotDefined = true;
+            }            
             this.block = _block;
             if (_block != null)
             {
@@ -33,21 +69,39 @@ namespace Compilator
         }
         public ParameterList ParameterList { get { return paraml; } }
         public override Token getToken() { return null; }
+        public Token Returnt { get { return returnt; } }
+
+        public string getHash()
+        {
+            if (isOperator)
+            {
+                return string.Format("{0:X8}", (name.Value + paraml.List() + block.Compile()).GetHashCode());
+            }
+            return "";
+        }
+        public String Name { get { string hash = getHash(); return name.Value + (hash != "" ? "_" + hash : ""); } }
 
         public override string Compile(int tabs = 0)
         {
             string ret = "";
             if (!isExternal)
-            {
-                string tbs = DoTabs(tabs);                
-                if (assignTo == "")
-                    ret += tbs + "function " + name.Value + "(" + paraml.Compile(0) + "){"+(block != null?"\n":"");
+            {                
+                string tbs = DoTabs(tabs);
+                if (isExtending)
+                {
+                    if (isStatic)
+                        ret += tbs + extendingClass + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                    else
+                        ret += tbs + extendingClass + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                }
+                else if (assignTo == "")
+                    ret += tbs + "function " + Name + "(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
                 else
                 {
                     if (isStatic)
-                        ret += tbs + assignTo + "." + name.Value + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                        ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
                     else
-                        ret += tbs + assignTo + ".prototype." + name.Value + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                        ret += tbs + assignTo + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
                 }
                 if(block != null)
                     ret += block.Compile(tabs + 1);
@@ -62,13 +116,17 @@ namespace Compilator
 
         public override void Semantic()
         {
-            if (isStatic && assingBlock.Type != Block.BlockType.INTERFACE)
-                Interpreter.semanticError.Add(new Error("Static modifier outside class is useless", Interpreter.ErrorType.WARNING, _static));
+            if(parentNotDefined)
+                Interpreter.semanticError.Add(new Error("Parent for extending function by " + extendingClass + "." + name.Value + "(" + paraml.List() + ") is not found", Interpreter.ErrorType.ERROR, name));
+            if(parentIsNotClassOrInterface)
+                Interpreter.semanticError.Add(new Error("You can extend only Class or Interface", Interpreter.ErrorType.ERROR, name));
+            if (isStatic && assingBlock.Type != Block.BlockType.INTERFACE && assingBlock.Type != Block.BlockType.CLASS && !isExtending)
+                Interpreter.semanticError.Add(new Error("Static modifier outside class or interface is useless", Interpreter.ErrorType.WARNING, _static));
             else if(isStatic && assingBlock.Type == Block.BlockType.INTERFACE)
                 Interpreter.semanticError.Add(new Error("Illegal modifier for the interface static "+assingBlock.assignTo+"."+name.Value+"("+paraml.List()+")", Interpreter.ErrorType.ERROR, _static));
             if (block == null && assingBlock.Type != Block.BlockType.INTERFACE && !isExternal)
             {
-                Interpreter.semanticError.Add(new Error("The body of function " + assingBlock.assignTo + "." + name.Value + "(" + paraml.List() + ") must be defined", Interpreter.ErrorType.ERROR, _static));
+                Interpreter.semanticError.Add(new Error("The body of function " + assingBlock.assignTo + "." + name.Value + "(" + paraml.List() + ") must be defined", Interpreter.ErrorType.ERROR, name));
             }
             else if (!isExternal && block != null)
             {

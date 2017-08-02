@@ -18,17 +18,21 @@ class Integer {
 	}
 	
 	operator function plus(Integer sec) -> int {
-		return 2;
+		return new Integer(this.internal + sec.internal);
 	}
 	operator function equal(Integer sec) -> bool {
-		return true;
+		if(this.internal == sec.internal)
+		{
+			return true;
+		}
+		return false;
 	}
 	operator function compareTo(Integer sec) -> int {
 		return (this.internal - sec.internal);
 	}
 }
 
-interface Iterator: IIterable {
+interface Iterator {
 	function next() -> string;
 	function hasNext() -> bool;
 }
@@ -42,10 +46,10 @@ class StringIterator:Iterator {
 	}
 	
 	function next() -> string {
-		return this.self[index++];
+		return this.self[++this.index];
 	}
 	function hasNext() -> bool {
-		if(index+1 > this.self.lenght){
+		if(this.index > this.self.length - 2){
 			return false;
 		}
 		return true;
@@ -59,11 +63,15 @@ function string.iterator() -> Iterator {
 function main(){
 	Integer t = new Integer(2);
 	Integer x = new Integer(5);
-	if(t > x){
+	if(t < x){
 		console.log("2 > 5");
 	}
 	string test = "test";
 	console.log(test[0]);
+	
+	for(string ch in test){
+		console.log(ch);
+	}
 }
 ```
 

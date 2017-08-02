@@ -38,8 +38,17 @@ namespace Compilator
                     JSName = "String"
                 };
                 Add("string", String);
+                /// Date type int implicit
+                //Add("int",      typeof(TypeInt));
+                Token TokenInt = new Token(Token.Type.ID, "int");
+                Block BlockInt = new Block(interpret) { Parent = assigment_block };
+                Class Int = new Class(TokenInt, BlockInt, null)
+                {
+                    isExternal = true,
+                    JSName = "Number"
+                };
+                Add("int", Int);
 
-                Add("int",      typeof(TypeInt));
                 Add("bool",     typeof(TypeBool));                
             }
         }
@@ -60,6 +69,36 @@ namespace Compilator
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockString, new Token(Token.Type.CLASS, "string")));
             Function FunctionStringOperatorPlus = new Function(FunctionStringOperatorPlusName, null, plist, new Token(Token.Type.CLASS, "string"), interpret) { isOperator = true };
             BlockString.SymbolTable.Add("operator plus", FunctionStringOperatorPlus);
+            //Operator get for key [key]
+            Token FunctionStringOperatorGetName = new Token(Token.Type.ID, "operator get");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "key"), BlockString, new Token(Token.Type.CLASS, "int")));
+            Function FunctionStringOperatorGet = new Function(FunctionStringOperatorGetName, null, plist, new Token(Token.Type.CLASS, "string"), interpret) { isOperator = true };
+            BlockString.SymbolTable.Add("operator get", FunctionStringOperatorGet);
+            /// Initial Int Class
+            Block BlockInt = ((Class)Get("int")).assingBlock;
+            //Operator Equal
+            Token FunctionIntOperatorEqualName = new Token(Token.Type.ID, "operator equal");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
+            Function FunctionIntOperatorEqual = new Function(FunctionStringOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockInt.SymbolTable.Add("operator equal", FunctionIntOperatorEqual);
+            //Operator More
+            Token FunctionIntOperatorMoreName = new Token(Token.Type.ID, "operator compareTo");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
+            Function FunctionIntOperatorMore = new Function(FunctionIntOperatorMoreName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockInt.SymbolTable.Add("operator compareTo", FunctionIntOperatorMore);          
+            //Operator Plus
+            Token FunctionIntOperatorPlusName = new Token(Token.Type.ID, "operator plus");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
+            Function FunctionIntOperatorPlus = new Function(FunctionIntOperatorPlusName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
+            BlockInt.SymbolTable.Add("operator plus", FunctionIntOperatorPlus);
+            //Operator Inc
+            Token FunctionIntOperatorIncrementName = new Token(Token.Type.ID, "operator inc");
+            Function FunctionIntOperatorIncrement = new Function(FunctionIntOperatorIncrementName, null, new ParameterList(true), new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
+            BlockInt.SymbolTable.Add("operator inc", FunctionIntOperatorIncrement);
         }
 
         public Dictionary<string, Types> Table { get { return table; } }
@@ -110,7 +149,8 @@ namespace Compilator
                     Types found = Get(nams[0]);
                     if (found is Assign)
                     {
-                        Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
+                        //Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
+                        Variable vr = (Variable)((Assign)found).Left;
                         if (vr.Type != "auto")
                         {
                             return Find(vr.Type + "." + string.Join(".", nams.Skip(1)));
@@ -178,7 +218,7 @@ namespace Compilator
                     Types found = Get(nams[0]);
                     if(found is Assign)
                     {
-                        Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
+                        Variable vr = (Variable)((Assign)found).Left;
                         if(vr.Type != "auto")
                         {
                             return Get(vr.Type + "." + string.Join(".", nams.Skip(1)));

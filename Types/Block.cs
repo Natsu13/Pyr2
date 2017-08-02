@@ -11,11 +11,13 @@ namespace Compilator
         public List<Types> children = new List<Types>();
         public Dictionary<string, Assign> variables = new Dictionary<string, Assign>();
         Interpreter interpret;
-        public String blockAssignTo = "";
+        public string blockAssignTo = "";
+        public string blockClassTo = "";
         Block parent = null;
         SymbolTable symbolTable;        
         public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR };
         BlockType type = BlockType.NONE;
+        public bool isInConstructor = false;
 
         public Block(Interpreter interpret, bool first = false)
         {
@@ -26,6 +28,15 @@ namespace Compilator
         public BlockType Type { get { return type; } set { type = value; } }
         public Interpreter Interpret { get { return this.interpret; } }
         public SymbolTable SymbolTable { get { return symbolTable; } }
+
+        public string getClass()
+        {
+            if (blockClassTo != "")
+                return blockClassTo;
+            if (parent != null)
+                return parent.getClass();
+            return "";
+        }
 
         public override Token getToken(){ return null; }
 
@@ -49,7 +60,15 @@ namespace Compilator
                     if (uop.Expr is Variable) {
                         if (((Variable)uop.Expr).Type == "auto")
                         {
-                            Assign ava = FindVariable(((Variable)uop.Expr).Value);
+                            string newname = ((Variable)uop.Expr).Value;
+                            if(((Variable)uop.Expr).Value.Split('.')[0] == "this")
+                            {
+                                newname = parent.assignTo + "." + string.Join(".", ((Variable)uop.Expr).Value.Split('.').Skip(1));
+                            }
+                            Types avaq = SymbolTable.Get(newname);
+                            Assign ava = null;
+                            if (!(avaq is Error))
+                                ava = (Assign)avaq;
                             if ((((Variable)uop.Expr).Value == "true" || ((Variable)uop.Expr).Value == "false") && type == "bool")
                                 continue;
                             if (ava == null)

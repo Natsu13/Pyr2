@@ -19,6 +19,8 @@ namespace Compilator
         public bool isExtending = false;
         public string extendingClass = "";
         public bool isOperator = false;
+        public bool isConstructor = false;
+        public Token _constuctor;
 
         bool parentNotDefined = false;
         bool parentIsNotClassOrInterface = false;        
@@ -66,6 +68,13 @@ namespace Compilator
             this.paraml = paraml;
             this.paraml.assingBlock = this.block;
             this.returnt = returnt;
+
+            if (this.name.Value == extendingClass || this.name.Value == _block?.Parent.assignTo)
+            {
+                isConstructor = true;
+                if(block != null)
+                    block.isInConstructor = true;
+            }
         }
         public ParameterList ParameterList { get { return paraml; } }
         public override Token getToken() { return null; }
@@ -73,23 +82,32 @@ namespace Compilator
 
         public string getHash()
         {
-            if (isOperator)
+            if (isOperator || isConstructor)
             {
                 return string.Format("{0:X8}", (name.Value + paraml.List() + block.Compile()).GetHashCode());
             }
             return "";
         }
-        public String Name { get { string hash = getHash(); return name.Value + (hash != "" ? "_" + hash : ""); } }
+        public String Name {
+            get {
+                string hash = getHash();
+                if (isConstructor)
+                    return "constructor_" + hash;
+                return name.Value + (hash != "" ? "_" + hash : "");
+            }
+        }
 
         public override string Compile(int tabs = 0)
         {
             string ret = "";
             if (!isExternal)
-            {                
+            {
+                string fromClass = "";
                 string tbs = DoTabs(tabs);
                 if (isExtending)
                 {
-                    if (isStatic)
+                    fromClass = extendingClass;
+                    if (isStatic || isConstructor)
                         ret += tbs + extendingClass + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
                     else
                         ret += tbs + extendingClass + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
@@ -98,14 +116,25 @@ namespace Compilator
                     ret += tbs + "function " + Name + "(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
                 else
                 {
-                    if (isStatic)
-                        ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                    fromClass = assignTo;
+                    if (isStatic || isConstructor)
+                        ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");                    
                     else
                         ret += tbs + assignTo + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
                 }
+                if(isConstructor)
+                {
+                    if (block == null) ret += "\n";
+                    ret += tbs + "\tvar $this = Object.create(" + fromClass + ".prototype);\n";
+                    ret += tbs + "\t" + fromClass + ".call($this);\n";
+                }
                 if(block != null)
                     ret += block.Compile(tabs + 1);
-                ret += tbs + "}\n";
+                if (isConstructor)
+                {
+                    ret += tbs + "\treturn $this;\n";
+                }
+                ret += tbs + "}";
             }
             return ret;
         }
@@ -124,6 +153,8 @@ namespace Compilator
                 Interpreter.semanticError.Add(new Error("Static modifier outside class or interface is useless", Interpreter.ErrorType.WARNING, _static));
             else if(isStatic && assingBlock.Type == Block.BlockType.INTERFACE)
                 Interpreter.semanticError.Add(new Error("Illegal modifier for the interface static "+assingBlock.assignTo+"."+name.Value+"("+paraml.List()+")", Interpreter.ErrorType.ERROR, _static));
+            //else if(!isStatic && isConstructor)
+            //    Interpreter.semanticError.Add(new Error("Constructor " + name.Value + "(" + paraml.List() + ") of class " + assingBlock.assignTo + " must be static", Interpreter.ErrorType.ERROR, _constuctor));
             if (block == null && assingBlock.Type != Block.BlockType.INTERFACE && !isExternal)
             {
                 Interpreter.semanticError.Add(new Error("The body of function " + assingBlock.assignTo + "." + name.Value + "(" + paraml.List() + ") must be defined", Interpreter.ErrorType.ERROR, name));

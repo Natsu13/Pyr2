@@ -17,6 +17,7 @@ namespace Compilator
         public Assign(Types left, Token op, Types right, Block current_block = null)
         {
             this.left = left;
+            left.assingBlock = current_block;
             this.op = this.token = op;
             this.right = right;        
             if (left is Variable) {
@@ -48,8 +49,7 @@ namespace Compilator
                 }
                 if (((Variable)left).Value.Contains("."))
                     isDeclare = false;
-            }            
-            left.assingBlock = current_block;
+            }                        
         }
 
         public override Token getToken() { return null; }
@@ -94,14 +94,40 @@ namespace Compilator
             {
                 if (((Variable)left).Type == "auto")
                 {
-                    Types t = ((Variable)left).assingBlock.SymbolTable.Get(((Variable)left).Value);
-                    if(t != null)
-                        ((Variable)left).setType(((Variable)((Assign)t).Left).getType());
+                    string newname = ((Variable)left).Value;
+                    if(newname.Split('.')[0] == "this")
+                    {
+                        newname = assingBlock.assignTo + "." + string.Join(".", ((Variable)left).Value.Split('.').Skip(1));
+                    }
+                    Types t = ((Variable)left).assingBlock.SymbolTable.Get(newname);
+                    if (t != null)
+                    {
+                        if (((Variable)left).Value.Split('.')[0] == "this")
+                        {
+                            Assign ava = (Assign)t;
+                            string type = "auto";
+                            if (right is CString) type = "string";
+                            else if (right is Number) type = "int";
+                            else if(right is Variable) {
+                                type = ((Variable)right).Type;
+                                if(type == "auto")
+                                {
+                                    ((Variable)right).Check();
+                                    type = ((Variable)right).Type;
+                                }
+                            }
+                            if (ava.GetType() != type)
+                            {
+                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ava.GetType() + "' can't be implicitly converted to '" + type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                            }
+                        }else
+                            ((Variable)left).setType(((Variable)((Assign)t).Left).getType());
+                    }
                     else if (right is Variable && (((Variable)right).getToken().type == Token.Type.TRUE || ((Variable)right).getToken().type == Token.Type.FALSE))
                         ((Variable)left).setType(new Token(Token.Type.BOOL, "bool"));
                     else if (right is Variable)
                         ((Variable)left).setType(((Variable)right).getType());
-                    else if(right is Number)
+                    else if (right is Number)
                         ((Variable)left).setType(new Token(Token.Type.INTEGER, "int"));
                     else if (right is CString)
                         ((Variable)left).setType(new Token(Token.Type.STRING, "string"));                        

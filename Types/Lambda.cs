@@ -11,7 +11,7 @@ namespace Compilator
         Variable name;
         Types expresion;
         ParameterList plist;
-        bool isDeclare = false;
+        //bool isDeclare = false;
 
         public Lambda(Variable name, Types expresion, ParameterList plist)
         {
@@ -21,7 +21,7 @@ namespace Compilator
 
             if (!(name).Block.variables.ContainsKey(name.Value))
             {
-                isDeclare = true;
+                //isDeclare = true;
                 (name).Block.variables[name.Value] = new Assign(name, new Token(Token.Type.LAMBDA, "lambda"), this);
             }
         }

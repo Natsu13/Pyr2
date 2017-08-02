@@ -13,15 +13,15 @@ namespace Compilator
             NONE, ERROR, EOF, NULL,
             INTEGER, STRING, DYNAMIC, REAL, BOOL, AUTO,
             COMMA, SEMI, DOT, COLON,
-            PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN,
+            PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN, INC, DEC,
             CLASS, ID, FUNCTION, INTERFACE, LAMBDA, 
             NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,
-            LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL,
+            LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL, LSQUARE, RSQUARE, 
             STATIC, VOID, EXTERNAL, OPERATOR, 
             IF, ELSE, ELSEIF, FOR, 
-            EQUAL, NOTEQUAL, AND, OR,
+            EQUAL, NOTEQUAL, AND, OR, MORE, LESS, 
             TRUE, FALSE,
-            IN
+            IN, GET
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {

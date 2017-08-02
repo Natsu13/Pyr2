@@ -12,6 +12,7 @@ namespace Compilator
         Types expr;
         ParameterList plist;
         Block block;
+        public bool post = false;
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {
@@ -35,6 +36,8 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
+            if(expr != null)
+                expr.assingBlock = assingBlock;
             string tbs = DoTabs(tabs);
             string o = Variable.GetOperatorStatic(op.type);
             if(o == "call")
@@ -72,7 +75,16 @@ namespace Compilator
             }
             if (o == "new")
             {
-                return tbs+"new " + name.Value + "(" + plist?.Compile() + ")";
+                Types t = assingBlock.SymbolTable.Get(name.Value);
+                string rt;
+                if(((Class)t).assingBlock.SymbolTable.Find("constructor " + name.Value))
+                {
+                    Function f = (Function)(((Class)t).assingBlock.SymbolTable.Get("constructor " + name.Value));
+                    rt = tbs + ((Class)t).Name.Value + "." + f.Name + "(" + plist?.Compile() + ")";
+                }
+                else
+                    rt = tbs + "new " + name.Value + "(" + plist?.Compile() + ")";
+                return rt;
             }
             if(o == "return")
             {
@@ -80,7 +92,7 @@ namespace Compilator
                     return tbs + "return;";
                 return tbs + "return " + expr.Compile() + ";";
             }
-            return tbs + Variable.GetOperatorStatic(op.type) + expr.Compile();
+            return tbs + Variable.GetOperatorStatic(op.type) + expr.Compile() + (endit ? ";" : "");
         }
 
         public override void Semantic()

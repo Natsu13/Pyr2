@@ -20,9 +20,12 @@ namespace Compilator
             this.name = name;
             this.block = block;
             this.block.blockAssignTo = name.Value;
+            this.block.blockClassTo = name.Value;
             this.assingBlock = block;
             this.parents = parents;
         }
+
+        public Token Name { get { return name; } }
 
         public bool haveParent(Token name)
         {
@@ -42,11 +45,10 @@ namespace Compilator
                 }
                 foreach (KeyValuePair<string, Assign> var in block.variables)
                 {
-                    //var.Key + " => ["+var.Value.GetType()+"] " + var.Value.GetVal()
-                    if (var.Value.GetType() == "string")
-                        ret += tbs + "\tthis." + var.Key + " = " + var.Value.Compile() + ";";
+                    if (var.Value.Right.getToken().type == Token.Type.NULL)
+                        ret += tbs + "\tthis." + var.Key + " = null;\n";
                     else
-                        ret += tbs + "\tthis." + var.Key + " = " + var.Value.GetVal() + ";\n";
+                        ret += tbs + "\tthis." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
                 }
                 ret += tbs + "}\n";
                 ret += block.Compile(tabs);

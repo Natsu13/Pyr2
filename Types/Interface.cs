@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Compilator
 {
-    class Interface:Types
+    public class Interface:Types
     {
         Token name;
         Block block;
@@ -18,8 +18,11 @@ namespace Compilator
         {
             this.name = name;
             this.block = block;
-            if(block != null)
+            if (block != null)
+            {
                 this.block.blockAssignTo = name.Value;
+                this.block.blockClassTo = name.Value;
+            }
             this.assingBlock = block;
             this.parents = parents;
         }
@@ -66,6 +69,43 @@ namespace Compilator
         public override int Visit()
         {
             return 0;
+        }
+
+        public Token OutputType(string op, object a, object b)
+        {
+            if (block.SymbolTable.Find("operator " + op))
+            {
+                Types t = block.SymbolTable.Get("operator " + op);
+                if (t is Function f)
+                {
+                    return f.Returnt;
+                }
+            }
+            return new Token(Token.Type.VOID, "void");
+        }
+        public bool SupportOp(string op)
+        {
+            if (block.SymbolTable.Find("operator " + op))
+            {
+                Types t = block.SymbolTable.Get("operator " + op);
+                if (t is Function f)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        public bool SupportSecond(string op, object second, object secondAsVariable)
+        {
+            if (block.SymbolTable.Find("operator " + op))
+            {
+                Types t = block.SymbolTable.Get("operator " + op);
+                if (t is Function f)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

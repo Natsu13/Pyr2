@@ -44,16 +44,36 @@ namespace Compilator
             else if(left is Variable)
             {
                 v = ((Variable)left);
+                if (v.getDateType().Value == "auto")
+                    v.Check();
                 outputType = ((Variable)left).OutputType(op.type, left, right);
+            }
+            else
+            {
+                left.Compile();
+                v = left.TryVariable();
             }
             if (v.class_.JSName != "")
             {
                 return left.Compile(0) + " " + Variable.GetOperatorStatic(op.type) + " " + right.Compile(0);
             }
             else
-            {
-                Function opp = (Function)v.class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(op.type));
-                return left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ")";
+            {                
+                Types oppq = v.class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(op.type));
+                if (oppq is Error)
+                    return "";
+                Function opp = (Function)oppq;
+                if (op.type == Token.Type.NOTEQUAL)
+                    return "!(" + left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + "))";
+                else if(op.type == Token.Type.MORE || op.type == Token.Type.LESS)
+                {
+                    if(op.type == Token.Type.MORE)
+                        return left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ") > 0";
+                    else
+                        return left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ") < 0";
+                }
+                else
+                    return left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ")";
             }
         }
 

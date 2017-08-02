@@ -18,6 +18,7 @@ namespace Compilator
         Block current_block;
         int current_token_pos;
         Block.BlockType current_block_type = Block.BlockType.NONE;
+        Block.BlockType main_block_type = Block.BlockType.NONE;
         string current_file = "";
         //public SymbolTable symbolTable;
         public static List<Error> semanticError = new List<Compilator.Error>();
@@ -137,7 +138,17 @@ namespace Compilator
                     Advance(); Advance();
                     return new Token(Token.Type.OR, "||", current_token_pos, current_file);
                 }
-                if (current_char == '=') { Advance(); return new Token(Token.Type.ASIGN, '=', current_token_pos, current_file); }
+                if (current_char == '+' && Peek() == '+') {
+                    Advance(); Advance();
+                    return new Token(Token.Type.INC, "++", current_token_pos, current_file);
+                }
+                if (current_char == '-' && Peek() == '-')
+                {
+                    Advance(); Advance();
+                    return new Token(Token.Type.DEC, "--", current_token_pos, current_file);
+                }
+                if (current_char == '>') { Advance(); return new Token(Token.Type.MORE,     '>', current_token_pos, current_file); }
+                if (current_char == '<') { Advance(); return new Token(Token.Type.LESS,     '<', current_token_pos, current_file); }
                 if (current_char == '=') { Advance(); return new Token(Token.Type.ASIGN,    '=', current_token_pos, current_file); }
                 if (current_char == ';') { Advance(); return new Token(Token.Type.SEMI,     ';', current_token_pos, current_file); }
                 if (current_char == ':') { Advance(); return new Token(Token.Type.COLON,    ':', current_token_pos, current_file); }
@@ -150,7 +161,9 @@ namespace Compilator
                 if (current_char == '(') { Advance(); return new Token(Token.Type.LPAREN,   '(', current_token_pos, current_file); }
                 if (current_char == ')') { Advance(); return new Token(Token.Type.RPAREN,   ')', current_token_pos, current_file); }
                 if (current_char == '{') { Advance(); return new Token(Token.Type.BEGIN,    '{', current_token_pos, current_file); }
-                if (current_char == '}') { Advance(); return new Token(Token.Type.END,      '}', current_token_pos, current_file); }               
+                if (current_char == '}') { Advance(); return new Token(Token.Type.END,      '}', current_token_pos, current_file); }
+                if (current_char == '[') { Advance(); return new Token(Token.Type.LSQUARE,  '[', current_token_pos, current_file); }
+                if (current_char == ']') { Advance(); return new Token(Token.Type.RSQUARE,  ']', current_token_pos, current_file); }
 
                 Error("Unexpeced token found");
                 return null;
@@ -348,6 +361,16 @@ namespace Compilator
                 Eat(Token.Type.MINUS);
                 return new UnaryOp(token, Factor());
             }
+            else if (token.type == Token.Type.INC)
+            {
+                Eat(Token.Type.INC);
+                return new UnaryOp(token, Factor());
+            }
+            else if (token.type == Token.Type.DEC)
+            {
+                Eat(Token.Type.DEC);
+                return new UnaryOp(token, Factor());
+            }
             else if (token.type == Token.Type.INTEGER)
             {
                 Eat(Token.Type.INTEGER);
@@ -427,16 +450,24 @@ namespace Compilator
         {
             Types result = Math();
             Token token = null;
-            while (current_token.type == Token.Type.EQUAL || current_token.type == Token.Type.NOTEQUAL)
+            while (current_token.type == Token.Type.EQUAL || current_token.type == Token.Type.NOTEQUAL || current_token.type == Token.Type.MORE || current_token.type == Token.Type.LESS)
             {
                 token = current_token;
                 if (token.type == Token.Type.EQUAL)
                 {
                     Eat(Token.Type.EQUAL);
                 }
-                if (token.type == Token.Type.NOTEQUAL)
+                else if (token.type == Token.Type.NOTEQUAL)
                 {
                     Eat(Token.Type.NOTEQUAL);
+                }
+                else if (token.type == Token.Type.MORE)
+                {
+                    Eat(Token.Type.MORE);
+                }
+                else if (token.type == Token.Type.LESS)
+                {
+                    Eat(Token.Type.LESS);
                 }
                 result = new BinOp(result, token, Math(), current_block);
                 result.assingBlock = current_block;
@@ -489,10 +520,11 @@ namespace Compilator
             return node;
         }
 
-        public Types CompoundStatement()
+        public Types CompoundStatement(string assginTo = "")
         {
             Block save_block = current_block;
             Block root = new Block(this);
+            root.assignTo = assginTo;
             root.Parent = current_block;
             current_block = root;
             List<Types> nodes = StatementList();
@@ -556,9 +588,19 @@ namespace Compilator
                 return DeclareFunction();
             else if (current_token.type == Token.Type.NEWLAMBDA)
                 return DeclareLambda();
+            else if (current_token.type == Token.Type.INC)
+            {
+                Eat(Token.Type.INC);
+                return new UnaryOp(current_token, Factor());
+            }
+            else if (current_token.type == Token.Type.DEC)
+            {
+                Eat(Token.Type.DEC);
+                return new UnaryOp(current_token, Factor());
+            }
             else if (current_token.type == Token.Type.RETURN)
             {
-                if (current_block_type != Block.BlockType.FUNCTION)
+                if (main_block_type != Block.BlockType.FUNCTION)
                 {
                     Error("return can be used only inside function block");
                     return null;
@@ -672,6 +714,8 @@ namespace Compilator
             Block _bloc;
             Block.BlockType last_block_type = current_block_type;
             current_block_type = btype;
+            if(btype != Block.BlockType.CONDITION && btype != Block.BlockType.FOR)
+                main_block_type = btype;
             Block save_block = current_block;
             Types block = Statement(eatEnd);
             if (!(block is Block))
@@ -798,6 +842,11 @@ namespace Compilator
             {
                 func.isOperator = true;
             }
+            if (func.isConstructor)
+            {
+                sname = "constructor "+sname;
+                func._constuctor = name;
+            }
             current_block.SymbolTable.Add(sname, func);
             if(current_token.type == Token.Type.END)
                 Eat(Token.Type.END);
@@ -900,7 +949,7 @@ namespace Compilator
 
             Block.BlockType last_block_type = current_block_type;
             current_block_type = Block.BlockType.CLASS;
-            Block block = (Block)CompoundStatement();
+            Block block = (Block)CompoundStatement(assginTo: name.Value);
             if (block == null) return null;
             block.Type = Block.BlockType.CLASS;
             current_block_type = last_block_type;
@@ -961,6 +1010,20 @@ namespace Compilator
             {
                 return FunctionCatch(((Variable)left).getToken());
             }
+            if (current_token.type == Token.Type.INC)
+            {                
+                UnaryOp p = new UnaryOp(current_token, left);
+                p.post = true;
+                Eat(Token.Type.INC);
+                return p;
+            }
+            else if (current_token.type == Token.Type.DEC)
+            {                
+                UnaryOp p = new UnaryOp(current_token, left);
+                p.post = true;
+                Eat(Token.Type.DEC);
+                return p;
+            }
             Eat(Token.Type.ASIGN); 
             Types right = Expr();
             Types node = new Assign(left, token, right, current_block);
@@ -978,6 +1041,26 @@ namespace Compilator
                 Eat(Token.Type.FALSE);
             else
                 Eat(Token.Type.ID);
+            if(current_token.type == Token.Type.LSQUARE)
+            {
+                Eat(Token.Type.LSQUARE);
+                ((Variable)node).setKey(Expr());
+                Eat(Token.Type.RSQUARE);
+            }
+            if (current_token.type == Token.Type.INC)
+            {
+                UnaryOp p = new UnaryOp(current_token, node);
+                p.post = true;
+                Eat(Token.Type.INC);
+                return p;
+            }
+            else if (current_token.type == Token.Type.DEC)
+            {
+                UnaryOp p = new UnaryOp(current_token, node);
+                p.post = true;
+                Eat(Token.Type.DEC);
+                return p;
+            }
             return node;
         }        
     }

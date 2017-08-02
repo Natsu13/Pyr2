@@ -135,10 +135,10 @@ namespace Compilator
             {
                 if (block.isInConstructor)
                 {
-                    return DoTabs(tabs) + "$this." + string.Join(".", value.Split('.').Skip(1)) + (isKey ? "["+key.Compile()+"]" : "");
+                    return DoTabs(tabs) + (inParen ? "(" : "") + "$this." + string.Join(".", value.Split('.').Skip(1)) + (isKey ? "["+key.Compile()+"]" : "") + (inParen ? ")" : "");
                 }
             }
-            return DoTabs(tabs) + Value + (isKey ? "[" + key.Compile() + "]" : "");
+            return DoTabs(tabs) + (inParen ? "(" : "") + Value + (isKey ? "[" + key.Compile() + "]" : "") + (inParen ? ")" : "");
         }
 
         public override int Visit()

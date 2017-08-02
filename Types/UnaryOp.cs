@@ -50,8 +50,8 @@ namespace Compilator
                 if(t is Assign && ((Assign)t).Right is Lambda)
                 {
                     if (plist == null)
-                        return tbs + "lambda$" + name.Value + "()" + (endit ? ";" : "");
-                    return tbs + "lambda$" + name.Value + "(" + plist.Compile() + ")" + (endit ? ";" : "");
+                        return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
                 if (name.Value == "js")
                 {
@@ -63,19 +63,20 @@ namespace Compilator
                     string[] nnaml = name.Value.Split('.');
                     string nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t).Name;
                     if (plist == null)
-                        return tbs + nname + "()" + (endit ? ";" : "");
-                    return tbs + nname + "(" + plist.Compile() + ")" + (endit ? ";" : "");
+                        return tbs + (inParen ? "(" : "") + nname + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
                 else
                 {
                     if (plist == null)
-                        return tbs + name.Value + "()" + (endit ? ";" : "");
-                    return tbs + name.Value + "(" + plist.Compile() + ")" + (endit ? ";" : "");
+                        return tbs + (inParen ? "(" : "") + name.Value + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + name.Value + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
             }
             if (o == "new")
             {
                 Types t = assingBlock.SymbolTable.Get(name.Value);
+                if (t is Error) return "";
                 string rt;
                 if(((Class)t).assingBlock.SymbolTable.Find("constructor " + name.Value))
                 {
@@ -84,7 +85,7 @@ namespace Compilator
                 }
                 else
                     rt = tbs + "new " + name.Value + "(" + plist?.Compile() + ")";
-                return rt;
+                return (inParen ? "(" : "") + rt + (inParen ? ")" : "");
             }
             if(o == "return")
             {
@@ -92,7 +93,10 @@ namespace Compilator
                     return tbs + "return;";
                 return tbs + "return " + expr.Compile() + ";";
             }
-            return tbs + Variable.GetOperatorStatic(op.type) + expr.Compile() + (endit ? ";" : "");
+            if(post)
+                return tbs + (inParen ? "(" : "") + expr.Compile() + Variable.GetOperatorStatic(op.type) + (inParen ? ")" : "") + (endit ? ";" : "");
+            else
+                return tbs + (inParen ? "(" : "") + Variable.GetOperatorStatic(op.type) + expr.Compile() + (inParen ? ")" : "") + (endit ? ";" : "");
         }
 
         public override void Semantic()
@@ -104,6 +108,13 @@ namespace Compilator
                     Interpreter.semanticError.Add(new Error("Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
                 if (block.assingBlock != null && !block.assingBlock.SymbolTable.Find(name.Value))
                     Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+            }
+            if(o == "new")
+            {
+                if (!assingBlock.SymbolTable.Find(name.Value))
+                {
+                    Interpreter.semanticError.Add(new Error("Class '"+name.Value+"' not found", Interpreter.ErrorType.ERROR, name));
+                }
             }
         }
 

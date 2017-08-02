@@ -53,11 +53,19 @@ namespace Compilator
             }
         }
 
+        public static bool initialized = false;
         public void initialize()
         {
+            if (initialized) return;
+            initialized = true;
             /// Initialize String Class
             Block BlockString = ((Class)Get("string")).assingBlock;
             //Operator Equal
+            new Assign(
+                    new Variable(new Token(Token.Type.ID, "length"), BlockString, new Token(Token.Type.CLASS, "int")),
+                    new Token(Token.Type.ASIGN, "="),
+                    new Null(),
+                BlockString);
             Token FunctionStringOperatorEqualName = new Token(Token.Type.ID, "operator equal");
             ParameterList plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockString, new Token(Token.Type.CLASS, "string")));
@@ -75,6 +83,7 @@ namespace Compilator
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "key"), BlockString, new Token(Token.Type.CLASS, "int")));
             Function FunctionStringOperatorGet = new Function(FunctionStringOperatorGetName, null, plist, new Token(Token.Type.CLASS, "string"), interpret) { isOperator = true };
             BlockString.SymbolTable.Add("operator get", FunctionStringOperatorGet);
+            
             /// Initial Int Class
             Block BlockInt = ((Class)Get("int")).assingBlock;
             //Operator Equal
@@ -95,6 +104,12 @@ namespace Compilator
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
             Function FunctionIntOperatorPlus = new Function(FunctionIntOperatorPlusName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
             BlockInt.SymbolTable.Add("operator plus", FunctionIntOperatorPlus);
+            //Operator Minus
+            Token FunctionIntOperatorMinusName = new Token(Token.Type.ID, "operator minus");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
+            Function FunctionIntOperatorMinus = new Function(FunctionIntOperatorMinusName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
+            BlockInt.SymbolTable.Add("operator minus", FunctionIntOperatorMinus);
             //Operator Inc
             Token FunctionIntOperatorIncrementName = new Token(Token.Type.ID, "operator inc");
             Function FunctionIntOperatorIncrement = new Function(FunctionIntOperatorIncrementName, null, new ParameterList(true), new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };

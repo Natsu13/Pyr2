@@ -11,6 +11,7 @@ namespace Compilator
         Variable variable;
         Token source;
         Block block;
+        bool isIterable = false;
 
         public For(Variable variable, Token source, Block block)
         {
@@ -23,8 +24,7 @@ namespace Compilator
         {
             string ret = "";
             if (block.SymbolTable.Find(source.Value))
-            {
-                bool isIterable = false;
+            {                
                 Types t = block.SymbolTable.Get(source.Value);
                 if(t is Assign)
                 {
@@ -32,8 +32,8 @@ namespace Compilator
                     if (q is Variable v)
                     {
                         //Type tp = block.SymbolTable.GetType(v.getDateType().Value);
-                        dynamic to = block.SymbolTable.Get(v.getDateType().Value);
-                        if(to.haveParent("IIterable"))
+                        Types to = block.SymbolTable.Get(v.getDateType().Value);
+                        if(((Class)to).haveParent("IIterable"))
                         {
                             isIterable = true;
                         }
@@ -42,7 +42,13 @@ namespace Compilator
 
                 if (isIterable)
                 {
-
+                    int tmpc = block.Interpret.tmpcount++;
+                    string tab = DoTabs(tabs+1);
+                    ret  = tab + "var $tmp" + tmpc + " = " + source.Value + ".iterator();\n";
+                    ret += tab + "  while($tmp" + tmpc + ".hasNext()){\n";
+                    ret += tab + "    var " + variable.Value + " = $tmp" + tmpc + ".next();\n";
+                    ret += block.Compile(tabs + 3);
+                    ret += tab + "  }";
                 }
             }
 

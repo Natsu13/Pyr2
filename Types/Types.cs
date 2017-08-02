@@ -12,6 +12,7 @@ namespace Compilator
         public abstract Token getToken();
         public string assignTo = "";
         public bool endit = true;
+        public bool inParen = false;
         public Block assingBlock;
         public abstract int Visit();
         public abstract string Compile(int tabs = 0);

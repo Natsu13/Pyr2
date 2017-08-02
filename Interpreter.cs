@@ -26,6 +26,7 @@ namespace Compilator
         public static Dictionary<string, string> fileList = new Dictionary<string, string>();
         public bool isConsole = false;
         public bool brekall = false;
+        public int tmpcount = 0;
 
         /// Interpret settings
         public static bool _REDECLARATION =     false;      //If you enable redeclaration
@@ -336,11 +337,9 @@ namespace Compilator
                 Eat(Token.Type.NEW);
                 Token className = current_token;
                 if (current_token.type == Token.Type.ID)
-                {
-                    Error("Class with name " + current_token.Value + " not found!");
-                    return null;
-                }
-                Eat(Token.Type.CLASS);
+                    Eat(Token.Type.ID);
+                else
+                    Eat(Token.Type.CLASS);
                 if (current_token.type == Token.Type.SEMI)
                 {
                     return new UnaryOp(token, className);
@@ -390,6 +389,7 @@ namespace Compilator
             {
                 Eat(Token.Type.LPAREN);
                 Types result = Expr();
+                result.inParen = true;
                 Eat(Token.Type.RPAREN);
                 return result;
             }
@@ -499,6 +499,7 @@ namespace Compilator
         public Types Parse()
         {
             brekall = false;
+            tmpcount = 0;
             Types node = Program();
             if (current_token.type != Token.Type.EOF)
             {

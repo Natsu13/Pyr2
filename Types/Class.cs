@@ -27,9 +27,13 @@ namespace Compilator
 
         public Token Name { get { return name; } }
 
-        public bool haveParent(Token name)
+        public bool haveParent(string name)
         {
-            return parents.Contains(name);
+            foreach(Token p in parents)
+            {
+                if (p.Value == name) return true;
+            }
+            return false;
         }
 
         public override string Compile(int tabs = 0)

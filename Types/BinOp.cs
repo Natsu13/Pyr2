@@ -55,7 +55,7 @@ namespace Compilator
             }
             if (v.class_.JSName != "")
             {
-                return left.Compile(0) + " " + Variable.GetOperatorStatic(op.type) + " " + right.Compile(0);
+                return (inParen ? "(" : "") + left.Compile(0) + " " + Variable.GetOperatorStatic(op.type) + " " + right.Compile(0) + (inParen ? ")" : "");
             }
             else
             {                
@@ -64,16 +64,16 @@ namespace Compilator
                     return "";
                 Function opp = (Function)oppq;
                 if (op.type == Token.Type.NOTEQUAL)
-                    return "!(" + left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + "))";
-                else if(op.type == Token.Type.MORE || op.type == Token.Type.LESS)
+                    return (inParen ? "(" : "") + "!(" + left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + "))" + (inParen ? ")" : "");
+                else if (op.type == Token.Type.MORE || op.type == Token.Type.LESS)
                 {
-                    if(op.type == Token.Type.MORE)
-                        return left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ") > 0";
+                    if (op.type == Token.Type.MORE)
+                        return (inParen ? "(" : "") + left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ") > 0" + (inParen ? ")" : "");
                     else
-                        return left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ") < 0";
+                        return (inParen ? "(" : "") + left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ") < 0" + (inParen ? ")" : "");
                 }
                 else
-                    return left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ")";
+                    return (inParen ? "(" : "") + left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ")" + (inParen ? ")" : "");
             }
         }
 

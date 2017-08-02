@@ -1,51 +1,69 @@
 # Pyr2
 New type of Pyr Language more optimized and writed in C# can be compiled to JS for not but in future other language would be supported
 
-Example code (How to control webpage):
+Example code (Custom class with custom operators):
 ```
 external function alert(string message) -> void;
 external function js(string code) -> void;
 
-external interface Element {
-	string innerHTML;
-	string id;
-	string className;
-	
-	function getAttribute(string name) -> string;
+external class console {
+	function log(string text) -> void;
 }
 
-external class Doctype {
-	string name;
-	string internalSubset;
-	string publicId;
-	string systemId;
-}
-
-external class document {
-	string title;
-	string location;
-	int width;
-	int height;
-	string characterSet;
-	Doctype doctype;
-
-	function getElementById(string id) -> Element;
-	function getElementsByClassName(string name) -> Element;
-}
-
-function main() -> int {
-	Element e = document.getElementById("test");
-	e.innerHTML = "changed";
+class Integer {
+	int internal = 5;
 	
-	string id = e.getAttribute("id");
-	
-	string pid = null;
-	if(document.doctype != null){
-		pid = document.doctype.publicId;
+	function Integer(int number){
+		this.internal = number;
 	}
-	document.title = "Webpage in PYR2 {$pid?}";
 	
-	return 0;
+	operator function plus(Integer sec) -> int {
+		return 2;
+	}
+	operator function equal(Integer sec) -> bool {
+		return true;
+	}
+	operator function compareTo(Integer sec) -> int {
+		return (this.internal - sec.internal);
+	}
+}
+
+interface Iterator: IIterable {
+	function next() -> string;
+	function hasNext() -> bool;
+}
+
+class StringIterator:Iterator {
+	int index  = 0;
+	string self;
+	
+	function StringIterator(string self) {
+		this.self = self;
+	}
+	
+	function next() -> string {
+		return this.self[index++];
+	}
+	function hasNext() -> bool {
+		if(index+1 > this.self.lenght){
+			return false;
+		}
+		return true;
+	}
+}
+
+function string.iterator() -> Iterator {
+	return new StringIterator(this);
+}
+
+function main(){
+	Integer t = new Integer(2);
+	Integer x = new Integer(5);
+	if(t > x){
+		console.log("2 > 5");
+	}
+	string test = "test";
+	console.log(test[0]);
 }
 ```
 

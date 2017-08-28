@@ -10,16 +10,20 @@ external class console {
 	function log(string text) -> void;
 }
 
-class Integer {
-	int internal = 5;
+class Integer<T> {
+	T internal;
 	
-	function Integer(int number){
+	function Integer(T number){
 		this.internal = number;
 	}
 	
-	operator function plus(Integer sec) -> int {
-		return new Integer(this.internal + sec.internal);
+	operator function plus(Integer sec) -> T {
+		return new Integer<T>((this.internal is int) + (sec.internal is int));
 	}
+	operator function minus(Integer sec) -> T {
+		return new Integer<T>((this.internal is int) - (sec.internal is int));
+	}
+	
 	operator function equal(Integer sec) -> bool {
 		if(this.internal == sec.internal)
 		{
@@ -28,7 +32,7 @@ class Integer {
 		return false;
 	}
 	operator function compareTo(Integer sec) -> int {
-		return (this.internal - sec.internal);
+		return ((this.internal is int) - (sec.internal is int));
 	}
 }
 
@@ -66,8 +70,14 @@ function main(){
 	if(t < x){
 		console.log("2 > 5");
 	}
+	
+	lambda fnc = { (int a, int b) -> a + b };
+	
+	Integer<int>[10] pole = new Integer<int>[10](10);
+	
+	console.log(fnc(2,5));
+	
 	string test = "test";
-	console.log(test[0]);
 	
 	for(string ch in test){
 		console.log(ch);

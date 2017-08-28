@@ -15,6 +15,7 @@ namespace Compilator
             var stopwatch = new Stopwatch();
             stopwatch.Start();
             string text = File.ReadAllText(@"code.p");
+            Interpreter.semanticError.Clear();
             Interpreter interpret = new Interpreter(text, "code.p");
             interpret.isConsole = true;
 
@@ -43,8 +44,7 @@ namespace Compilator
                     outcom += "\n  main();\n";
             }
             outcom += "\n  return _;\n";
-            outcom += "}(typeof module === 'undefined' ? {} : module);";
-            Interpreter.semanticError.Clear();
+            outcom += "}(typeof module === 'undefined' ? {} : module);";            
             block.Semantic();
             bool iserror = false;
             if(Interpreter.semanticError.Count > 0)

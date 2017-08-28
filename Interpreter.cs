@@ -34,8 +34,9 @@ namespace Compilator
         public static bool _WRITEDEBUG =        false;      //If you want with faul write the output to file
 
         /// Language settings
-        public enum LANGUAGES { JAVASCRIPT };
-        public static LANGUAGES _LANGUAGE = LANGUAGES.JAVASCRIPT;
+        public enum     LANGUAGES { JAVASCRIPT, CSHARP, PYTHON, PHP, CPP };
+        public static   LANGUAGES _LANGUAGE = LANGUAGES.JAVASCRIPT;
+        public static bool isForExport = false;
 
         public Interpreter(string text, string filename = "")
         {
@@ -100,6 +101,13 @@ namespace Compilator
                 {
                     Advance(); Advance();
                     SkipComments();
+                    continue;
+                }
+
+                if(current_char == '/' && Peek() == '/')
+                {
+                    while (current_char != '\n')
+                        Advance();
                     continue;
                 }
 
@@ -195,9 +203,9 @@ namespace Compilator
                 current_char = text[pos];
         }
 
-        public char Peek()
+        public char Peek(int howmuch = 1)
         {
-            int peek_pos = pos + 1;
+            int peek_pos = pos + howmuch;
             if(peek_pos >= text.Length)
                 return '\0';
             else
@@ -340,14 +348,55 @@ namespace Compilator
                     Eat(Token.Type.ID);
                 else
                     Eat(Token.Type.CLASS);
+
+                List<string> garg = new List<string>();
+                if (current_token.type == Token.Type.LESS)
+                {
+                    Eat(Token.Type.LESS);
+                    while (current_token.type != Token.Type.MORE)
+                    {
+                        if (current_token.type == Token.Type.COMMA)
+                        {
+                            garg.Add(previous_token.Value);
+                            Eat(Token.Type.COMMA);
+                        }
+                        else Eat(current_token.type);
+                    }
+                    if (previous_token.type != Token.Type.LESS)
+                        garg.Add(previous_token.Value);
+                    else
+                        Error("You need specify generic arguments!");
+                    Eat(Token.Type.MORE);
+                }
+
+                int size = -1;
+                if (current_token.type == Token.Type.LSQUARE)
+                {
+                    Eat(Token.Type.LSQUARE);
+                    if (current_token.type == Token.Type.INTEGER)
+                    {
+                        size = Int32.Parse(current_token.Value);
+                        Eat(Token.Type.INTEGER);
+                    }
+                    Eat(Token.Type.RSQUARE);
+                }
+
                 if (current_token.type == Token.Type.SEMI)
                 {
-                    return new UnaryOp(token, className);
+                    UnaryOp up = new UnaryOp(token, className);
+                    up.genericArgments = garg;
+                    if(size > -1)
+                        up.MadeArray(size);
+                    return up;
                 }
                 else
                 {
                     ParameterList p = Parameters();
-                    return new UnaryOp(token, className, p);
+                    UnaryOp up = new UnaryOp(token, className, p);
+                    up.genericArgments = garg;
+                    if (size > -1)
+                        up.MadeArray(size);
+                    return up;
                 }
             }            
             else if (token.type == Token.Type.PLUS)
@@ -804,14 +853,9 @@ namespace Compilator
                 Eat(Token.Type.DEFINERETURN);
                 returnt = current_token;
                 if (current_token.type == Token.Type.ID)
-                {
-                    Error("Date type " + current_token.Value + " is unkown!");
-                    return null;
-                }
-                if (current_token.type == Token.Type.VOID)
-                {
+                    Eat(Token.Type.ID);
+                else if (current_token.type == Token.Type.VOID)
                     Eat(Token.Type.VOID);
-                }
                 else if (current_token.type == Token.Type.INTERFACE)
                     Eat(Token.Type.INTERFACE);
                 else
@@ -946,6 +990,27 @@ namespace Compilator
                         Eat(Token.Type.INTERFACE, "class or interface for inheritance not found");
                 }
             }
+
+            List<string> garg = new List<string>();
+            if(current_token.type == Token.Type.LESS)
+            {
+                Eat(Token.Type.LESS);
+                while(current_token.type != Token.Type.MORE)
+                {
+                    if (current_token.type == Token.Type.COMMA)
+                    {
+                        garg.Add(previous_token.Value);
+                        Eat(Token.Type.COMMA);
+                    }
+                    else Eat(Token.Type.ID);
+                }
+                if (previous_token.type != Token.Type.LESS)
+                    garg.Add(previous_token.Value);
+                else
+                    Error("You need specify generic arguments!");
+                Eat(Token.Type.MORE);
+            }
+
             Eat(Token.Type.BEGIN);
 
             Block.BlockType last_block_type = current_block_type;
@@ -957,6 +1022,7 @@ namespace Compilator
 
             Class c = new Class(name, block, parents);
             c.assingBlock = block;
+            c.SetGenericArgs(garg);
 
             if (isModifer(Token.Type.EXTERNAL))
             {
@@ -969,19 +1035,63 @@ namespace Compilator
             return c;
         }
 
-        public Types DeclareVariable()
+        public Types DeclareVariable(Token sDateType = null)
         {
-            Token dateType = current_token;
-            if (!current_block.SymbolTable.Find(dateType.Value))
+            List<string> garg = new List<string>();
+            Token dateType = null;
+            int size = -1;
+            if (sDateType == null)
             {
-                Error("The date type "+ dateType.Value+" not a found!");
-                return null;
+                dateType = current_token;
+                if (!current_block.SymbolTable.Find(dateType.Value))
+                {
+                    Error("The date type " + dateType.Value + " not a found!");
+                    return null;
+                }
+                if (current_token.type == Token.Type.INTERFACE)
+                    Eat(Token.Type.INTERFACE);
+                else
+                    Eat(Token.Type.CLASS);
+                
+                if (current_token.type == Token.Type.LESS)
+                {
+                    Eat(Token.Type.LESS);
+                    while (current_token.type != Token.Type.MORE)
+                    {
+                        if (current_token.type == Token.Type.COMMA)
+                        {
+                            garg.Add(previous_token.Value);
+                            Eat(Token.Type.COMMA);
+                        }
+                        else Eat(current_token.type);
+                    }
+                    if (previous_token.type != Token.Type.LESS)
+                        garg.Add(previous_token.Value);
+                    else
+                        Error("You need specify generic arguments!");
+                    Eat(Token.Type.MORE);
+                }
+                if(current_token.type == Token.Type.LSQUARE)
+                {
+                    Eat(Token.Type.LSQUARE);
+                    if(current_token.type == Token.Type.INTEGER)
+                    {
+                        size = Int32.Parse(current_token.Value);
+                        Eat(Token.Type.INTEGER);
+                    }
+                    Eat(Token.Type.RSQUARE);
+                }
             }
-            if (current_token.type == Token.Type.INTERFACE)
-                Eat(Token.Type.INTERFACE);
             else
-                Eat(Token.Type.CLASS);
-            Types left = Variable(dateType);            
+                dateType = sDateType;
+
+            Types left = Variable(dateType);
+            if(left is Variable)
+            {
+                (left as Variable).genericArgs = garg;
+                if (size > -1)
+                    (left as Variable).MadeArray(size);
+            }            
             if(current_token.type == Token.Type.ASIGN)
             {
                 Token token = current_token;
@@ -1005,7 +1115,12 @@ namespace Compilator
 
         public Types AssignmentStatement()
         {
+            Token saveToken = current_token;
             Types left = Variable();
+            if(current_token.type == Token.Type.ID)
+            {
+                return DeclareVariable(saveToken);
+            }
             Token token = current_token;
             if (current_token.type == Token.Type.LPAREN)
             {
@@ -1042,6 +1157,19 @@ namespace Compilator
                 Eat(Token.Type.FALSE);
             else
                 Eat(Token.Type.ID);
+
+            if(current_token.type == Token.Type.IS)
+            {
+                Eat(Token.Type.IS);
+                ((Variable)node).AsDateType = current_token;
+                if (current_token.type == Token.Type.ID)
+                    Eat(Token.Type.ID);
+                else if (current_token.type == Token.Type.INTERFACE)
+                    Eat(Token.Type.INTERFACE);
+                else
+                    Eat(Token.Type.CLASS);
+                return node;
+            }
             if(current_token.type == Token.Type.LSQUARE)
             {
                 Eat(Token.Type.LSQUARE);

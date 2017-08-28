@@ -79,6 +79,7 @@ namespace Compilator
         public ParameterList ParameterList { get { return paraml; } }
         public override Token getToken() { return null; }
         public Token Returnt { get { return returnt; } }
+        public Block Block { get { return block; } }
 
         public string getHash()
         {

@@ -55,6 +55,7 @@ namespace Compilator
             return "";
         }
 
+        public Token Name { get { return name; } }
         public override Token getToken() { return null; }
 
         public override void Semantic()

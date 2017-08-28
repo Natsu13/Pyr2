@@ -12,7 +12,7 @@ namespace Compilator
         {
             NONE, ERROR, EOF, NULL,
             INTEGER, STRING, DYNAMIC, REAL, BOOL, AUTO,
-            COMMA, SEMI, DOT, COLON,
+            COMMA, SEMI, DOT, COLON, IS,
             PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN, INC, DEC,
             CLASS, ID, FUNCTION, INTERFACE, LAMBDA, 
             NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,
@@ -43,7 +43,8 @@ namespace Compilator
             { "lambda",     new Token(Type.NEWLAMBDA, "lambda") },
             { "for",        new Token(Type.FOR, "for") },
             { "in",         new Token(Type.IN, "in") },
-            { "operator",   new Token(Type.OPERATOR, "operator") }
+            { "operator",   new Token(Type.OPERATOR, "operator") },
+            { "is",         new Token(Type.IS, "is") }
         };
 
         public Type type;

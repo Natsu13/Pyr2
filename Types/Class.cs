@@ -14,6 +14,7 @@ namespace Compilator
         public bool isExternal = false;
         public Token _external;
         public string JSName = "";
+        List<string> genericArguments = new List<string>();
 
         public Class(Token name, Block block, List<Token> parents)
         {
@@ -25,7 +26,18 @@ namespace Compilator
             this.parents = parents;
         }
 
+        public void AddGenericArg(string name)
+        {
+            genericArguments.Add(name);
+        }
+        public void SetGenericArgs(List<string> list)
+        {
+            genericArguments = list;
+        }
+        public List<string> GenericArguments { get { return genericArguments; } }
+
         public Token Name { get { return name; } }
+        public override Token getToken() { return null; }
 
         public bool haveParent(string name)
         {
@@ -34,12 +46,16 @@ namespace Compilator
                 if (p.Value == name) return true;
             }
             return false;
-        }
+        }        
 
         public override string Compile(int tabs = 0)
         {
             if (!isExternal)
             {
+                foreach (string generic in genericArguments)
+                {
+                    block.SymbolTable.Add(generic, new Generic(this, block, generic));
+                }
                 string tbs = DoTabs(tabs);
                 string ret = tbs + "var " + name.Value + " = function(){";
                 if (block.variables.Count != 0 || parents.Count != 0) ret += "\n";
@@ -59,9 +75,7 @@ namespace Compilator
                 return ret;
             }
             return "";
-        }
-
-        public override Token getToken() { return null; }
+        }        
 
         public override void Semantic()
         {
@@ -115,6 +129,7 @@ namespace Compilator
         }
     }
 
+    [Obsolete]
     public class Class<T>:Types where T:new()
     {
         string name;

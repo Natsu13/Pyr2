@@ -53,11 +53,11 @@ namespace Compilator
                 left.Compile();
                 v = left.TryVariable();
             }
-            if (v.class_.JSName != "")
+            if ((v._class != null && v.class_ == null) || (v.class_ != null && v.class_.JSName != ""))
             {
                 return (inParen ? "(" : "") + left.Compile(0) + " " + Variable.GetOperatorStatic(op.type) + " " + right.Compile(0) + (inParen ? ")" : "");
             }
-            else
+            else if(v.class_ != null)
             {                
                 Types oppq = v.class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(op.type));
                 if (oppq is Error)
@@ -75,6 +75,7 @@ namespace Compilator
                 else
                     return (inParen ? "(" : "") + left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + ")" + (inParen ? ")" : "");
             }
+            return "";
         }
 
         public override void Semantic()
@@ -89,11 +90,11 @@ namespace Compilator
 
             if (!v.SupportOp(op.type))
             {
-                Interpreter.semanticError.Add(new Error("Varible type '" + v.Type + "' not support operator " + Variable.GetOperatorStatic(op.type), Interpreter.ErrorType.ERROR, left.getToken()));
+                Interpreter.semanticError.Add(new Error("#112 Varible type '" + v.Type + "' not support operator " + Variable.GetOperatorStatic(op.type), Interpreter.ErrorType.ERROR, left.getToken()));
             }
             else if (!v.SupportSecond(op.type, right, r))
             {
-                Interpreter.semanticError.Add(new Error("Operator " + Variable.GetOperatorStatic(op.type) + " cannot be applied for '" + v.Type + "' and '" + r.Type + "'", Interpreter.ErrorType.ERROR, op));
+                Interpreter.semanticError.Add(new Error("#200 Operator " + Variable.GetOperatorStatic(op.type) + " cannot be applied for '" + v.Type + "' and '" + r.Type + "'", Interpreter.ErrorType.ERROR, op));
             }
         }
 
@@ -110,7 +111,7 @@ namespace Compilator
                 }
                 else
                 {
-                    block.Interpret.Error("Varible type 'int' not support operator "+v.GetOperator(op.type));
+                    block.Interpret.Error("#113 Varible type 'int' not support operator "+v.GetOperator(op.type));
                 }
             }
             else if (left is CString)
@@ -122,7 +123,7 @@ namespace Compilator
                 }
                 else
                 {
-                    block.Interpret.Error("Varible type 'int' not support operator " + v.GetOperator(op.type));
+                    block.Interpret.Error("#114 Varible type 'int' not support operator " + v.GetOperator(op.type));
                 }
             }
             else if (op.type == Token.Type.PLUS)

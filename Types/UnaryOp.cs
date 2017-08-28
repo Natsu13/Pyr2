@@ -13,6 +13,9 @@ namespace Compilator
         ParameterList plist;
         Block block;
         public bool post = false;
+        public List<string> genericArgments = new List<string>();
+        bool isArray = false;
+        int arraySize = -1;
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {
@@ -33,6 +36,7 @@ namespace Compilator
         public String Op { get { return Variable.GetOperatorStatic(op.type); } }
         public Types  Expr { get { return expr; } }
         public Token Name { get { return name; } }
+        public void MadeArray(int size) { isArray = true; arraySize = size; }
 
         public override string Compile(int tabs = 0)
         {
@@ -78,13 +82,29 @@ namespace Compilator
                 Types t = assingBlock.SymbolTable.Get(name.Value);
                 if (t is Error) return "";
                 string rt;
-                if(((Class)t).assingBlock.SymbolTable.Find("constructor " + name.Value))
+
+                string _name = "";
+                if(t is Class)
+                {
+                    if (((Class)t).JSName != "") _name = ((Class)t).JSName;
+                    else _name = ((Class)t).Name.Value;
+                }
+
+                if (((Class)t).assingBlock.SymbolTable.Find("constructor " + name.Value))
                 {
                     Function f = (Function)(((Class)t).assingBlock.SymbolTable.Get("constructor " + name.Value));
-                    rt = tbs + ((Class)t).Name.Value + "." + f.Name + "(" + plist?.Compile() + ")";
+                    if (isArray)
+                        rt = tbs + "new Array(" + arraySize + ").fill(" + _name + "." + f.Name + "(" + plist?.Compile() + "))";                    
+                    else
+                        rt = tbs + _name + "." + f.Name + "(" + plist?.Compile() + ")";
                 }
                 else
-                    rt = tbs + "new " + name.Value + "(" + plist?.Compile() + ")";
+                {
+                    if (isArray)
+                        rt = tbs + "new Array(" + arraySize + ").fill(new " + _name + "(" + plist?.Compile() + "))";
+                    else
+                        rt = tbs + "new " + _name + "(" + plist?.Compile() + ")";
+                }
                 return (inParen ? "(" : "") + rt + (inParen ? ")" : "");
             }
             if(o == "return")
@@ -111,10 +131,27 @@ namespace Compilator
             }
             if(o == "new")
             {
+                if (plist != null) plist.Semantic();
                 if (!assingBlock.SymbolTable.Find(name.Value))
                 {
-                    Interpreter.semanticError.Add(new Error("Class '"+name.Value+"' not found", Interpreter.ErrorType.ERROR, name));
+                    Interpreter.semanticError.Add(new Error("Class '" + name.Value + "' not found", Interpreter.ErrorType.ERROR, name));
                 }
+                else
+                {
+                    Types t = assingBlock.SymbolTable.Get(name.Value);
+                    if (((Class)t).GenericArguments.Count > 0)
+                    {
+                        if(((Class)t).GenericArguments.Count != genericArgments.Count)
+                        {
+                            Interpreter.semanticError.Add(new Error("You must specify all generic types when creating instance of class '" + name.Value + "'", Interpreter.ErrorType.ERROR, name));
+                        }
+                    }
+                }
+            }
+            if (o == "return")
+            {
+                if (expr != null)
+                    expr.Semantic();
             }
         }
 

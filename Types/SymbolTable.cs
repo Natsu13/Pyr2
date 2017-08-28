@@ -28,6 +28,14 @@ namespace Compilator
                 };
                 Add("IIterable", IIterable);
 
+                Token TokenIterator = new Token(Token.Type.ID, "Iterator");
+                Block BlockIterator = new Block(interpret) { Parent = assigment_block };
+                Interface Iterator = new Interface(TokenIterator, BlockIterator, null)
+                {
+                    isExternal = true
+                };
+                Add("Iterator", Iterator);
+
                 /// Date type string implicit
                 // Add("string",   typeof(TypeString), new List<Token> { TokenIIterable });
                 Token TokenString = new Token(Token.Type.ID, "string");
@@ -58,6 +66,25 @@ namespace Compilator
         {
             if (initialized) return;
             initialized = true;
+
+            /// Initialize Iterator interface
+            Block BlockIterator = ((Interface)Get("Iterator")).assingBlock;
+            Token FunctionIteratorNextName = new Token(Token.Type.ID, "next");
+            ParameterList plist = new ParameterList(true);
+            Function FunctionIteratorNext = new Function(FunctionIteratorNextName, null, plist, new Token(Token.Type.CLASS, "string"), interpret);
+            BlockIterator.SymbolTable.Add("next", FunctionIteratorNext);
+            Token FunctionIteratorHasNextName = new Token(Token.Type.ID, "hasNext");
+            plist = new ParameterList(true);
+            Function FunctionIteratorHasNext = new Function(FunctionIteratorHasNextName, null, plist, new Token(Token.Type.CLASS, "string"), interpret);
+            BlockIterator.SymbolTable.Add("hasNext", FunctionIteratorHasNext);
+
+            /// Initialize IIterable interface
+            Block BlockIIterable = ((Interface)Get("IIterable")).assingBlock;
+            Token FunctionIIterableIteratorName = new Token(Token.Type.ID, "iterator");
+            plist = new ParameterList(true);
+            Function FunctionIIterableIterator = new Function(FunctionIIterableIteratorName, null, plist, new Token(Token.Type.CLASS, "Iterator"), interpret);
+            BlockIIterable.SymbolTable.Add("iterator", FunctionIIterableIterator);
+
             /// Initialize String Class
             Block BlockString = ((Class)Get("string")).assingBlock;
             //Operator Equal
@@ -67,7 +94,7 @@ namespace Compilator
                     new Null(),
                 BlockString);
             Token FunctionStringOperatorEqualName = new Token(Token.Type.ID, "operator equal");
-            ParameterList plist = new ParameterList(true);
+            plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockString, new Token(Token.Type.CLASS, "string")));
             Function FunctionStringOperatorEqual = new Function(FunctionStringOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
             BlockString.SymbolTable.Add("operator equal", FunctionStringOperatorEqual);
@@ -296,7 +323,7 @@ namespace Compilator
                 if (assigment_block.Parent != null)
                     return assigment_block.Parent.SymbolTable.GetType(name);
             }
-            Interpreter.semanticError.Add(new Error("Internal error #101", Interpreter.ErrorType.ERROR));
+            //Interpreter.semanticError.Add(new Error("Internal error #101", Interpreter.ErrorType.ERROR));
             return null;            
         }
     }

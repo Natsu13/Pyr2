@@ -21,7 +21,7 @@ namespace Compilator
             this.op = this.token = op;
             this.right = right;        
             if (left is Variable) {
-                left.Semantic();
+                //left.Semantic();
 
                 string name = ((Variable)left).Value;
                 if (!((Variable)left).Block.variables.ContainsKey(name))
@@ -79,7 +79,7 @@ namespace Compilator
             if (left is Variable)
             {
                 if (((Variable)left).Block.blockAssignTo != "") return "";
-                    right.assingBlock = ((Variable)left).Block;
+                right.assingBlock = ((Variable)left).Block;
                 if (right is UnaryOp)
                     ((UnaryOp)right).endit = false;
                 return DoTabs(tabs) + (isDeclare?"var ":"") + left.Compile(0) + " = " + right.Compile(0) + ";";
@@ -102,6 +102,11 @@ namespace Compilator
                     Types t = ((Variable)left).assingBlock.SymbolTable.Get(newname);
                     if (t != null)
                     {
+                        if(t is Generic && !(right is Null))
+                        {
+                            Variable ri = right.TryVariable();
+                            Interpreter.semanticError.Add(new Error("#102 Variable " + ((Variable)left).Value + " is generic and '"+ ri.Value + "' can't be converted to '"+ ri.getDateType().Value + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                        }
                         if (((Variable)left).Value.Split('.')[0] == "this")
                         {
                             Assign ava = (Assign)t;
@@ -118,7 +123,7 @@ namespace Compilator
                             }
                             if (ava.GetType() != type)
                             {
-                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ava.GetType() + "' can't be implicitly converted to '" + type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                                Interpreter.semanticError.Add(new Error("#101 Variable " + ((Variable)left).Value + " with type '" + ava.GetType() + "' can't be implicitly converted to '" + type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                             }
                         }else
                             ((Variable)left).setType(((Variable)((Assign)t).Left).getType());
@@ -157,46 +162,46 @@ namespace Compilator
                                             right = vaq;
                                         }
                                         if(vaq is Error)
-                                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)right).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)right).getToken()));
+                                            Interpreter.semanticError.Add(new Error("#103 Variable " + ((Variable)right).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)right).getToken()));
                                     }
                                     else if (var != null)
                                     {
                                         right = var;
                                     }
                                     else
-                                        Interpreter.semanticError.Add(new Error("Variable " + ((Variable)right).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)right).getToken()));
+                                        Interpreter.semanticError.Add(new Error("#104 Variable " + ((Variable)right).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)right).getToken()));
                                 }
                             }
                             if (right is Variable && ((Variable)left).Type != ((Variable)right).Type)
-                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + ((Variable)right).Type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                                Interpreter.semanticError.Add(new Error("#105 Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + ((Variable)right).Type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                         }
                         else
-                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + ((Variable)right).Type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                            Interpreter.semanticError.Add(new Error("#106 Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + ((Variable)right).Type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                     }
                     else if (right is Number && ((Variable)left).Type != "int")
-                        Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to 'int'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                        Interpreter.semanticError.Add(new Error("#107 Variable " + ((Variable)left).Value + " can't be implicitly converted to 'int' with type '" + ((Variable)left).Type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                     else if (right is CString)
                     {
                         if(((Variable)left).Type != "string")
-                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to 'string'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));                        
+                            Interpreter.semanticError.Add(new Error("#108 Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to 'string'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));                        
                         else
                             ((CString)right).Semantic();
                     }
                     else if (right is UnaryOp && ((UnaryOp)right).Op == "new")
                     {
                         if (((Variable)left).Type != ((UnaryOp)right).Name.Value)
-                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to " + ((UnaryOp)right).Name.Value + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                            Interpreter.semanticError.Add(new Error("#109 Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to " + ((UnaryOp)right).Name.Value + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                     }
                 }
 
                 if (isMismash && originlDateType != ((Variable)left).getType().Value)
                 {
-                    Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + originlDateType + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                    Interpreter.semanticError.Add(new Error("#110 Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + originlDateType + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                 }
 
                 if (isRedeclared)
                 {
-                    Interpreter.semanticError.Add(new Error("Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' is alerady declared as '" + originlDateType+ "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                    Interpreter.semanticError.Add(new Error("#111 Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' is alerady declared as '" + originlDateType+ "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                 }
             }
 

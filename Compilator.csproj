@@ -54,6 +54,7 @@
     <Compile Include="Types\Class.cs" />
     <Compile Include="Types\For.cs" />
     <Compile Include="Types\Function.cs" />
+    <Compile Include="Types\Generic.cs" />
     <Compile Include="Types\If.cs" />
     <Compile Include="Types\Interface.cs" />
     <Compile Include="Types\Lambda.cs" />

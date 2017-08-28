@@ -12,6 +12,7 @@ namespace Compilator
         Token source;
         Block block;
         bool isIterable = false;
+        string className = "";
 
         public For(Variable variable, Token source, Block block)
         {
@@ -37,6 +38,7 @@ namespace Compilator
                         {
                             isIterable = true;
                         }
+                        className = ((Class)to).Name.Value;
                     }
                 }
 
@@ -62,7 +64,10 @@ namespace Compilator
 
         public override void Semantic()
         {
-            
+            if (!isIterable)
+            {
+                Interpreter.semanticError.Add(new Error("Variable " + source.Value + " with class '"+ className + "' is not Iterable", Interpreter.ErrorType.ERROR, source));
+            }
         }
 
         public override int Visit()

@@ -134,7 +134,7 @@ namespace Compilator
                 child.Visit();
             }
             return 0;
-        }
+        }        
 
         public override void Semantic()
         {

@@ -15,8 +15,14 @@ namespace Compilator
         public TypeObject   _class;
         public Class        class_;
         public Interface    inter_;
+        public Generic      genei_;
         Types key;
         bool isKey = false;
+        public List<string> genericArgs = new List<string>();
+        public Token asDateType = null;
+        public bool isis = true;
+        public bool isArray = false;
+        public int arraySize = 0;
 
         public Variable(Token token, Types block, Token dateType = null)
         {
@@ -51,7 +57,7 @@ namespace Compilator
         public void   setType(Token _type) {
             this.dateType = _type;
             if (this.dateType.Value != "auto")
-            {
+            {                
                 if (this.block.SymbolTable.FindInternal(dateType.Value))
                 {
                     Type type = this.block.SymbolTable.GetType(dateType.Value);
@@ -67,6 +73,26 @@ namespace Compilator
         public Token  getDateType() { return dateType; }
         public bool   IsKey { get { return isKey; } }
         public Types  Key { get { return key; } }
+        public void MadeArray(int size) { isArray = true; arraySize = size; }
+
+        public Token AsDateType
+        {
+            set
+            {                
+                Token dateType = value;
+                if (this.block.SymbolTable.Find(dateType.Value))
+                {
+                    _class = null;
+                    Types fic = this.block.SymbolTable.Get(dateType.Value);
+                    if (fic is Class)
+                        class_ = (Class)fic;
+                    else if (fic is Interface)
+                        inter_ = (Interface)fic;
+                }
+                asDateType = value;
+            }
+            get { return asDateType; }
+        }
 
         public void setKey(Types key)
         {
@@ -123,6 +149,8 @@ namespace Compilator
                         class_ = (Class)fic;
                     else if (fic is Interface)
                         inter_ = (Interface)fic;
+                    else if (fic is Generic)
+                        genei_ = (Generic)fic;
                 }
             }
         }
@@ -131,14 +159,33 @@ namespace Compilator
         {
             if(key != null)
                 key.endit = false;
+
+            string vname;
+
+            string nameclass = "";
+            if (class_ != null)
+                nameclass = (class_.JSName != "" ? class_.JSName : class_.Name.Value);
+            else if (inter_ != null)
+                nameclass = inter_.Name.Value;
+            else if (_class != null)
+                nameclass = _class.Name;
+
             if (Value.Split('.')[0] == "this")
             {
+                vname = string.Join(".", value.Split('.').Skip(1)) + (isKey ? "[" + key.Compile() + "]" : "");
+
                 if (block.isInConstructor)
                 {
+                    if (asDateType != null)
+                        return DoTabs(tabs) + (inParen ? "(" : "") + "($this." + vname + ".constructor.name == '" + nameclass + "' ? $this." + vname + " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
                     return DoTabs(tabs) + (inParen ? "(" : "") + "$this." + string.Join(".", value.Split('.').Skip(1)) + (isKey ? "["+key.Compile()+"]" : "") + (inParen ? ")" : "");
                 }
             }
-            return DoTabs(tabs) + (inParen ? "(" : "") + Value + (isKey ? "[" + key.Compile() + "]" : "") + (inParen ? ")" : "");
+
+            vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
+            if (asDateType != null)
+                return DoTabs(tabs) + (inParen ? "(" : "") + "(" + vname + ".constructor.name == '" + nameclass + "' ? "+vname+ " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
+            return DoTabs(tabs) + (inParen ? "(" : "") + vname + (inParen ? ")" : "");
         }
 
         public override int Visit()
@@ -204,34 +251,40 @@ namespace Compilator
         }        
         public Token OutputType(Token.Type op, object first, object second)
         {
-            if (_class != null && (class_ == null && inter_ == null))
+            if (_class != null && (class_ == null && inter_ == null && genei_ != null))
                 return _class.OutputType(GetOperator(op), first, second);
             else if (class_ != null)
                 return class_.OutputType(GetOperatorName(op), first, second);
             else if (inter_ != null)
                 return inter_.OutputType(GetOperatorName(op), first, second);
+            else if (genei_ != null)
+                return genei_.OutputType(GetOperatorName(op), first, second);
             return null;
         }
         public bool SupportOp(Token.Type op)
         {
             object o = null;
-            if (_class != null && (class_ == null && inter_ == null))
+            if (_class != null && (class_ == null && inter_ == null && genei_ != null))
                 o = _class.SupportOp(GetOperator(op));
             else if (class_ != null)
                 o = class_.SupportOp(GetOperatorName(op));
             else if (inter_ != null)
                 o = inter_.SupportOp(GetOperatorName(op));
+            else if (genei_ != null)
+                o = genei_.SupportOp(GetOperatorName(op));
             return (o is null ? false : (bool)o);
         }
         public bool SupportSecond(Token.Type op, object second, object secondAsVariable)
         {
             object o = null;
-            if (_class != null)
+            if (_class != null && (class_ == null && inter_ == null && genei_ != null))
                 o = _class.SupportSecond(second, secondAsVariable);
             else if (class_ != null)
                 o = class_.SupportSecond(GetOperatorName(op), second, secondAsVariable);
             else if (inter_ != null)
                 o = inter_.SupportSecond(GetOperatorName(op), second, secondAsVariable);
+            else if (genei_ != null)
+                o = genei_.SupportSecond(GetOperatorName(op), second, secondAsVariable);
             return (o is null ? false : (bool)o);
         }          
         public object Operator(Token.Type op, object first, object second)
@@ -244,6 +297,8 @@ namespace Compilator
 
         public override void Semantic()
         {
+            if (this.dateType.Value == "auto")
+                Check();
             if (isKey && !SupportOp(Token.Type.GET))
             {
                 Interpreter.semanticError.Add(new Error("Date type "+dateType.Value+" not support 'get' operator", Interpreter.ErrorType.ERROR, token));

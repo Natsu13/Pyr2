@@ -79,10 +79,12 @@ namespace Compilator
 
         static public bool operator ==(ParameterList a, ParameterList b)
         {
+            if (a is null) return true;
             return a.Equal(b);
         }
         static public bool operator !=(ParameterList a, ParameterList b)
         {
+            if (a is null) return false;
             return !a.Equal(b);
         }
         public override bool Equals(object obj)
@@ -96,7 +98,10 @@ namespace Compilator
 
         public override void Semantic()
         {
-            
+            foreach (Types par in parameters)
+            {
+                par.Semantic();
+            }
         }
 
         public override int Visit()

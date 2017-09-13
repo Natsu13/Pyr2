@@ -33,7 +33,7 @@ namespace Compilator
                 dateType = new Token(Token.Type.AUTO, "auto");
             this.dateType = dateType;
             
-            if (this.dateType.Value != "auto")
+            if (this.dateType.Value != "auto" && this.block != null)
             {
                 if (this.block.SymbolTable.FindInternal(dateType.Value))
                 {
@@ -106,6 +106,12 @@ namespace Compilator
             if (Value.Split('.')[0] == "this")
             {                
                 newname = block.getClass() + "." + string.Join(".", value.Split('.').Skip(1));
+            }
+            if(Value == "this")
+            {
+                Types s = this.assingBlock.SymbolTable.Get(this.assingBlock.assignTo.Split('.')[0]);
+                if(s is Class)
+                    this.dateType = ((Class)this.assingBlock.SymbolTable.Get(this.assingBlock.assignTo.Split('.')[0])).Name;
             }
             if (this.dateType.Value == "auto")
             {

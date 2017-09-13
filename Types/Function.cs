@@ -122,14 +122,23 @@ namespace Compilator
                         ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");                    
                     else
                         ret += tbs + assignTo + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
-                }
+                }                
                 if(isConstructor)
                 {
                     if (block == null) ret += "\n";
                     ret += tbs + "\tvar $this = Object.create(" + fromClass + ".prototype);\n";
                     ret += tbs + "\t" + fromClass + ".call($this);\n";
                 }
-                if(block != null)
+
+                foreach (Types t in paraml.Parameters)
+                {
+                    if (t is Assign a)
+                    {
+                        ret += tbs + "\tif(typeof "+a.Left.Compile()+" == \"undefined\") " + a.Left.Compile()+" = " + a.Right.Compile()+";\n";
+                    }
+                }
+
+                if (block != null)
                     ret += block.Compile(tabs + 1);
                 if (isConstructor)
                 {
@@ -156,6 +165,7 @@ namespace Compilator
                 Interpreter.semanticError.Add(new Error("Illegal modifier for the interface static "+assingBlock.assignTo+"."+name.Value+"("+paraml.List()+")", Interpreter.ErrorType.ERROR, _static));
             //else if(!isStatic && isConstructor)
             //    Interpreter.semanticError.Add(new Error("Constructor " + name.Value + "(" + paraml.List() + ") of class " + assingBlock.assignTo + " must be static", Interpreter.ErrorType.ERROR, _constuctor));
+            ParameterList.Semantic();
             if (block == null && assingBlock.Type != Block.BlockType.INTERFACE && !isExternal)
             {
                 Interpreter.semanticError.Add(new Error("The body of function " + assingBlock.assignTo + "." + name.Value + "(" + paraml.List() + ") must be defined", Interpreter.ErrorType.ERROR, name));

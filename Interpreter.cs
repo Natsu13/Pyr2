@@ -310,6 +310,8 @@ namespace Compilator
         public ParameterList Parameters(bool declare = false)
         {
             ParameterList plist = new ParameterList(declare);
+            bool defaultstart = false;
+            plist.token = current_token;
             Eat(Token.Type.LPAREN);
             while(current_token.type != Token.Type.RPAREN && current_token.type != Token.Type.EOF && !brekall)
             {
@@ -323,7 +325,19 @@ namespace Compilator
                         Eat(Token.Type.CLASS);
                     Token vname = current_token;
                     Eat(Token.Type.ID);
-                    plist.parameters.Add(new Variable(vname, current_block, vtype));
+                    if (current_token.type == Token.Type.ASIGN)
+                    {
+                        Token assign = current_token;
+                        Eat(Token.Type.ASIGN);
+                        Types _default = Expr();
+                        plist.parameters.Add(new Assign(new Variable(vname, current_block, vtype), assign, _default, current_block));
+                        defaultstart = true;
+                    }
+                    else
+                    {
+                        if (defaultstart) { plist.cantdefault = true; }
+                        plist.parameters.Add(new Variable(vname, current_block, vtype));
+                    }
                 }
                 else
                 {
@@ -387,6 +401,7 @@ namespace Compilator
                     up.genericArgments = garg;
                     if(size > -1)
                         up.MadeArray(size);
+                    up.assingBlock = current_block;
                     return up;
                 }
                 else
@@ -396,6 +411,7 @@ namespace Compilator
                     up.genericArgments = garg;
                     if (size > -1)
                         up.MadeArray(size);
+                    up.assingBlock = current_block;
                     return up;
                 }
             }            
@@ -727,8 +743,7 @@ namespace Compilator
                 Token n = current_token;
                 Eat(Token.Type.ID);
                 Eat(Token.Type.IN);
-                Token f = current_token;
-                Eat(Token.Type.ID);
+                Types f = Expr();
                 Eat(Token.Type.RPAREN);
                 Block block = CatchBlock(Block.BlockType.FOR);
                 return new For(new Variable(n, current_block, c), f, block);

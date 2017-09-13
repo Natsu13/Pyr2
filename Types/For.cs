@@ -9,12 +9,12 @@ namespace Compilator
     class For : Types
     {
         Variable variable;
-        Token source;
+        Types source;
         Block block;
         bool isIterable = false;
         string className = "";
 
-        public For(Variable variable, Token source, Block block)
+        public For(Variable variable, Types source, Block block)
         {
             this.variable = variable;
             this.source = source;
@@ -23,35 +23,37 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
-            string ret = "";
-            if (block.SymbolTable.Find(source.Value))
-            {                
-                Types t = block.SymbolTable.Get(source.Value);
-                if(t is Assign)
-                {
-                    Types q = ((Assign)block.SymbolTable.Get(source.Value)).Left;
-                    if (q is Variable v)
-                    {
-                        //Type tp = block.SymbolTable.GetType(v.getDateType().Value);
-                        Types to = block.SymbolTable.Get(v.getDateType().Value);
-                        if(((Class)to).haveParent("IIterable"))
-                        {
-                            isIterable = true;
-                        }
-                        className = ((Class)to).Name.Value;
-                    }
-                }
+            string ret = "";     
+            if(source is Variable)
+            {
+                ((Variable)source).Check();
 
-                if (isIterable)
+                Types to = block.SymbolTable.Get(((Variable)source).getDateType().Value);
+                if (((Class)to).haveParent("IIterable"))
                 {
-                    int tmpc = block.Interpret.tmpcount++;
-                    string tab = DoTabs(tabs+1);
-                    ret  = tab + "var $tmp" + tmpc + " = " + source.Value + ".iterator();\n";
-                    ret += tab + "  while($tmp" + tmpc + ".hasNext()){\n";
-                    ret += tab + "    var " + variable.Value + " = $tmp" + tmpc + ".next();\n";
-                    ret += block.Compile(tabs + 3);
-                    ret += tab + "  }";
+                    isIterable = true;
                 }
+                className = ((Class)to).Name.Value;
+            }
+            if(source is UnaryOp uop && ((UnaryOp)source).Op == "new")
+            {
+                Types to = block.SymbolTable.Get(uop.Name.Value);
+                if (((Class)to).haveParent("IIterable"))
+                {
+                    isIterable = true;
+                }
+                className = ((Class)to).Name.Value;
+            }
+
+            if (isIterable)
+            {
+                int tmpc = block.Interpret.tmpcount++;
+                string tab = DoTabs(tabs + 1);
+                ret = tab + "var $tmp" + tmpc + " = " + source.Compile(0) + ".iterator();\n";
+                ret += tab + "  while($tmp" + tmpc + ".hasNext()){\n";
+                ret += tab + "    var " + variable.Value + " = $tmp" + tmpc + ".next();\n";
+                ret += block.Compile(tabs + 3);
+                ret += tab + "  }";
             }
 
             return ret;
@@ -59,14 +61,14 @@ namespace Compilator
 
         public override Token getToken()
         {
-            return source;
+            return source.getToken();
         }
 
         public override void Semantic()
         {
             if (!isIterable)
             {
-                Interpreter.semanticError.Add(new Error("Variable " + source.Value + " with class '"+ className + "' is not Iterable", Interpreter.ErrorType.ERROR, source));
+                Interpreter.semanticError.Add(new Error(source.TryVariable().Value + " with class '"+ className + "' is not Iterable", Interpreter.ErrorType.ERROR, source.getToken()));
             }
         }
 

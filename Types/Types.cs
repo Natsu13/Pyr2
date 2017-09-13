@@ -31,6 +31,8 @@ namespace Compilator
                 return new Variable(((CString)this).getToken(), this.assingBlock, new Token(Token.Type.CLASS, "string"));
             if (this is BinOp)
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((BinOp)this).OutputType);
+            if(this is UnaryOp && ((UnaryOp)this).Op == "new")
+                return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((UnaryOp)this).Name);
             if (this is Null)
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, new Token(Token.Type.NULL, "null"));
             return (Variable)this;

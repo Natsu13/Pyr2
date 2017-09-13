@@ -10,13 +10,15 @@ namespace Compilator
     {
         public List<Types> parameters = new List<Types>();
         bool declare = false;
+        public bool cantdefault = false;
+        public Token token;
 
         public ParameterList(bool declare)
         {
             this.declare = declare;
         }
 
-        public override Token getToken() { return null; }
+        public override Token getToken() { return token; }
 
         public Variable Find(string name)
         {
@@ -51,8 +53,19 @@ namespace Compilator
                 {
                     assingBlock.variables.Add(((Variable)par).Value, new Assign(((Variable)par), new Token(Token.Type.ASIGN, '='), new Null()));                    
                 }
-                if (ret != "") ret += ", ";                
-                ret += par.Compile(0);                
+                else if(par is Assign && assingBlock != null)
+                {
+                    assingBlock.variables.Add(((Assign)par).Left.TryVariable().Value, (Assign)par);
+                }
+                if (ret != "") ret += ", ";
+                if (declare)
+                {
+                    if (par is Assign)
+                        ret += ((Assign)par).Left.Compile();
+                    else
+                        ret += par.Compile(0);
+                }
+                else ret += par.Compile(0);                
             }
             assingBlock = null;
             return ret;
@@ -79,12 +92,12 @@ namespace Compilator
 
         static public bool operator ==(ParameterList a, ParameterList b)
         {
-            if (a is null) return true;
+            if (a is null) return false;
             return a.Equal(b);
         }
         static public bool operator !=(ParameterList a, ParameterList b)
         {
-            if (a is null) return false;
+            if (a is null) return true;
             return !a.Equal(b);
         }
         public override bool Equals(object obj)
@@ -94,10 +107,14 @@ namespace Compilator
         public override int GetHashCode()
         {
             return List().GetHashCode();
-        }
+        }        
 
         public override void Semantic()
         {
+            if (cantdefault)
+            {
+                Interpreter.semanticError.Add(new Error("Optional parameters must follow all required parameters", Interpreter.ErrorType.ERROR, token));
+            }
             foreach (Types par in parameters)
             {
                 par.Semantic();

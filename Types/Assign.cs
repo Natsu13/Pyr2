@@ -78,7 +78,7 @@ namespace Compilator
                 isDeclare = false;
             if (left is Variable)
             {
-                if (((Variable)left).Block.blockAssignTo != "") return "";
+                //if (((Variable)left).Block.blockAssignTo != "") return "";
                 right.assingBlock = ((Variable)left).Block;
                 if (right is UnaryOp)
                     ((UnaryOp)right).endit = false;
@@ -121,6 +121,8 @@ namespace Compilator
                                     type = ((Variable)right).Type;
                                 }
                             }
+                            else if(right is BinOp) type = ((BinOp)right).OutputType.Value;
+
                             if (ava.GetType() != type)
                             {
                                 Interpreter.semanticError.Add(new Error("#101 Variable " + ((Variable)left).Value + " with type '" + ava.GetType() + "' can't be implicitly converted to '" + type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));

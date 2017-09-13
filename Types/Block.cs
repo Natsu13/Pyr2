@@ -61,10 +61,10 @@ namespace Compilator
                         if (((Variable)uop.Expr).Type == "auto")
                         {
                             string newname = ((Variable)uop.Expr).Value;
+                            if (((Variable)uop.Expr).Value == "this")
+                                continue;
                             if(((Variable)uop.Expr).Value.Split('.')[0] == "this")
-                            {
-                                newname = parent.assignTo + "." + string.Join(".", ((Variable)uop.Expr).Value.Split('.').Skip(1));
-                            }
+                                newname = parent.assignTo + "." + string.Join(".", ((Variable)uop.Expr).Value.Split('.').Skip(1));                            
                             Types avaq = SymbolTable.Get(newname);
                             Assign ava = null;
                             if (!(avaq is Error))

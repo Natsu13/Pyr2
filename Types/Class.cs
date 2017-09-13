@@ -41,9 +41,15 @@ namespace Compilator
 
         public bool haveParent(string name)
         {
-            foreach(Token p in parents)
+            if (parents == null) return false;
+            foreach (Token p in parents)
             {
                 if (p.Value == name) return true;
+                Types to = block.SymbolTable.Get(p.Value);
+                if (to is Class && ((Class)to).haveParent("IIterable"))
+                    return true;
+                else if (to is Interface && ((Interface)to).haveParent("IIterable"))
+                    return true;
             }
             return false;
         }        

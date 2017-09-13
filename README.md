@@ -10,6 +10,60 @@ external class console {
 	function log(string text) -> void;
 }
 
+class StringIterator:Iterator {
+	int index  = 0;
+	string self;
+	
+	function StringIterator(string self) {
+		this.self = self;
+	}
+	
+	function next() -> string {
+		return this.self[this.index++];
+	}
+	function hasNext() -> bool {
+		if(this.index > this.self.length - 1){
+			return false;
+		}
+		return true;
+	}
+}
+
+function string.iterator() -> Iterator {
+	return new StringIterator(this);
+}
+
+class Range: IIterable, Iterator {
+	int start = 0;
+	int step = 0;
+	int end = 1;
+	int current = 0;
+	
+	function Range(int start, int end, int step = 1) {
+		this.start = start;
+		this.end  = end;
+		this.current = start;
+		this.step = step;
+	}
+	
+	function iterator() -> Iterator {
+		return this;
+	}
+	
+	function next() -> int {
+		int ret = this.current;
+		this.current = ret + this.step;
+		return ret;
+	}
+	
+	function hasNext() -> bool {
+		if(this.current + this.step > this.end + this.step){
+			return false;
+		}
+		return true;
+	}
+}
+
 class Integer<T> {
 	T internal;
 	
@@ -36,51 +90,35 @@ class Integer<T> {
 	}
 }
 
-interface Iterator {
-	function next() -> string;
-	function hasNext() -> bool;
-}
-
-class StringIterator:Iterator {
-	int index  = 0;
-	string self;
-	
-	function StringIterator(string self) {
-		this.self = self;
-	}
-	
-	function next() -> string {
-		return this.self[++this.index];
-	}
-	function hasNext() -> bool {
-		if(this.index > this.self.length - 2){
-			return false;
-		}
-		return true;
-	}
-}
-
-function string.iterator() -> Iterator {
-	return new StringIterator(this);
-}
+function _test(){ console.log("test"); }
 
 function main(){
-	Integer t = new Integer(2);
-	Integer x = new Integer(5);
+	Integer<int> t = new Integer<int>(2);
+	Integer<int> x = new Integer<int>(5);
 	if(t < x){
-		console.log("2 > 5");
+		console.log("2 < 5");
 	}
 	
 	lambda fnc = { (int a, int b) -> a + b };
 	
 	Integer<int>[10] pole = new Integer<int>[10](10);
+	console.log(pole);
+	console.log(pole[2]);
+	
+	q = t - x;
+	console.log(q);
 	
 	console.log(fnc(2,5));
+	
+	console.log(5 + 2);
 	
 	string test = "test";
 	
 	for(string ch in test){
 		console.log(ch);
+	}
+	for(int i in new Range(0,10,2)){
+		console.log(i);
 	}
 }
 ```

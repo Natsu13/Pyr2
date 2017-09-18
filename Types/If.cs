@@ -19,7 +19,7 @@ namespace Compilator
         {
             tabs++;
             string tbs = DoTabs(tabs+1);
-            string ret = "\n";
+            string ret = "";
             bool first = true;
 
             tabs+=2;
@@ -29,7 +29,7 @@ namespace Compilator
                 if (first)
                 {                    
                     first = false;
-                    ret += tbs + "if(" + c.Key.Compile() + ") {\n" + c.Value.Compile(tabs) + tbs + "}\n";
+                    ret += "if(" + c.Key.Compile() + ") {\n" + c.Value.Compile(tabs) + tbs + "}\n";
                 }else if(c.Key is NoOp)
                 {
                     ret += tbs + "else {\n" + c.Value.Compile(tabs) + tbs + "}\n";
@@ -39,7 +39,7 @@ namespace Compilator
                     ret += tbs + "else if(" + c.Key.Compile() + ") {\n" + c.Value.Compile(tabs) + tbs + "}\n";
                 }
             }
-            return ret;
+            return ret.Substring(0,ret.Length - 1);
         }
         public override Token getToken() { return null; }
 

@@ -124,6 +124,11 @@ namespace Compilator
                 if (Char.IsLetterOrDigit(current_char) || current_char == '_' || current_char == '$')
                     return Id();
 
+                if (current_char == '.' && Peek() == '.' && Peek(2) == '.')
+                {
+                    Advance(); Advance(); Advance();
+                    return new Token(Token.Type.THREEDOT, "...", current_token_pos, current_file);
+                }
                 if (current_char == '-' && Peek() == '>') {
                     Advance(); Advance();
                     return new Token(Token.Type.DEFINERETURN, "->", current_token_pos, current_file);
@@ -275,7 +280,7 @@ namespace Compilator
 
         public void SkipComments()
         {
-            while (current_char != '*' && Peek() != '/')
+            while (!(current_char == '*' && Peek() == '/'))
                 Advance();
             Advance();
             Advance();
@@ -318,9 +323,17 @@ namespace Compilator
                 Token vtype = null;
                 if (declare)
                 {
+                    if (plist.allowMultipel)
+                        Error("Multiple arguments can be only at end of the arguments list");
                     vtype = current_token;
                     if (current_token.type == Token.Type.ID)
                         Eat(Token.Type.ID);
+                    else if (current_token.type == Token.Type.THREEDOT)
+                    {
+                        Eat(Token.Type.THREEDOT);
+                        plist.allowMultipel = true;
+                        continue;
+                    }
                     else
                         Eat(Token.Type.CLASS);
                     Token vname = current_token;
@@ -439,6 +452,14 @@ namespace Compilator
             {
                 Eat(Token.Type.INTEGER);
                 return new Number(token);
+            }
+            else if (token.type == Token.Type.FUNCTION)
+            {
+                Token t = current_token;
+                Eat(Token.Type.FUNCTION);
+                UnaryOp up = new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), t, null, current_block, false);
+                up.asArgument = true;
+                return up;
             }
             else if (token.type == Token.Type.STRING)
             {

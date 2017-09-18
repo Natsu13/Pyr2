@@ -146,7 +146,7 @@ namespace Compilator
                 {
                     ret += tbs + "\treturn $this;\n";
                 }
-                ret += tbs + "}";
+                ret += tbs + "}\n";
             }
             return ret;
         }

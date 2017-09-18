@@ -16,6 +16,7 @@ namespace Compilator
         public List<string> genericArgments = new List<string>();
         bool isArray = false;
         int arraySize = -1;
+        public bool asArgument = false;
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {
@@ -81,6 +82,8 @@ namespace Compilator
                 }
                 else
                 {
+                    if(asArgument)
+                        return tbs + (inParen ? "(" : "") + name.Value + (inParen ? ")" : "") + (endit ? ";" : "");
                     if (plist == null)
                         return tbs + (inParen ? "(" : "") + name.Value + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
                     return tbs + (inParen ? "(" : "") + name.Value + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");

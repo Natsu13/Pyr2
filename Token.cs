@@ -12,7 +12,7 @@ namespace Compilator
         {
             NONE, ERROR, EOF, NULL,
             INTEGER, STRING, REAL, BOOL, AUTO,
-            COMMA, SEMI, DOT, COLON, IS,
+            COMMA, SEMI, DOT, COLON, IS, THREEDOT, 
             PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN, INC, DEC,
             CLASS, ID, FUNCTION, INTERFACE, LAMBDA, 
             NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,

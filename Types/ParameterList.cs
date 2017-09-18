@@ -12,6 +12,7 @@ namespace Compilator
         bool declare = false;
         public bool cantdefault = false;
         public Token token;
+        public bool allowMultipel = false;
 
         public ParameterList(bool declare)
         {
@@ -75,6 +76,7 @@ namespace Compilator
 
         public bool Equal(ParameterList b)
         {
+            if (this is null && b is null) return true;
             if (b is null) return false;
             if (this.parameters.Count != b.parameters.Count)
                 return false;
@@ -92,11 +94,13 @@ namespace Compilator
 
         static public bool operator ==(ParameterList a, ParameterList b)
         {
+            if (a is null && b is null) return true;
             if (a is null) return false;
             return a.Equal(b);
         }
         static public bool operator !=(ParameterList a, ParameterList b)
         {
+            if (a is null && !(b is null)) return false;
             if (a is null) return true;
             return !a.Equal(b);
         }

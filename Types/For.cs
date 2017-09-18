@@ -44,10 +44,21 @@ namespace Compilator
                 }
                 className = ((Class)to).Name.Value;
             }
+            if (source is UnaryOp uoq && ((UnaryOp)source).Op == "call")
+            {
+                Types t1 = block.SymbolTable.Get(uoq.Name.Value);
+                Types to = block.SymbolTable.Get(((Function)t1).Returnt.Value);
+                if (((Class)to).haveParent("IIterable"))
+                {
+                    isIterable = true;
+                }
+                className = ((Class)to).Name.Value;
+            }
 
             if (isIterable)
             {
                 int tmpc = block.Interpret.tmpcount++;
+                source.endit = false;
                 string tab = DoTabs(tabs + 1);
                 ret = tab + "var $tmp" + tmpc + " = " + source.Compile(0) + ".iterator();\n";
                 ret += tab + "  while($tmp" + tmpc + ".hasNext()){\n";

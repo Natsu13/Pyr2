@@ -11,13 +11,13 @@ namespace Compilator
         public enum Type
         {
             NONE, ERROR, EOF, NULL,
-            INTEGER, STRING, DYNAMIC, REAL, BOOL, AUTO,
+            INTEGER, STRING, REAL, BOOL, AUTO,
             COMMA, SEMI, DOT, COLON, IS,
             PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN, INC, DEC,
             CLASS, ID, FUNCTION, INTERFACE, LAMBDA, 
             NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,
             LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL, LSQUARE, RSQUARE, 
-            STATIC, VOID, EXTERNAL, OPERATOR, 
+            STATIC, VOID, EXTERNAL, OPERATOR, DYNAMIC,
             IF, ELSE, ELSEIF, FOR, 
             EQUAL, NOTEQUAL, AND, OR, MORE, LESS, 
             TRUE, FALSE,
@@ -44,7 +44,8 @@ namespace Compilator
             { "for",        new Token(Type.FOR, "for") },
             { "in",         new Token(Type.IN, "in") },
             { "operator",   new Token(Type.OPERATOR, "operator") },
-            { "is",         new Token(Type.IS, "is") }
+            { "is",         new Token(Type.IS, "is") },
+            { "dynamic",    new Token(Type.DYNAMIC, "dynamic") }
         };
 
         public Type type;

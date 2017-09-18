@@ -46,9 +46,14 @@ namespace Compilator
             string o = Variable.GetOperatorStatic(op.type);
             if(o == "call")
             {
+                bool isDynamic = false;
                 if (!block.SymbolTable.Find(name.Value))
                 {                    
-                    return "";
+                    Types q = block.SymbolTable.Get(name.Value.Split('.')[0]);
+                    if (q is Class && ((Class)q).isDynamic) { isDynamic = true; }
+                    if (q is Interface && ((Interface)q).isDynamic) { isDynamic = true; }
+                    if(!isDynamic)
+                        return "";
                 }
                 Types t = block.SymbolTable.Get(name.Value);
                 if(t is Assign && ((Assign)t).Right is Lambda)
@@ -65,7 +70,11 @@ namespace Compilator
                 if (name.Value.Contains("."))
                 {
                     string[] nnaml = name.Value.Split('.');
-                    string nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t).Name;
+                    string nname = "";
+                    if (isDynamic)
+                        nname = name.Value;
+                    else
+                        nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t).Name;
                     if (plist == null)
                         return tbs + (inParen ? "(" : "") + nname + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
                     return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
@@ -127,7 +136,15 @@ namespace Compilator
                 if(block.Parent?.Parent == null)
                     Interpreter.semanticError.Add(new Error("Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
                 if (block.assingBlock != null && !block.assingBlock.SymbolTable.Find(name.Value))
+                {
+                    Types t = block.assingBlock.SymbolTable.Get(name.Value.Split('.')[0]);
+                    if (t is Class || t is Interface)
+                    {
+                        if (t is Class && ((Class)t).isDynamic) { return; }
+                        if (t is Interface && ((Interface)t).isDynamic) { return; }
+                    }
                     Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                }
             }
             if(o == "new")
             {

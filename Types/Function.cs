@@ -16,6 +16,8 @@ namespace Compilator
         public Token _static;
         public bool isExternal = false;
         public Token _external;
+        public bool isDynamic = false;
+        public Token _dynamic;        
         public bool isExtending = false;
         public string extendingClass = "";
         public bool isOperator = false;

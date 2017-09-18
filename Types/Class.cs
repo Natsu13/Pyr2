@@ -13,6 +13,8 @@ namespace Compilator
         List<Token> parents;
         public bool isExternal = false;
         public Token _external;
+        public bool isDynamic = false;
+        public Token _dynamic;
         public string JSName = "";
         List<string> genericArguments = new List<string>();
 

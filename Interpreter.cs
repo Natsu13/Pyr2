@@ -678,12 +678,12 @@ namespace Compilator
                     returnv = Expr();
                 return new UnaryOp(token, returnv, current_block);
             }
-            else if (current_token.type == Token.Type.STATIC)
+            else if (current_token.type == Token.Type.DYNAMIC)
             {
                 Token modifer = current_token;
                 current_modifer.Add(current_token);
-                Eat(Token.Type.STATIC);
-                if (current_token.type == Token.Type.NEWCLASS || 
+                Eat(Token.Type.DYNAMIC);
+                if (current_token.type == Token.Type.NEWCLASS ||
                     current_token.type == Token.Type.NEWFUNCTION ||
                     current_token.type == Token.Type.OPERATOR ||
                     current_token.type == Token.Type.ID)
@@ -692,7 +692,25 @@ namespace Compilator
                     current_modifer.Remove(modifer);
                     return type;
                 }
-                Error("The static modifer can modify only class, function or variable");
+                Error("The dynamic modifer can modify only class, function or variable");
+                return null;
+            }
+            else if (current_token.type == Token.Type.STATIC)
+            {
+                Token modifer = current_token;
+                current_modifer.Add(current_token);
+                Eat(Token.Type.STATIC);
+                if (current_token.type == Token.Type.NEWCLASS || 
+                    current_token.type == Token.Type.NEWFUNCTION ||
+                    current_token.type == Token.Type.OPERATOR ||
+                    current_token.type == Token.Type.DYNAMIC ||
+                    current_token.type == Token.Type.ID)
+                {
+                    Types type = Statement();
+                    current_modifer.Remove(modifer);
+                    return type;
+                }
+                Error("The static modifer can modify only class, function or variable and must be before dynamic modifer");
                 return null;
             }
             else if (current_token.type == Token.Type.EXTERNAL)
@@ -701,6 +719,7 @@ namespace Compilator
                 current_modifer.Add(current_token);
                 Eat(Token.Type.EXTERNAL);
                 if (current_token.type == Token.Type.STATIC ||
+                    current_token.type == Token.Type.DYNAMIC ||
                     current_token.type == Token.Type.OPERATOR ||
                     current_token.type == Token.Type.NEWCLASS ||
                     current_token.type == Token.Type.NEWFUNCTION ||
@@ -711,7 +730,7 @@ namespace Compilator
                     current_modifer.Remove(modifer);
                     return type;
                 }
-                Error("The external modifer can modify only class, interface, function or variable and must be before static modifer");
+                Error("The external modifer can modify only class, interface, function or variable and must be before static and dynamic modifer");
                 return null;
             }
             else if (current_token.type == Token.Type.OPERATOR)
@@ -898,6 +917,11 @@ namespace Compilator
                 func.isExternal = true;
                 func._external = getModifer(Token.Type.EXTERNAL);
             }
+            if (isModifer(Token.Type.DYNAMIC))
+            {
+                func.isDynamic = true;
+                func._dynamic = getModifer(Token.Type.DYNAMIC);
+            }
             if (isModifer(Token.Type.OPERATOR))
             {
                 func.isOperator = true;
@@ -973,6 +997,11 @@ namespace Compilator
                 c.isExternal = true;
                 c._external = getModifer(Token.Type.EXTERNAL);
             }
+            if (isModifer(Token.Type.DYNAMIC))
+            {
+                c.isDynamic = true;
+                c._dynamic = getModifer(Token.Type.DYNAMIC);
+            }
 
             current_block.SymbolTable.Add(name.Value, c);
             Eat(Token.Type.END);
@@ -1043,6 +1072,11 @@ namespace Compilator
             {
                 c.isExternal = true;
                 c._external = getModifer(Token.Type.EXTERNAL);
+            }
+            if (isModifer(Token.Type.DYNAMIC))
+            {
+                c.isDynamic = true;
+                c._dynamic = getModifer(Token.Type.DYNAMIC);
             }
 
             current_block.SymbolTable.Add(name.Value, c);

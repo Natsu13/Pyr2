@@ -118,7 +118,18 @@ namespace Compilator
                 Types fvar = this.block.FindVariable(newname);
                 if (this.block.SymbolTable.Find(newname))
                 {
-                    this.dateType = ((Variable)(((Assign)this.block.SymbolTable.Get(newname)).Left)).dateType;
+                    if (((Assign)this.block.SymbolTable.Get(newname)).Right is UnaryOp)
+                    {
+                        if (((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Op == "call")
+                        {
+                            Token fname = ((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Name;
+                            Function f = (Function)this.block.SymbolTable.Get(fname.Value);
+                            this.dateType = f.Returnt;
+                        }else
+                            this.dateType = ((Variable)(((Assign)this.block.SymbolTable.Get(newname)).Left)).dateType;
+                    }
+                    else
+                        this.dateType = ((Variable)(((Assign)this.block.SymbolTable.Get(newname)).Left)).dateType;
                 }
                 else if (fvar != null)
                 {

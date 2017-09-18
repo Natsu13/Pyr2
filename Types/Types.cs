@@ -33,6 +33,11 @@ namespace Compilator
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((BinOp)this).OutputType);
             if(this is UnaryOp && ((UnaryOp)this).Op == "new")
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((UnaryOp)this).Name);
+            if (this is UnaryOp && ((UnaryOp)this).Op == "call")
+            {
+                // TODO: Fix
+                return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((UnaryOp)this).Name);
+            }
             if (this is Null)
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, new Token(Token.Type.NULL, "null"));
             return (Variable)this;

@@ -34,7 +34,10 @@ namespace Compilator
                     continue;
                 if (t.Value is Interface && ((Interface)t.Value).isExternal)
                     continue;
-                outcom += "  _." + t.Key + " = " + t.Key+";\n";
+                if (t.Value is Function tf)
+                    outcom += "  _." + tf.Name + " = " + tf.Name + ";\n";
+                else
+                    outcom += "  _." + t.Key + " = " + t.Key+";\n";
             }
             if (block.SymbolTable.Find("main"))
             {

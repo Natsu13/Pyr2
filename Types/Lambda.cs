@@ -26,10 +26,14 @@ namespace Compilator
             }
         }
 
+        public ParameterList ParameterList { get { return plist; } }
+
         public override string Compile(int tabs = 0)
         {            
             return DoTabs(tabs) + "var lambda$" + name.Value + " = function("+plist.Compile()+"){ return " + expresion.Compile() + "; };";
         }
+
+        public string RealName { get { return getToken().Value; } }
 
         public override Token getToken()
         {

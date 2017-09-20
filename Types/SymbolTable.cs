@@ -167,7 +167,7 @@ namespace Compilator
         public List<Types> GetAll(string name)
         {
             List<Types> types = new List<Types>();
-            int index = 1;
+            int index = 2;
             if (!Find(name))
                 return null;
             Types rt = Get(name);
@@ -176,6 +176,7 @@ namespace Compilator
             while (Find(name + " " + index))
             {
                 types.Add(rt.assingBlock.SymbolTable.Get(name + " " + index));
+                index++;
             }
 
             return types;
@@ -298,7 +299,7 @@ namespace Compilator
                 return table[name];
             else
             {
-                if (assigment_block.variables.ContainsKey(name))
+                if (assigment_block.variables.Where(t => t.Key.Split(' ')[0] == name).Count() > 0)
                     return assigment_block.variables[name];
                 if (assigment_block.Parent != null)
                     return assigment_block.Parent.SymbolTable.Get(name);

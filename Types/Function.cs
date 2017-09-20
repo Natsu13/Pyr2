@@ -85,7 +85,7 @@ namespace Compilator
 
         public string getHash()
         {
-            if (isOperator || isConstructor)
+            if (isOperator || isConstructor || assingBlock.SymbolTable.GetAll(name.Value)?.Count > 1)
             {
                 return string.Format("{0:X8}", (name.Value + paraml.List() + block.Compile()).GetHashCode());
             }
@@ -99,6 +99,7 @@ namespace Compilator
                 return name.Value + (hash != "" ? "_" + hash : "");
             }
         }
+        public String RealName { get { return name.Value; } }
 
         public override string Compile(int tabs = 0)
         {

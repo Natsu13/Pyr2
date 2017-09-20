@@ -56,8 +56,32 @@ namespace Compilator
                     if(!isDynamic)
                         return "";
                 }
-                Types t = block.SymbolTable.Get(name.Value);
-                if(t is Assign && ((Assign)t).Right is Lambda)
+                List<Types> allf = block.SymbolTable.GetAll(name.Value);
+                Types t = null;
+                if (allf != null && allf.Count > 1)
+                {
+                    foreach (Types q in allf)
+                    {
+                        ParameterList p = null;
+                        if (q is Function)
+                            p = ((Function)q).ParameterList;
+                        if (q is Lambda)
+                            p = ((Lambda)q).ParameterList;
+
+                        if (p.Compare(plist))
+                        {
+                            t = q;
+                        }
+                    }
+
+                }else
+                    t = block.SymbolTable.Get(name.Value);
+
+                string newname = name.Value;
+                if (t is Function)
+                    newname = ((Function)t).Name;                
+
+                if (t is Assign && ((Assign)t).Right is Lambda)
                 {
                     if (plist == null)
                         return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
@@ -66,7 +90,7 @@ namespace Compilator
                 if (name.Value == "js")
                 {
                     string pl = plist.Compile();
-                    return pl.Substring(1, pl.Length - 2).Replace("\\", "") + (pl.Substring(pl.Length - 2, 1) != ";"?";":"");
+                    return pl.Substring(1, pl.Length - 2).Replace("\\", "") + (pl.Substring(pl.Length - 2, 1) != ";"?"":"");
                 }
                 if (name.Value.Contains("."))
                 {
@@ -83,10 +107,10 @@ namespace Compilator
                 else
                 {
                     if(asArgument)
-                        return tbs + (inParen ? "(" : "") + name.Value + (inParen ? ")" : "") + (endit ? ";" : "");
+                        return tbs + (inParen ? "(" : "") + newname + (inParen ? ")" : "") + (endit ? ";" : "");
                     if (plist == null)
-                        return tbs + (inParen ? "(" : "") + name.Value + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
-                    return tbs + (inParen ? "(" : "") + name.Value + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                        return tbs + (inParen ? "(" : "") + newname + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + newname + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
             }
             if (o == "new")
@@ -136,17 +160,75 @@ namespace Compilator
             string o = Variable.GetOperatorStatic(op.type);
             if (o == "call")
             {
-                if(block.Parent?.Parent == null)
+                Types t = null;
+                if (block.Parent?.Parent == null)
                     Interpreter.semanticError.Add(new Error("Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
                 if (block.assingBlock != null && !block.assingBlock.SymbolTable.Find(name.Value))
                 {
-                    Types t = block.assingBlock.SymbolTable.Get(name.Value.Split('.')[0]);
+                    t = block.assingBlock.SymbolTable.Get(name.Value.Split('.')[0]);
                     if (t is Class || t is Interface)
                     {
                         if (t is Class && ((Class)t).isDynamic) { return; }
                         if (t is Interface && ((Interface)t).isDynamic) { return; }
                     }
                     Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                }
+
+                List<Types> allf = block.SymbolTable.GetAll(name.Value);
+                Types tt = null;
+                string possible = "";
+                if (allf != null && allf.Count > 1)
+                {
+                    foreach (Types q in allf)
+                    {
+                        ParameterList p = null;
+                        if (q is Function)
+                        {
+                            p = ((Function)q).ParameterList;
+                            Function qf = ((Function)q);
+                            possible += "\n\t" + qf.RealName + "(" + qf.ParameterList.List() + ")";
+                        }
+                        if (q is Lambda)
+                        {
+                            p = ((Lambda)q).ParameterList;
+                            Lambda ql = (Lambda)q;
+                            possible += "\n\t" + ql.RealName + "(" + ql.ParameterList.List() + ")";
+                        }
+
+                        if (p.Compare(plist))
+                        {
+                            tt = q;
+                        }
+                    }
+                    if (tt == null)
+                    {
+                        Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " has been found but parameters is wrong. Here is possible solutions:" + possible, Interpreter.ErrorType.ERROR, name));
+                    }
+                }
+                else
+                {
+                    t = block.SymbolTable.Get(name.Value);
+                    if(t is Function tf)
+                    {
+                        if (!tf.ParameterList.Compare(plist))
+                        {
+                            ParameterList p = null;
+                            possible = "";
+                            if (t is Function)
+                            {
+                                p = ((Function)t).ParameterList;
+                                Function qf = ((Function)t);
+                                possible += "\n\t" + qf.RealName + "(" + qf.ParameterList.List() + ")";
+                            }
+                            if (t is Lambda)
+                            {
+                                p = ((Lambda)t).ParameterList;
+                                Lambda ql = (Lambda)t;
+                                possible += "\n\t" + ql.RealName + "(" + ql.ParameterList.List() + ")";
+                            }
+                            Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " has been found but parameters is wrong. Here is possible solution:" + possible, Interpreter.ErrorType.ERROR, name));
+                        }
+                    }
                 }
             }
             if(o == "new")

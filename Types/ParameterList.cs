@@ -40,6 +40,8 @@ namespace Compilator
                 if (ret != "") ret += ", ";
                 if (par is Variable)
                     ret += ((Variable)par).Type + " " + ((Variable)par).Value;
+                else if (par is Assign ap)
+                    ret += ap.GetType() + " " + ap.Left.TryVariable().Value + " = " + ap.Right.TryVariable().Value;
             }
             return ret;
         }
@@ -73,6 +75,47 @@ namespace Compilator
         }
 
         public List<Types> Parameters { get { return parameters; } }
+
+        public bool Compare(ParameterList p)
+        {
+            int i = 0;
+            bool haveDefault = false;
+            foreach(Types t in parameters)
+            {
+                bool def = false;
+                string dtype = null;
+                if(t is Variable)
+                    dtype = ((Variable)t).Type;
+                if(t is Assign)
+                {
+                    dtype = ((Variable)((Assign)t).Left).Type;
+                    def = true;
+                }
+                if (i >= p.parameters.Count && !allowMultipel && !def)
+                    return false;
+                else if (!def && dtype != p.parameters[i].TryVariable().Type)
+                    return false;
+                else if (def)
+                {
+                    haveDefault = true;
+                    if (i < p.parameters.Count)
+                    {
+                        if (dtype != p.parameters[i].TryVariable().Type)
+                            return false;                        
+                    }else
+                    {
+                        break;
+                    }
+                }
+                i++;
+            }
+            if(parameters.Count != p.Parameters.Count)
+            {
+                if (!allowMultipel && !haveDefault)
+                    return false;
+            }
+            return true;
+        }
 
         public bool Equal(ParameterList b)
         {

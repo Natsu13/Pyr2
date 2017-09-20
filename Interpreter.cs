@@ -453,14 +453,6 @@ namespace Compilator
                 Eat(Token.Type.INTEGER);
                 return new Number(token);
             }
-            else if (token.type == Token.Type.FUNCTION)
-            {
-                Token t = current_token;
-                Eat(Token.Type.FUNCTION);
-                UnaryOp up = new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), t, null, current_block, false);
-                up.asArgument = true;
-                return up;
-            }
             else if (token.type == Token.Type.STRING)
             {
                 Eat(Token.Type.STRING);
@@ -883,8 +875,14 @@ namespace Compilator
                     Eat(Token.Type.FUNCTION);
                 else
                     Eat(Token.Type.LAMBDA);
+            }      
+            if(current_token.type == Token.Type.RPAREN || current_token.type == Token.Type.COMMA)
+            {
+                UnaryOp up = new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, null, current_block, false);
+                up.asArgument = true;
+                return up;
             }
-            if (current_token.type == Token.Type.SEMI)
+            else if (current_token.type == Token.Type.SEMI)
             { 
                 return new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, null, current_block, true);
             }
@@ -899,7 +897,10 @@ namespace Compilator
         {
             Eat(Token.Type.NEWFUNCTION);
             Token name = current_token;
-            Eat(Token.Type.ID);
+            if (current_token.type == Token.Type.FUNCTION)
+                Eat(Token.Type.FUNCTION);
+            else
+                Eat(Token.Type.ID);
             if (brekall) return null;
             ParameterList p = Parameters(true);
             Token returnt = null;

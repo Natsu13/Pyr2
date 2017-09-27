@@ -1284,6 +1284,10 @@ namespace Compilator
             else
                 Eat(Token.Type.ID);           
 
+            if(current_token.type == Token.Type.LPAREN)
+            {
+                return FunctionCatch(((Variable)node).getToken());
+            }
             if(current_token.type == Token.Type.DEFINERETURN)
             {
                 ParameterList plist = new ParameterList(false);

@@ -51,16 +51,21 @@ namespace Compilator
             string o = Variable.GetOperatorStatic(op.type);
             if(o == "call")
             {
+                string nwnam = name.Value;
                 bool isDynamic = false;
                 if (!block.SymbolTable.Find(name.Value))
-                {                    
-                    Types q = block.SymbolTable.Get(name.Value.Split('.')[0]);
+                {
+                    nwnam = name.Value.Split('.')[0];
+                    if (name.Value.Split('.')[0] == "this")
+                        nwnam = string.Join(".", name.Value.Split('.').Skip(1));
+                    Types q = block.SymbolTable.Get(nwnam);
+
                     if (q is Class && ((Class)q).isDynamic) { isDynamic = true; }
                     if (q is Interface && ((Interface)q).isDynamic) { isDynamic = true; }
-                    if(!isDynamic)
+                    if(!isDynamic && !(q is Function))
                         return "";
                 }
-                List<Types> allf = block.SymbolTable.GetAll(name.Value);
+                List<Types> allf = block.SymbolTable.GetAll(nwnam);
                 Types t = null;
                 if (allf != null && allf.Count > 1)
                 {
@@ -79,9 +84,9 @@ namespace Compilator
                     }
 
                 }else
-                    t = block.SymbolTable.Get(name.Value);
+                    t = block.SymbolTable.Get(nwnam);
 
-                string newname = name.Value;
+                string newname = nwnam;
                 if (t is Function)
                     newname = ((Function)t).Name;                
 
@@ -256,13 +261,17 @@ namespace Compilator
                     Interpreter.semanticError.Add(new Error("Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
                 if (block.assingBlock != null && !block.assingBlock.SymbolTable.Find(name.Value))
                 {
-                    t = block.assingBlock.SymbolTable.Get(name.Value.Split('.')[0]);
+                    string nwnam = name.Value.Split('.')[0];
+                    if (name.Value.Split('.')[0] == "this")
+                        nwnam = string.Join(".", name.Value.Split('.').Skip(1));
+                    t = block.assingBlock.SymbolTable.Get(nwnam);
                     if (t is Class || t is Interface)
                     {
                         if (t is Class && ((Class)t).isDynamic) { return; }
                         if (t is Interface && ((Interface)t).isDynamic) { return; }
                     }
-                    Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                    if(t is Error)
+                        Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
                 }
 
                 List<Types> allf = block.SymbolTable.GetAll(name.Value);

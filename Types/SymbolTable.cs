@@ -266,8 +266,39 @@ namespace Compilator
             }
         }
 
+        public Types Get(string name, ParameterList plist)
+        {
+            Types r = Get(name);
+            if (!(r is Function) && !(r is Lambda))
+                return r;
+
+            List<Types> allf = GetAll(name);
+            Types t = null;
+            if (allf != null && allf.Count > 1)
+            {
+                foreach (Types q in allf)
+                {
+                    ParameterList p = null;
+                    if (q is Function)
+                        p = ((Function)q).ParameterList;
+                    if (q is Lambda)
+                        p = ((Lambda)q).ParameterList;
+
+                    if (p.Compare(plist))
+                    {
+                        t = q;
+                    }
+                }
+
+            }
+            if (t != null) r = t;
+            return r;
+        }
+
         public Types Get(string name)
         {
+            if (name.Split('.')[0] == "this")
+                name = string.Join(".", name.Split('.').Skip(1));
             if (name.Contains('.'))
             {
                 string[] nams = name.Split('.');

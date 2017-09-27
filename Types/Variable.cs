@@ -149,8 +149,12 @@ namespace Compilator
                         if (((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Op == "call")
                         {
                             Token fname = ((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Name;
-                            Function f = (Function)this.block.SymbolTable.Get(fname.Value);
-                            this.dateType = f.Returnt;
+                            Types sd = this.block.SymbolTable.Get(fname.Value);
+                            if (!(sd is Error))
+                            {
+                                Function f = (Function)sd;
+                                this.dateType = f.Returnt;
+                            }
                         }else
                             this.dateType = ((Variable)(((Assign)this.block.SymbolTable.Get(newname)).Left)).dateType;
                     }
@@ -234,8 +238,10 @@ namespace Compilator
             if (dateType.Value == "auto")
                 Check();
             if (class_ != null && isKey)
-            { 
-                Types oppq = class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(Token.Type.GET));
+            {
+                ParameterList plist = new ParameterList(false);
+                plist.Parameters.Add(key);
+                Types oppq = class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(Token.Type.GET), plist);
                 if (!(oppq is Error))
                 {
                     Function opp = (Function)oppq;

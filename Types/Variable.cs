@@ -228,25 +228,21 @@ namespace Compilator
             if (block.SymbolTable.Get(this.value) is Generic)
                 vname = "this.generic$" + Value + (isKey ? "[" + key.Compile() + "]" : "");
             else
-            {
-               /* if (assingBlock != null && assingBlock.Parent != null && assingBlock.Parent.SymbolTable.Find(Value) && Value.Split('.')[0] != "this")
-                {
-                    if(assingBlock.Parent.SymbolTable.Get(Value) is Variable && ((Variable)assingBlock.Parent.SymbolTable.Get(Value)).Value.Split('.')[0] == "this")
-                        vname = "this." + Value + (isKey ? "[" + key.Compile() + "]" : "");
-                    else if(assingBlock.Parent.SymbolTable.Get(Value) is Assign _a)
-                    {
-                        if(((Variable)_a.Left).Value.Split('.')[0] == "this" || ((Variable)_a.Left).Block.Type == Block.BlockType.CLASS)
-                            vname = "this." + Value + (isKey ? "[" + key.Compile() + "]" : "");
-                        else
-                            vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
-                    }
-                    else
-                        vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
-                }
-                else*/
-                    vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
+            {               
+                vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
             }
-            
+            if (dateType.Value == "auto")
+                Check();
+            if (class_ != null && isKey)
+            { 
+                Types oppq = class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(Token.Type.GET));
+                if (!(oppq is Error))
+                {
+                    Function opp = (Function)oppq;
+                    if(!opp.isExternal)
+                        vname = Value + "." + opp.Name + "(" + key.Compile() + ")";
+                }
+            }
             if (asDateType != null)
                 return DoTabs(tabs) + (inParen ? "(" : "") + "(" + vname + ".constructor.name == '" + nameclass + "' ? "+vname+ " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
             return DoTabs(tabs) + (inParen ? "(" : "") + vname + (inParen ? ")" : "");

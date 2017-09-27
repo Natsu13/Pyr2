@@ -173,7 +173,7 @@ namespace Compilator
                     else
                     {
                         rt = tbs + _name + "." + f.Name + "(" + plist?.Compile();
-                        if (plist != null && plist.Parameters.Count > 0)
+                        if (plist != null && plist.Parameters.Count > 0 && generic != "")
                             rt += ", ";
                         rt += generic;
                         rt += ")";
@@ -247,7 +247,11 @@ namespace Compilator
             string o = Variable.GetOperatorStatic(op.type);
             if (o == "call")
             {
+                if (asArgument) return;
                 Types t = null;
+
+                plist.Semantic();
+
                 if (block.Parent?.Parent == null)
                     Interpreter.semanticError.Add(new Error("Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
                 if (block.assingBlock != null && !block.assingBlock.SymbolTable.Find(name.Value))
@@ -317,6 +321,7 @@ namespace Compilator
                         }
                     }
                 }
+                if (plist != null && !asArgument) plist.Semantic();
             }
             if(o == "new")
             {

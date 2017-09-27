@@ -132,9 +132,21 @@ namespace Compilator
             {
                 Interpreter.semanticError.Add(new Error("#200 Operator " + Variable.GetOperatorStatic(op.type) + " cannot be applied for '" + v.Type + "' and '" + r.Type + "'", Interpreter.ErrorType.ERROR, op));
             }
-        }
+        }        
 
-        public Token OutputType { get { return outputType; } }
+        public Token OutputType {
+            get {                
+                Variable v = left.TryVariable();
+                Variable r = right.TryVariable();
+
+                if(left is Variable) v.Check();
+                if(right is Variable) r.Check();
+
+                this.outputType = v.OutputType(op.type, v, r);
+
+                return outputType;
+            }
+        }
 
         public override int Visit()
         {

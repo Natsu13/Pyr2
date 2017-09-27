@@ -25,7 +25,11 @@ namespace Compilator
         {
             foreach(Types par in parameters)
             {
-                Variable va = (Variable)par;
+                Variable va = null;
+                if (par is Assign)
+                    va = (Variable)(((Assign)par).Left);
+                else
+                    va = (Variable)par;
                 if (va.Value == name)
                     return va;
             }
@@ -78,6 +82,7 @@ namespace Compilator
 
         public bool Compare(ParameterList p)
         {
+            if (p == null && !allowMultipel) return false;
             int i = 0;
             bool haveDefault = false;
             foreach(Types t in parameters)

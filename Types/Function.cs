@@ -84,12 +84,15 @@ namespace Compilator
         public Token Returnt { get { return returnt; } }
         public Block Block { get { return block; } }
 
+        public string _hash = "";
         public string getHash()
         {
             if (assingBlock == null) assingBlock = block;
             if (isOperator || isConstructor || assingBlock.SymbolTable.GetAll(name.Value)?.Count > 1)
             {
-                return string.Format("{0:X8}", (name.Value + paraml.List() + block.Compile()).GetHashCode());
+                if (_hash == "")
+                    _hash = string.Format("{0:X8}", (name.Value + paraml.List() + block?.Compile()).GetHashCode());
+                return _hash;
             }
             return "";
         }

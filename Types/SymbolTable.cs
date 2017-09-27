@@ -123,7 +123,7 @@ namespace Compilator
             Token FunctionStringOperatorGetName = new Token(Token.Type.ID, "operator get");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "key"), BlockString, new Token(Token.Type.CLASS, "int")));
-            Function FunctionStringOperatorGet = new Function(FunctionStringOperatorGetName, null, plist, new Token(Token.Type.CLASS, "string"), interpret) { isOperator = true };
+            Function FunctionStringOperatorGet = new Function(FunctionStringOperatorGetName, null, plist, new Token(Token.Type.CLASS, "string"), interpret) { isOperator = true, isExternal = true };
             BlockString.SymbolTable.Add("operator get", FunctionStringOperatorGet);
             
             /// Initial Int Class

@@ -23,6 +23,7 @@ namespace Compilator
         public bool isis = true;
         public bool isArray = false;
         public int arraySize = 0;
+        public bool isDateType = false;
 
         public Variable(Token token, Types block, Token dateType = null)
         {
@@ -73,7 +74,7 @@ namespace Compilator
         public Token  getDateType() { return dateType; }
         public bool   IsKey { get { return isKey; } }
         public Types  Key { get { return key; } }
-        public void MadeArray(int size) { isArray = true; arraySize = size; }
+        public void MadeArray(bool isArray) { isArray = true; }
 
         public Token AsDateType
         {
@@ -103,9 +104,30 @@ namespace Compilator
         public void Check()
         {
             string newname = this.value;
-            if (Value.Split('.')[0] == "this")
+            /*
+            if(Value.Split('.')[0] != "this")
+            {
+                if (this.block.SymbolTable.Find(newname))
+                {
+                    Types __t = this.block.SymbolTable.Get(newname);
+                    if(__t is Assign _a)
+                    {
+                        if(_a.Left is Variable _av)
+                        {
+                            if (_av.Type == "auto")
+                                newname = "this." + newname;
+                        }
+                    }else if(__t is Variable _v)
+                    {
+                        if(_v.Type == "auto")
+                            newname = "this." + newname;
+                    }
+                }
+            }
+            */
+            if (newname.Split('.')[0] == "this")
             {                
-                newname = block.getClass() + "." + string.Join(".", value.Split('.').Skip(1));
+                newname = block.getClass() + "." + string.Join(".", newname.Split('.').Skip(1));
             }
             if(Value == "this")
             {
@@ -118,7 +140,11 @@ namespace Compilator
                 Types fvar = this.block.FindVariable(newname);
                 if (this.block.SymbolTable.Find(newname))
                 {
-                    if (((Assign)this.block.SymbolTable.Get(newname)).Right is UnaryOp)
+                    if(this.block.SymbolTable.Get(newname) is Generic)
+                    {
+                        this.dateType = new Token(Token.Type.CLASS, "object");
+                    }
+                    else if (((Assign)this.block.SymbolTable.Get(newname)).Right is UnaryOp)
                     {
                         if (((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Op == "call")
                         {
@@ -177,7 +203,7 @@ namespace Compilator
             if(key != null)
                 key.endit = false;
 
-            string vname;
+            string vname = "";
 
             string nameclass = "";
             if (class_ != null)
@@ -199,7 +225,28 @@ namespace Compilator
                 }
             }
 
-            vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
+            if (block.SymbolTable.Get(this.value) is Generic)
+                vname = "this.generic$" + Value + (isKey ? "[" + key.Compile() + "]" : "");
+            else
+            {
+               /* if (assingBlock != null && assingBlock.Parent != null && assingBlock.Parent.SymbolTable.Find(Value) && Value.Split('.')[0] != "this")
+                {
+                    if(assingBlock.Parent.SymbolTable.Get(Value) is Variable && ((Variable)assingBlock.Parent.SymbolTable.Get(Value)).Value.Split('.')[0] == "this")
+                        vname = "this." + Value + (isKey ? "[" + key.Compile() + "]" : "");
+                    else if(assingBlock.Parent.SymbolTable.Get(Value) is Assign _a)
+                    {
+                        if(((Variable)_a.Left).Value.Split('.')[0] == "this" || ((Variable)_a.Left).Block.Type == Block.BlockType.CLASS)
+                            vname = "this." + Value + (isKey ? "[" + key.Compile() + "]" : "");
+                        else
+                            vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
+                    }
+                    else
+                        vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
+                }
+                else*/
+                    vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
+            }
+            
             if (asDateType != null)
                 return DoTabs(tabs) + (inParen ? "(" : "") + "(" + vname + ".constructor.name == '" + nameclass + "' ? "+vname+ " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
             return DoTabs(tabs) + (inParen ? "(" : "") + vname + (inParen ? ")" : "");
@@ -234,6 +281,7 @@ namespace Compilator
             if (op == Token.Type.RETURN)    o = "return";
             if (op == Token.Type.CALL)      o = "call";
             if (op == Token.Type.GET)       o = "get";
+            if (op == Token.Type.IS)        o = "is";
             return o;
         }
         public string GetOperator(Token.Type op)
@@ -268,7 +316,7 @@ namespace Compilator
         }        
         public Token OutputType(Token.Type op, object first, object second)
         {
-            if (_class != null && (class_ == null && inter_ == null && genei_ != null))
+            if (_class != null && (class_ == null && inter_ == null && genei_ == null))
                 return _class.OutputType(GetOperator(op), first, second);
             else if (class_ != null)
                 return class_.OutputType(GetOperatorName(op), first, second);
@@ -281,7 +329,7 @@ namespace Compilator
         public bool SupportOp(Token.Type op)
         {
             object o = null;
-            if (_class != null && (class_ == null && inter_ == null && genei_ != null))
+            if (_class != null && (class_ == null && inter_ == null && genei_ == null))
                 o = _class.SupportOp(GetOperator(op));
             else if (class_ != null)
                 o = class_.SupportOp(GetOperatorName(op));
@@ -294,7 +342,7 @@ namespace Compilator
         public bool SupportSecond(Token.Type op, object second, object secondAsVariable)
         {
             object o = null;
-            if (_class != null && (class_ == null && inter_ == null && genei_ != null))
+            if (_class != null && (class_ == null && inter_ == null && genei_ == null))
                 o = _class.SupportSecond(second, secondAsVariable);
             else if (class_ != null)
                 o = class_.SupportSecond(GetOperatorName(op), second, secondAsVariable);

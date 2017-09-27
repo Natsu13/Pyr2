@@ -12,6 +12,7 @@ namespace Compilator
         Token op, token;
         Block block;
         Token outputType;
+        Token rtok;
         public BinOp(Types left, Token op, Types right, Block block)
         {
             this.left = left;
@@ -19,18 +20,53 @@ namespace Compilator
             this.right = right;
             this.block = block;
         }
-        
+        public BinOp(Types left, Token op, Token right, Block block)
+        {
+            this.left = left;
+            this.op = this.token = op;
+            this.right = null;
+            this.block = block;
+            this.rtok = right;
+        }
+
         public override Token getToken() { return Token.Combine(this.left.getToken(), this.right.getToken()); }
 
         public override string Compile(int tabs = 0)
         {
-            right.assingBlock = assingBlock;
+            if (right != null)
+            {
+                right.assingBlock = assingBlock;
+                right.endit = false;
+            }
             left.assingBlock = assingBlock;
+            left.endit = false;
 
             if (right is Variable) ((Variable)right).Check();
-            if (left is Variable) ((Variable)left).Check();
+            if (left is Variable) ((Variable)left).Check();                      
 
             Variable v = null;
+
+            string o = Variable.GetOperatorStatic(op.type);
+            if (o == "is")
+            {
+                right = block.SymbolTable.Get(rtok.Value);
+                string vname = left.TryVariable().Value;
+
+                string classname = "";
+                if (right is Class) classname = ((Class)right).getName();
+                else if (right is Interface) classname = ((Interface)right).getName();
+                else if (right is Generic) classname = ((Generic)right).Name;
+                else classname = right.TryVariable().Value;
+
+                string rt = "";
+                if (right is Generic)
+                    rt = "(" + vname + ".constructor.name == this.generic$" + classname + " ? true : false)";
+                else
+                    rt = "("+vname + ".constructor.name == '" + classname + "' ? true : false)";
+
+                outputType = new Token(Token.Type.BOOL, "bool");
+                return (inParen ? "(" : "") + rt + (inParen ? ")" : "");
+            }
             if (left is Number)
             {
                 v = new Variable(((Number)left).getToken(), block, new Token(Token.Type.CLASS, "int"));

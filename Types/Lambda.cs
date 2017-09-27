@@ -11,6 +11,8 @@ namespace Compilator
         Variable name;
         Types expresion;
         ParameterList plist;
+        public bool isInArgumentList = false;
+        public bool isCallInArgument = false;
         //bool isDeclare = false;
 
         public Lambda(Variable name, Types expresion, ParameterList plist)
@@ -18,11 +20,13 @@ namespace Compilator
             this.name = name;
             this.expresion = expresion;
             this.plist = plist;
-
-            if (!(name).Block.variables.ContainsKey(name.Value))
+            if (name != null)
             {
-                //isDeclare = true;
-                (name).Block.variables[name.Value] = new Assign(name, new Token(Token.Type.LAMBDA, "lambda"), this);
+                if (!(name).Block.variables.ContainsKey(name.Value))
+                {
+                    //isDeclare = true;
+                    (name).Block.variables[name.Value] = new Assign(name, new Token(Token.Type.LAMBDA, "lambda"), this);
+                }
             }
         }
 
@@ -30,14 +34,20 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {            
+            if(isInArgumentList)
+                return "lambda$" + name.Value;
+            if (isCallInArgument)
+            {
+                return "function("+plist.Compile()+"){ return "+ expresion.Compile() + "; }";
+            }
             return DoTabs(tabs) + "var lambda$" + name.Value + " = function("+plist.Compile()+"){ return " + expresion.Compile() + "; };";
         }
 
-        public string RealName { get { return getToken().Value; } }
+        public string RealName { get { return getToken()?.Value; } }
 
         public override Token getToken()
         {
-            return name.getToken();
+            return name?.getToken();
         }
 
         public override void Semantic()

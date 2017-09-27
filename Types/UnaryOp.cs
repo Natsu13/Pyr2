@@ -17,6 +17,8 @@ namespace Compilator
         bool isArray = false;
         int arraySize = -1;
         public bool asArgument = false;
+        Token arraySizeVariable = null;
+        Types arraySizeVariableTypes = null;
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {
@@ -38,6 +40,8 @@ namespace Compilator
         public Types  Expr { get { return expr; } }
         public Token Name { get { return name; } }
         public void MadeArray(int size) { isArray = true; arraySize = size; }
+        public void MadeArray(Token name) { isArray = true; arraySizeVariable = name; }
+        public void MadeArray(Types name) { isArray = true; arraySizeVariableTypes = name; }
 
         public override string Compile(int tabs = 0)
         {
@@ -83,9 +87,12 @@ namespace Compilator
 
                 if (t is Assign && ((Assign)t).Right is Lambda)
                 {
-                    if (plist == null)
-                        return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
-                    return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    string args = "()";
+                    if (plist != null)
+                        args = "(" + plist.Compile() + ")";
+                    if(asArgument)
+                        return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + args + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
                 if (name.Value == "js")
                 {
@@ -126,20 +133,85 @@ namespace Compilator
                     else _name = ((Class)t).Name.Value;
                 }
 
-                if (((Class)t).assingBlock.SymbolTable.Find("constructor " + name.Value))
+                if (t is Class && ((Class)t).assingBlock.SymbolTable.Find("constructor " + name.Value))
                 {
+                    string generic = "";
+                    bool fir = true;
+                    string gname = "";
+                    foreach(string g in genericArgments)
+                    {
+                        if (!fir) generic += ", ";
+                        fir = false;
+                        Types gf = block.SymbolTable.Get(g);
+                        if (gf is Class) gname = ((Class)gf).getName();
+                        if (gf is Interface) gname = ((Interface)gf).getName();
+                        generic += "'"+ gname + "'";
+                    }
                     Function f = (Function)(((Class)t).assingBlock.SymbolTable.Get("constructor " + name.Value));
                     if (isArray)
-                        rt = tbs + "new Array(" + arraySize + ").fill(" + _name + "." + f.Name + "(" + plist?.Compile() + "))";                    
+                    {
+                        Variable va = null;
+                        if (arraySizeVariable != null && block.SymbolTable.Find(arraySizeVariable.Value))
+                        {
+                            va = (Variable)block.SymbolTable.Get(arraySizeVariable.Value);
+                        }
+
+                        string arrayS = "";
+                        if (arraySizeVariable != null && va != null && arraySizeVariableTypes == null)
+                            arrayS = va.Value;
+                        else if (arraySizeVariableTypes != null)
+                            arrayS = arraySizeVariableTypes.Compile();
+                        else
+                            arrayS = arraySize.ToString();
+
+                        rt = tbs + "new Array(" + arrayS + ").fill(" + _name + "." + f.Name + "(" + plist?.Compile();
+                        if (plist != null && plist.Parameters.Count > 0)
+                            rt += ", ";
+                        rt += generic;
+                        rt += "))";
+                    }
                     else
-                        rt = tbs + _name + "." + f.Name + "(" + plist?.Compile() + ")";
+                    {
+                        rt = tbs + _name + "." + f.Name + "(" + plist?.Compile();
+                        if (plist != null && plist.Parameters.Count > 0)
+                            rt += ", ";
+                        rt += generic;
+                        rt += ")";
+                    }
                 }
                 else
                 {
+                    if(t is Generic)
+                    {
+                        TypeObject obj = new TypeObject();
+                        _name = obj.ClassNameForLanguage();
+                        if (block.isInConstructor)
+                            _name = "window[$this.generic$"+((Generic)t).Name+"]";
+                        else
+                            _name = "window[this.generic$" + ((Generic)t).Name + "]";
+                    }
                     if (isArray)
-                        rt = tbs + "new Array(" + arraySize + ").fill(new " + _name + "(" + plist?.Compile() + "))";
+                    {
+                        Variable va = null;
+                        if (arraySizeVariable != null && block.SymbolTable.Find(arraySizeVariable.Value))
+                        {
+                            va = ((Variable)((Assign)block.SymbolTable.Get(arraySizeVariable.Value)).Left);
+                        }
+
+                        string arrayS = "";
+                        if (arraySizeVariable != null && va != null && arraySizeVariableTypes == null)
+                            arrayS = va.Value;
+                        else if (arraySizeVariableTypes != null)
+                            arrayS = arraySizeVariableTypes.Compile();
+                        else
+                            arrayS = arraySize.ToString();
+
+                        rt = tbs + "new Array(" + arrayS + ").fill(new " + _name + "(" + plist?.Compile() + "))";
+                    }
                     else
+                    {
                         rt = tbs + "new " + _name + "(" + plist?.Compile() + ")";
+                    }
                 }
                 return (inParen ? "(" : "") + rt + (inParen ? ")" : "");
             }
@@ -147,12 +219,27 @@ namespace Compilator
             {
                 if (expr == null)
                     return tbs + "return;";
+                expr.endit = false;
+
                 return tbs + "return " + expr.Compile() + ";";
             }
-            if(post)
+            if (post)
                 return tbs + (inParen ? "(" : "") + expr.Compile() + Variable.GetOperatorStatic(op.type) + (inParen ? ")" : "") + (endit ? ";" : "");
             else
                 return tbs + (inParen ? "(" : "") + Variable.GetOperatorStatic(op.type) + expr.Compile() + (inParen ? ")" : "") + (endit ? ";" : "");
+        }
+
+        public Token OutputType
+        {
+            get
+            {
+                string o = Variable.GetOperatorStatic(op.type);
+                if (o == "new")
+                {
+                    return name;
+                }
+                return new Token(Token.Type.CLASS, "object");
+            }
         }
 
         public override void Semantic()
@@ -241,7 +328,7 @@ namespace Compilator
                 else
                 {
                     Types t = assingBlock.SymbolTable.Get(name.Value);
-                    if (((Class)t).GenericArguments.Count > 0)
+                    if (t is Class && ((Class)t).GenericArguments.Count > 0)
                     {
                         if(((Class)t).GenericArguments.Count != genericArgments.Count)
                         {

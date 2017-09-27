@@ -110,13 +110,14 @@ namespace Compilator
             }
         }
 
-        public override string Compile(int tabs = 0)
+        public string Compile(int tabs = 0, bool noAssign = false)
         {
             string tbs = DoTabs(tabs);
             string ret = "";
             foreach (Types child in children)
             {
                 if (child == null) continue;
+                if (noAssign && child is Assign) continue;
                 child.assignTo = (assingBlock == null?blockAssignTo:assingBlock.assignTo);    
                 if(!(child is Class))
                     child.assingBlock = this;
@@ -125,6 +126,10 @@ namespace Compilator
                     ret += tbs + p + "\n";
             }
             return ret;
+        }
+        public override string Compile(int tabs = 0)
+        {
+            return Compile(tabs, false);
         }
 
         public override int Visit()
@@ -143,6 +148,6 @@ namespace Compilator
                 if (child == null) continue;
                 child.Semantic();
             }
-        }
+        }        
     }
 }

@@ -74,18 +74,23 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
-            if ((((Variable)left).Block.Type == Block.BlockType.CONDITION && ((Variable)left).Block.Parent.variables.ContainsKey(((Variable)left).Value)))
+            string addName = "";
+            if (assingBlock.Parent != null && assingBlock.Parent.SymbolTable.Find(((Variable)left).Value))
                 isDeclare = false;
+
+            if ((((Variable)left).Block.Type == Block.BlockType.CONDITION && ((Variable)left).Block.Parent.variables.ContainsKey(((Variable)left).Value)))            
+                isDeclare = false;
+            
             if (left is Variable)
             {
                 //if (((Variable)left).Block.blockAssignTo != "") return "";
                 right.assingBlock = ((Variable)left).Block;
                 if (right is UnaryOp)
                     ((UnaryOp)right).endit = false;
-                return DoTabs(tabs) + (isDeclare?"var ":"") + left.Compile(0) + " = " + right.Compile(0) + ";";
+                return DoTabs(tabs) + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + right.Compile(0) + ";";
             }
             else
-                return DoTabs(tabs) + left.Compile(0) + " = " + right.Compile(0) + ";";
+                return DoTabs(tabs) + addName + left.Compile(0) + " = " + right.Compile(0) + ";";
         }
 
         public override void Semantic()
@@ -97,9 +102,9 @@ namespace Compilator
                     string newname = ((Variable)left).Value;
                     if(newname.Split('.')[0] == "this")
                     {
-                        newname = assingBlock.assignTo + "." + string.Join(".", ((Variable)left).Value.Split('.').Skip(1));
+                        newname = (assingBlock.assignTo == "" ? assingBlock.getClass() : assingBlock.assignTo) + "." + string.Join(".", ((Variable)left).Value.Split('.').Skip(1));
                     }
-                    Types t = ((Variable)left).assingBlock.SymbolTable.Get(newname);
+                    Types t = ((Variable)left).assingBlock?.SymbolTable.Get(newname);
                     if (t != null)
                     {
                         if(t is Generic && !(right is Null))
@@ -113,15 +118,17 @@ namespace Compilator
                             string type = "auto";
                             if (right is CString) type = "string";
                             else if (right is Number) type = "int";
-                            else if(right is Variable) {
+                            else if (right is Variable)
+                            {
                                 type = ((Variable)right).Type;
-                                if(type == "auto")
+                                if (type == "auto")
                                 {
                                     ((Variable)right).Check();
                                     type = ((Variable)right).Type;
                                 }
                             }
-                            else if(right is BinOp) type = ((BinOp)right).OutputType.Value;
+                            else if (right is BinOp) type = ((BinOp)right).OutputType.Value;
+                            else if (right is UnaryOp) type = ((UnaryOp)right).OutputType.Value;
 
                             if (ava.GetType() != type)
                             {

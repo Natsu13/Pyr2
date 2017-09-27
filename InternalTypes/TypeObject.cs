@@ -11,7 +11,7 @@ namespace Compilator
         public string Name { get { return "object"; } }
         public virtual bool SupportOp(string op)
         {
-            if (op == "==" || op == "!=")
+            if (op == "==" || op == "!=" || op == "is" || op == "get")
                 return true;
             return false;
         }
@@ -25,7 +25,7 @@ namespace Compilator
         }
         public virtual Token OutputType(string op, object first, object second)
         {
-            if ((op == "==" || op == "!="))
+            if ((op == "==" || op == "!=" || op == "is"))
                 return new Token(Token.Type.BOOL, "bool");
             return new Token(Token.Type.CLASS, "object");
         }

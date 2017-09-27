@@ -19,7 +19,7 @@ namespace Compilator
             this.interpret = interpret;
             this.assigment_block = assigment_block;
             if (first)
-            {
+            {   
                 Token TokenIIterable = new Token(Token.Type.ID, "IIterable");
                 Block BlockIIterable = new Block(interpret) { Parent = assigment_block };
                 Interface IIterable = new Interface(TokenIIterable, BlockIIterable, null)
@@ -66,6 +66,21 @@ namespace Compilator
         {
             if (initialized) return;
             initialized = true;
+            //Function js
+            Token Function_js = new Token(Token.Type.ID, "js");
+            ParameterList plist_js = new ParameterList(true);
+            Block Block_js = new Block(interpret) { Parent = assigment_block };
+            plist_js.parameters.Add(new Variable(new Token(Token.Type.ID, "code"), Block_js, new Token(Token.Type.CLASS, "string")));
+            Function js = new Function(Function_js, Block_js, plist_js, new Token(Token.Type.VOID, "void"), interpret) { isExternal = true, isConstructor = false, isOperator = false, isStatic = false };
+            Add("js", js);
+            //Function alert
+            Token Function_alert = new Token(Token.Type.ID, "alert");
+            ParameterList plist_alert = new ParameterList(true);
+            Block Block_alert = new Block(interpret) { Parent = assigment_block };
+            plist_alert.parameters.Add(new Variable(new Token(Token.Type.ID, "message"), Block_alert, new Token(Token.Type.CLASS, "string")));
+            Function alert = new Function(Function_alert, Block_alert, plist_alert, new Token(Token.Type.VOID, "void"), interpret) { isExternal = true, isConstructor = false, isOperator = false, isStatic = false };
+            Add("alert", alert);
+
 
             /// Initialize Iterator interface
             Block BlockIterator = ((Interface)Get("Iterator")).assingBlock;

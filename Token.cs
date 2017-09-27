@@ -12,12 +12,12 @@ namespace Compilator
         {
             NONE, ERROR, EOF, NULL,
             INTEGER, STRING, REAL, BOOL, AUTO,
-            COMMA, SEMI, DOT, COLON, IS, THREEDOT, 
+            COMMA, SEMI, DOT, COLON, IS, THREEDOT, AS,
             PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN, INC, DEC,
             CLASS, ID, FUNCTION, INTERFACE, LAMBDA, 
             NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,
             LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL, LSQUARE, RSQUARE, 
-            STATIC, VOID, EXTERNAL, OPERATOR, DYNAMIC,
+            STATIC, VOID, EXTERNAL, OPERATOR, DYNAMIC, DECLARE,
             IF, ELSE, ELSEIF, FOR, 
             EQUAL, NOTEQUAL, AND, OR, MORE, LESS, 
             TRUE, FALSE,
@@ -45,7 +45,9 @@ namespace Compilator
             { "in",         new Token(Type.IN, "in") },
             { "operator",   new Token(Type.OPERATOR, "operator") },
             { "is",         new Token(Type.IS, "is") },
-            { "dynamic",    new Token(Type.DYNAMIC, "dynamic") }
+            { "as",         new Token(Type.AS, "as") },
+            { "dynamic",    new Token(Type.DYNAMIC, "dynamic") },
+            { "declare",    new Token(Type.DECLARE, "declare") }
         };
 
         public Type type;
@@ -80,6 +82,7 @@ namespace Compilator
 
         public static Token Combine(Token t1, Token t2)
         {
+            if (t2 == null) return t1;
             return new Token(t1.type, t1.value + t2.value, t1.pos, t2.pos+t2.value.Length, t1.file);
         }
 

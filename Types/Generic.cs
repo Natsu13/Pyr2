@@ -14,6 +14,7 @@ namespace Compilator
         Function functionAss = null;
         string name = "";
         Block block;
+        TypeObject bt = new TypeObject();
 
         public Generic(Class c, Block block, string name)
         {
@@ -27,6 +28,8 @@ namespace Compilator
             this.name = name;
             setFunction(f);
         }
+
+        public string Name { get { return name; } }
 
         public void setClass(Class classs)
         {
@@ -52,8 +55,7 @@ namespace Compilator
         }
 
         public override void Semantic()
-        {
-            
+        {            
         }
 
         public override int Visit()
@@ -63,15 +65,15 @@ namespace Compilator
 
         public Token OutputType(string op, object a, object b)
         {            
-            return new Token(Token.Type.ID, name);
+            return bt.OutputType(op, a, b);
         }
         public bool SupportOp(string op)
         {            
-            return false;
+            return bt.SupportOp(op);
         }
         public bool SupportSecond(string op, object second, object secondAsVariable)
         {            
-            return false;
+            return bt.SupportSecond(second, secondAsVariable);
         }
     }
 }

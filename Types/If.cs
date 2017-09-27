@@ -26,6 +26,8 @@ namespace Compilator
             foreach (KeyValuePair<Types, Block> c in conditions)
             {
                 c.Value.Parent = assingBlock;
+                if(c.Key != null)
+                    c.Key.endit = false;
                 if (first)
                 {                    
                     first = false;

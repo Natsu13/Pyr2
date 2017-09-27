@@ -39,6 +39,7 @@ namespace Compilator
         public List<string> GenericArguments { get { return genericArguments; } }
 
         public Token Name { get { return name; } }
+        public string getName() { if (JSName == null || JSName == "") return name.Value; else return JSName; }
         public override Token getToken() { return null; }
 
         public bool haveParent(string name)
@@ -48,9 +49,9 @@ namespace Compilator
             {
                 if (p.Value == name) return true;
                 Types to = block.SymbolTable.Get(p.Value);
-                if (to is Class && ((Class)to).haveParent("IIterable"))
+                if (to is Class && ((Class)to).haveParent(name))
                     return true;
-                else if (to is Interface && ((Interface)to).haveParent("IIterable"))
+                else if (to is Interface && ((Interface)to).haveParent(name))
                     return true;
             }
             return false;
@@ -59,14 +60,15 @@ namespace Compilator
         public override string Compile(int tabs = 0)
         {
             if (!isExternal)
-            {
-                foreach (string generic in genericArguments)
-                {
-                    block.SymbolTable.Add(generic, new Generic(this, block, generic));
-                }
+            {                
                 string tbs = DoTabs(tabs);
                 string ret = tbs + "var " + name.Value + " = function(){";
                 if (block.variables.Count != 0 || parents.Count != 0) ret += "\n";
+                foreach (string generic in genericArguments)
+                {
+                    block.SymbolTable.Add(generic, new Generic(this, block, generic));
+                    ret += tbs+"\tthis.generic$" + generic + " = null;\n";
+                }
                 foreach (Token parent in parents)
                 {
                     ret += tbs + "\t" + parent.Value + ".call(this);\n";
@@ -79,7 +81,7 @@ namespace Compilator
                         ret += tbs + "\tthis." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
                 }
                 ret += tbs + "}\n";
-                ret += block.Compile(tabs);
+                ret += block.Compile(tabs, true);
                 return ret;
             }
             return "";

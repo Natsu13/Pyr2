@@ -83,26 +83,43 @@ namespace Compilator
             foreach(Types t in parameters)
             {
                 bool def = false;
+                bool isGeneric = false;
                 string dtype = null;
-                if(t is Variable)
+                if (t is Variable)
+                {
                     dtype = ((Variable)t).Type;
+                    if (((Variable)t).Block.SymbolTable.Get(dtype) is Generic)
+                        isGeneric = true;
+                }
                 if(t is Assign)
                 {
                     dtype = ((Variable)((Assign)t).Left).Type;
                     def = true;
                 }
+                if (t is Lambda)
+                    dtype = "lambda";
                 if (i >= p.parameters.Count && !allowMultipel && !def)
                     return false;
-                else if (!def && dtype != p.parameters[i].TryVariable().Type)
-                    return false;
+                if (i >= p.parameters.Count && def)
+                {
+                    haveDefault = true;
+                    break;
+                }
+                if (p.parameters[i] is Variable)
+                {
+                    ((Variable)p.parameters[i]).Check();
+                }
+                else if (!def && dtype != p.parameters[i].TryVariable().Type && !isGeneric)
+                    return false;                
                 else if (def)
                 {
                     haveDefault = true;
                     if (i < p.parameters.Count)
                     {
                         if (dtype != p.parameters[i].TryVariable().Type)
-                            return false;                        
-                    }else
+                            return false;
+                    }
+                    else
                     {
                         break;
                     }
@@ -143,8 +160,8 @@ namespace Compilator
         }
         static public bool operator !=(ParameterList a, ParameterList b)
         {
-            if (a is null && !(b is null)) return false;
-            if (a is null) return true;
+            if (a is null && !(b is null)) return true;
+            if (a is null) return false;
             return !a.Equal(b);
         }
         public override bool Equals(object obj)

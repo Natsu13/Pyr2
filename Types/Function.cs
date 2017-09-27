@@ -23,6 +23,7 @@ namespace Compilator
         public bool isOperator = false;
         public bool isConstructor = false;
         public Token _constuctor;
+        public bool returnAsArray = false;
 
         bool parentNotDefined = false;
         bool parentIsNotClassOrInterface = false;        
@@ -71,7 +72,7 @@ namespace Compilator
             this.paraml.assingBlock = this.block;
             this.returnt = returnt;
 
-            if (this.name.Value == extendingClass || this.name.Value == _block?.Parent.assignTo)
+            if (this.name.Value == extendingClass || (_block?.Parent != null && this.name.Value == _block?.Parent.assignTo))
             {
                 isConstructor = true;
                 if(block != null)
@@ -85,6 +86,7 @@ namespace Compilator
 
         public string getHash()
         {
+            if (assingBlock == null) assingBlock = block;
             if (isOperator || isConstructor || assingBlock.SymbolTable.GetAll(name.Value)?.Count > 1)
             {
                 return string.Format("{0:X8}", (name.Value + paraml.List() + block.Compile()).GetHashCode());
@@ -106,6 +108,8 @@ namespace Compilator
             string ret = "";
             if (!isExternal)
             {
+                Class c = null;
+                Interface i_ = null;
                 string fromClass = "";
                 string tbs = DoTabs(tabs);
                 if (isExtending)
@@ -122,7 +126,28 @@ namespace Compilator
                 {
                     fromClass = assignTo;
                     if (isStatic || isConstructor)
-                        ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");                    
+                    {
+                        Types fg = (block == null?assingBlock:block).SymbolTable.Get(assignTo);
+                        if(fg is Class)
+                            c = (Class)fg;
+                        if (fg is Interface)
+                            i_ = (Interface)fg;
+                        if (isConstructor && c.GenericArguments.Count > 0)
+                        {
+                            ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0);
+                            bool f = true;
+                            if (paraml.Parameters.Count > 0) f = false;
+                            foreach(string generic in c.GenericArguments)
+                            {
+                                if (!f) ret += ", ";
+                                f = false;
+                                ret += "generic$"+generic;
+                            }
+                            ret += "){" + (block != null ? "\n" : "");
+                        }
+                        else 
+                            ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                    }
                     else
                         ret += tbs + assignTo + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
                 }                
@@ -131,10 +156,17 @@ namespace Compilator
                     if (block == null) ret += "\n";
                     ret += tbs + "\tvar $this = Object.create(" + fromClass + ".prototype);\n";
                     ret += tbs + "\t" + fromClass + ".call($this);\n";
+                    if(c != null)
+                    {
+                        foreach (string generic in c.GenericArguments)
+                        {                            
+                            ret += tbs + "\t$this.generic$" + generic + " = generic$" + generic+";\n";
+                        }
+                    }
                 }
 
                 foreach (Types t in paraml.Parameters)
-                {
+                {                    
                     if (t is Assign a)
                     {
                         ret += tbs + "\tif(typeof "+a.Left.Compile()+" == \"undefined\") " + a.Left.Compile()+" = " + a.Right.Compile()+";\n";

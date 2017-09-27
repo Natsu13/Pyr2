@@ -35,9 +35,18 @@ namespace Compilator
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((UnaryOp)this).Name);
             if (this is UnaryOp && ((UnaryOp)this).Op == "call")
             {
-                // TODO: Fix
+                if(((UnaryOp)this).Name.type == Token.Type.LAMBDA)
+                    return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, new Token(Token.Type.LAMBDA, "lambda"));
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((UnaryOp)this).Name);
             }
+            if (this is UnaryOp && ((UnaryOp)this).Op == "-")
+                return new Variable(new Token(Token.Type.INTEGER, (((Number)(((UnaryOp)this).Expr)).Value * -1).ToString()), this.assingBlock, new Token(Token.Type.CLASS, "int"));
+            if (this is Generic)
+                return new Variable(new Token(Token.Type.STRING, ((Generic)this).Name), this.assingBlock, new Token(Token.Type.CLASS, "object"));
+            if (this is Lambda)
+                return new Variable(new Token(Token.Type.STRING, ((Lambda)this).RealName), this.assingBlock, new Token(Token.Type.LAMBDA, "lambda"));
+            if (this is Class)
+                return new Variable(new Token(Token.Type.CLASS, ((Class)this).getName()), this.assingBlock, new Token(Token.Type.CLASS, ((Class)this).getName()));
             if (this is Null)
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, new Token(Token.Type.NULL, "null"));
             return (Variable)this;

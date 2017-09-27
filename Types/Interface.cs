@@ -15,6 +15,7 @@ namespace Compilator
         public Token _external;
         public bool isDynamic = false;
         public Token _dynamic;
+        public string JSName = "";
 
         public Interface(Token name, Block block, List<Token> parents)
         {
@@ -58,6 +59,7 @@ namespace Compilator
         }
 
         public Token Name { get { return name; } }
+        public string getName() { if (JSName == null) return name.Value; else return JSName; }
         public override Token getToken() { return null; }
 
         public bool haveParent(string name)

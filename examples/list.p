@@ -13,6 +13,16 @@ class List<T>: IIterable, Iterator {
 		this.capacity = capacity;
 	}
 	
+	operator function get(int index) -> T{
+		return this._items[index];
+	}
+	
+	operator function get(string index) -> bool{
+		if(this.Find(x -> x == index) == index)
+			return true;
+		return false;
+	}
+	
 	function iterator() -> Iterator {
 		this.current = 0;
 		return this;
@@ -50,7 +60,7 @@ class List<T>: IIterable, Iterator {
     }
 	
 	function Find((T a) -> match) -> T { 
-		for(int i in range(0, this._size)) {
+		for(int i in range(0, this._size - 1)) {
             if(match(this._items[i])) {
                 return this._items[i];
             }
@@ -101,7 +111,7 @@ class List<T>: IIterable, Iterator {
 	}
 	
 	function TrueForAll((T a) -> match){
-		for(int i in range(0, this._size)) {
+		for(int i in range(0, this._size - 1)) {
             if(match(this._items[i]) != true) {
                 return false;
             }

@@ -111,7 +111,7 @@ namespace Compilator
                     if (isDynamic)
                         nname = name.Value;
                     else
-                        nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t).Name;
+                        nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t)?.Name;
                     if (plist == null)
                         return tbs + (inParen ? "(" : "") + nname + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
                     return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");

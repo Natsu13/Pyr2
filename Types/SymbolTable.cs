@@ -190,7 +190,7 @@ namespace Compilator
 
             while (Find(name + " " + index))
             {
-                types.Add(rt.assingBlock.SymbolTable.Get(name + " " + index));
+                types.Add(Get(name + " " + index));
                 index++;
             }
 

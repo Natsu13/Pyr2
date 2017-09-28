@@ -28,8 +28,10 @@ namespace Compilator
                 Variable va = null;
                 if (par is Assign)
                     va = (Variable)(((Assign)par).Left);
-                else
+                else if (par is Variable)
                     va = (Variable)par;
+                else if (par is Lambda)
+                    va = ((Lambda)par).TryVariable();
                 if (va.Value == name)
                     return va;
             }

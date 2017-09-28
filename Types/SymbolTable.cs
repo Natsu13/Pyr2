@@ -272,6 +272,7 @@ namespace Compilator
             if (!(r is Function) && !(r is Lambda))
                 return r;
 
+            bool found = false;
             List<Types> allf = GetAll(name);
             Types t = null;
             if (allf != null && allf.Count > 1)
@@ -287,11 +288,27 @@ namespace Compilator
                     if (p.Compare(plist))
                     {
                         t = q;
+                        found = true;
                     }
                 }
 
             }
+            else
+            {
+                ParameterList p = null;
+                if (r is Function)
+                    p = ((Function)r).ParameterList;
+                if (r is Lambda)
+                    p = ((Lambda)r).ParameterList;
+
+                if (p.Compare(plist))
+                {
+                    t = r;
+                    found = true;
+                }
+            }
             if (t != null) r = t;
+            if (!found) return new Error("Found but arguments are bad!");
             return r;
         }
 

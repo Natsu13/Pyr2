@@ -302,7 +302,7 @@ namespace Compilator
                     }
                     if (tt == null)
                     {
-                        Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " has been found but parameters is wrong. Here is possible solutions:" + possible, Interpreter.ErrorType.ERROR, name));
+                        Interpreter.semanticError.Add(new Error("Function with name " + name.Value + "("+plist.List()+") has been found but parameters is wrong. Here is possible solutions:" + possible, Interpreter.ErrorType.ERROR, name));
                     }
                 }
                 else
@@ -326,7 +326,7 @@ namespace Compilator
                                 Lambda ql = (Lambda)t;
                                 possible += "\n\t" + ql.RealName + "(" + ql.ParameterList.List() + ")";
                             }
-                            Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " has been found but parameters is wrong. Here is possible solution:" + possible, Interpreter.ErrorType.ERROR, name));
+                            Interpreter.semanticError.Add(new Error("Function with name " + name.Value + "("+plist.List()+") has been found but parameters is wrong. Here is possible solution:" + possible, Interpreter.ErrorType.ERROR, name));
                         }
                     }
                 }

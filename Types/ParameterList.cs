@@ -46,6 +46,10 @@ namespace Compilator
                     ret += ((Variable)par).Type + " " + ((Variable)par).Value;
                 else if (par is Assign ap)
                     ret += ap.GetType() + " " + ap.Left.TryVariable().Value + " = " + ap.Right.TryVariable().Value;
+                else {
+                    Variable v = par.TryVariable();
+                    ret += v.Type + " " + v.Value;
+                }
             }
             return ret;
         }
@@ -95,6 +99,10 @@ namespace Compilator
                     dtype = ((Variable)t).Type;
                     if (((Variable)t).Block.SymbolTable.Get(dtype) is Generic)
                         isGeneric = true;
+                    if (i < p.parameters.Count && p.parameters[i] is Variable && ((Variable)p.parameters[i]).Block.SymbolTable.Get(p.parameters[i].TryVariable().Type) is Generic)
+                        isGeneric = true;
+                    if (i < p.parameters.Count && p.parameters[i] is Variable && p.parameters[i].TryVariable().Type == "object")
+                        isGeneric = true; // Actualy is a object xD
                 }
                 if(t is Assign)
                 {
@@ -114,7 +122,7 @@ namespace Compilator
                 {
                     ((Variable)p.parameters[i]).Check();
                 }
-                else if (!def && dtype != p.parameters[i].TryVariable().Type && !isGeneric)
+                if (!def && dtype != p.parameters[i].TryVariable().Type && !isGeneric)
                     return false;                
                 else if (def)
                 {

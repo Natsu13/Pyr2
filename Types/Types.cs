@@ -39,8 +39,8 @@ namespace Compilator
                     return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, new Token(Token.Type.LAMBDA, "lambda"));
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((UnaryOp)this).Name);
             }
-            if (this is UnaryOp && ((UnaryOp)this).Op == "-")
-                return new Variable(new Token(Token.Type.INTEGER, (((Number)(((UnaryOp)this).Expr)).Value * -1).ToString()), this.assingBlock, new Token(Token.Type.CLASS, "int"));
+            if (this is UnaryOp && (((UnaryOp)this).Op == "-" || ((UnaryOp)this).Op == "++"))
+                return new Variable(new Token(Token.Type.ID, (((UnaryOp)this).Expr).TryVariable().Value), this.assingBlock, new Token(Token.Type.CLASS, "int"));
             if (this is Generic)
                 return new Variable(new Token(Token.Type.STRING, ((Generic)this).Name), this.assingBlock, new Token(Token.Type.CLASS, "object"));
             if (this is Lambda)

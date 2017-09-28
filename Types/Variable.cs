@@ -24,6 +24,7 @@ namespace Compilator
         public bool isArray = false;
         public int arraySize = 0;
         public bool isDateType = false;
+        bool getFoundButBadArgs = false;
 
         public Variable(Token token, Types block, Token dateType = null)
         {
@@ -245,9 +246,10 @@ namespace Compilator
                 if (!(oppq is Error))
                 {
                     Function opp = (Function)oppq;
-                    if(!opp.isExternal)
+                    if (!opp.isExternal)
                         vname = Value + "." + opp.Name + "(" + key.Compile() + ")";
                 }
+                else if(oppq is Error && ((Error)oppq).Message == "Found but arguments are bad!") getFoundButBadArgs = true;
             }
             if (asDateType != null)
                 return DoTabs(tabs) + (inParen ? "(" : "") + "(" + vname + ".constructor.name == '" + nameclass + "' ? "+vname+ " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
@@ -367,9 +369,9 @@ namespace Compilator
             if (this.dateType.Value == "auto")
                 Check();
             if (isKey && !SupportOp(Token.Type.GET))
-            {
                 Interpreter.semanticError.Add(new Error("Date type "+dateType.Value+" not support 'get' operator", Interpreter.ErrorType.ERROR, token));
-            }
+            if(isKey && getFoundButBadArgs)
+                Interpreter.semanticError.Add(new Error("Date type " + dateType.Value + " support 'get' operator, but arguments are wrong", Interpreter.ErrorType.ERROR, token));
         }
     }
 }

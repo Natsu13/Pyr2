@@ -13,10 +13,17 @@ namespace Compilator
         public bool cantdefault = false;
         public Token token;
         public bool allowMultipel = false;
+        Dictionary<string, Types> genericTusage = new Dictionary<string, Types>();
 
         public ParameterList(bool declare)
         {
             this.declare = declare;
+        }
+
+        public Dictionary<string, Types> GenericTUsage
+        {
+            get { return genericTusage; }
+            set { genericTusage = value; }
         }
 
         public override Token getToken() { return token; }
@@ -100,7 +107,14 @@ namespace Compilator
                 {
                     dtype = ((Variable)t).Type;
                     if (((Variable)t).Block.SymbolTable.Get(dtype) is Generic)
+                    {
                         isGeneric = true;
+                        if (p.genericTusage.ContainsKey(dtype) && p.genericTusage[dtype] is Class __c)
+                        {
+                            dtype = __c.Name.Value;
+                            isGeneric = false;
+                        }
+                    }
                     if (i < p.parameters.Count && p.parameters[i] is Variable && ((Variable)p.parameters[i]).Block.SymbolTable.Get(p.parameters[i].TryVariable().Type) is Generic)
                         isGeneric = true;
                     if (i < p.parameters.Count && p.parameters[i] is Variable && p.parameters[i].TryVariable().Type == "object")

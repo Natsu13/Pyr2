@@ -176,8 +176,8 @@ namespace Compilator
                     Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec, with errors.");
                 }
             }
-            Console.ReadKey();
-        }
+            Console.ReadKey();            
+        }        
 
         public static void PrintInSymbolTable(SymbolTable s)
         {

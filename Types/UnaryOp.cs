@@ -43,6 +43,8 @@ namespace Compilator
         public void MadeArray(Token name) { isArray = true; arraySizeVariable = name; }
         public void MadeArray(Types name) { isArray = true; arraySizeVariableTypes = name; }
 
+        Function usingFunction = null;
+
         public override string Compile(int tabs = 0)
         {
             if(expr != null)
@@ -85,10 +87,13 @@ namespace Compilator
 
                 }else
                     t = block.SymbolTable.Get(nwnam);
-
+                
                 string newname = nwnam;
-                if (t is Function)
-                    newname = ((Function)t).Name;                
+                if (t is Function _f)
+                {
+                    newname = _f.Name;
+                    usingFunction = _f;
+                }
 
                 if (t is Assign && ((Assign)t).Right is Lambda)
                 {
@@ -255,6 +260,28 @@ namespace Compilator
                 if (asArgument) return;
                 Types t = null;
 
+                Dictionary<string, Types> genericArgsTypes = new Dictionary<string, Types>();                
+                if (usingFunction is Function _f)
+                {
+                    if (_f.assignTo != "")
+                    {
+                        Types q = block.SymbolTable.Get(_f.assignTo);
+                        if (name.Value.Split('.')[0] != "this")
+                        {
+                            Types x = block.SymbolTable.Get(name.Value.Split('.')[0]);
+                            if (q is Class __c && x is Assign)
+                            {
+                                Assign __a = (Assign)x;
+                                for (int i = 0; i < __c.GenericArguments.Count; i++)
+                                {
+                                    Types xp = block.SymbolTable.Get(((Variable)__a.Left).genericArgs[i]);
+                                    genericArgsTypes[__c.GenericArguments[i]] = xp;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 plist.Semantic();
 
                 if (block.Parent?.Parent == null)
@@ -274,9 +301,16 @@ namespace Compilator
                         Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
                 }
 
+                plist.GenericTUsage = genericArgsTypes;
+
                 List<Types> allf = block.SymbolTable.GetAll(name.Value);
                 Types tt = null;
                 string possible = "";
+                foreach(KeyValuePair<string, Types> kvp in genericArgsTypes)
+                {
+                    if(kvp.Value is Class)
+                        possible = "\n\t" +kvp.Key + " as " + ((Class)kvp.Value).Name.Value;
+                }
                 if (allf != null && allf.Count > 1)
                 {
                     foreach (Types q in allf)
@@ -310,10 +344,16 @@ namespace Compilator
                     t = block.SymbolTable.Get(name.Value);
                     if(t is Function tf)
                     {
+                        possible = "";
+                        foreach (KeyValuePair<string, Types> kvp in genericArgsTypes)
+                        {
+                            if (kvp.Value is Class)
+                                possible = "\n\t" + kvp.Key + " as " + ((Class)kvp.Value).Name.Value;
+                        }
                         if (!tf.ParameterList.Compare(plist))
                         {
                             ParameterList p = null;
-                            possible = "";
+                            
                             if (t is Function)
                             {
                                 p = ((Function)t).ParameterList;

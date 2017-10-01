@@ -683,6 +683,8 @@ namespace Compilator
                 return DeclareVariable();
             else if (current_token.type == Token.Type.FOR)
                 return DeclareFor();
+            else if (current_token.type == Token.Type.WHILE)
+                return DeclareWhile();
             else if (current_token.type == Token.Type.INTERFACE)
                 return DeclareVariable();
             else if (current_token.type == Token.Type.FUNCTION)
@@ -743,7 +745,7 @@ namespace Compilator
                 Token modifer = current_token;
                 current_modifer.Add(current_token);
                 Eat(Token.Type.STATIC);
-                if (current_token.type == Token.Type.NEWCLASS || 
+                if (current_token.type == Token.Type.NEWCLASS ||
                     current_token.type == Token.Type.NEWFUNCTION ||
                     current_token.type == Token.Type.OPERATOR ||
                     current_token.type == Token.Type.DYNAMIC ||
@@ -791,6 +793,16 @@ namespace Compilator
                 return null;
             }
             return new NoOp();
+        }
+
+        public Types DeclareWhile()
+        {
+            Eat(Token.Type.WHILE);
+            Eat(Token.Type.LPAREN);
+            Types f = Expr();
+            Eat(Token.Type.RPAREN);
+            Block block = CatchBlock(Block.BlockType.WHILE);
+            return new While(f, block);
         }
 
         public Types DeclareFor()

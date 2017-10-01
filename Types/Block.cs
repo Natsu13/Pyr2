@@ -15,7 +15,7 @@ namespace Compilator
         public string blockClassTo = "";
         Block parent = null;
         SymbolTable symbolTable;        
-        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR };
+        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR, WHILE };
         BlockType type = BlockType.NONE;
         public bool isInConstructor = false;
 

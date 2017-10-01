@@ -18,7 +18,7 @@ namespace Compilator
             NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,
             LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL, LSQUARE, RSQUARE, 
             STATIC, VOID, EXTERNAL, OPERATOR, DYNAMIC, DECLARE,
-            IF, ELSE, ELSEIF, FOR, 
+            IF, ELSE, ELSEIF, FOR, WHILE,
             EQUAL, NOTEQUAL, AND, OR, MORE, LESS, 
             TRUE, FALSE,
             IN, GET
@@ -42,6 +42,7 @@ namespace Compilator
             { "null",       new Token(Type.NULL, "null") },
             { "lambda",     new Token(Type.NEWLAMBDA, "lambda") },
             { "for",        new Token(Type.FOR, "for") },
+            { "while",      new Token(Type.WHILE, "while") },
             { "in",         new Token(Type.IN, "in") },
             { "operator",   new Token(Type.OPERATOR, "operator") },
             { "is",         new Token(Type.IS, "is") },

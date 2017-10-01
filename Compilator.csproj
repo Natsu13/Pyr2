@@ -75,6 +75,7 @@
     <Compile Include="Types\Number.cs" />
     <Compile Include="Types\UnaryOp.cs" />
     <Compile Include="Types\Variable.cs" />
+    <Compile Include="Types\While.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

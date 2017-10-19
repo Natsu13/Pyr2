@@ -56,6 +56,7 @@
     <Compile Include="Types\Function.cs" />
     <Compile Include="Types\Generic.cs" />
     <Compile Include="Types\If.cs" />
+    <Compile Include="Types\Import.cs" />
     <Compile Include="Types\Interface.cs" />
     <Compile Include="Types\Lambda.cs" />
     <Compile Include="Types\NoOp.cs" />
@@ -76,6 +77,7 @@
     <Compile Include="Types\UnaryOp.cs" />
     <Compile Include="Types\Variable.cs" />
     <Compile Include="Types\While.cs" />
+    <Compile Include="Types\_Attribute.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

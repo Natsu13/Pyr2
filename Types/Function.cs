@@ -24,6 +24,7 @@ namespace Compilator
         public bool isConstructor = false;
         public Token _constuctor;
         public bool returnAsArray = false;
+        public List<_Attribute> attributes = new List<_Attribute>();
 
         bool parentNotDefined = false;
         bool parentIsNotClassOrInterface = false;        
@@ -108,6 +109,7 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
+            string functionOpname = "";
             string ret = "";
             if (!isExternal)
             {
@@ -119,40 +121,56 @@ namespace Compilator
                 {
                     fromClass = extendingClass;
                     if (isStatic || isConstructor)
+                    {
                         ret += tbs + extendingClass + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                        functionOpname = extendingClass + "." + Name;
+                    }
                     else
+                    {
                         ret += tbs + extendingClass + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                        functionOpname = extendingClass + ".prototype." + Name;
+                    }
                 }
                 else if (assignTo == "")
+                {
                     ret += tbs + "function " + Name + "(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                    functionOpname = Name;
+                }
                 else
                 {
                     fromClass = assignTo;
                     if (isStatic || isConstructor)
                     {
-                        Types fg = (block == null?assingBlock:block).SymbolTable.Get(assignTo);
-                        if(fg is Class)
+                        Types fg = (block == null ? assingBlock : block).SymbolTable.Get(assignTo, true);
+                        if (fg is Class)
                             c = (Class)fg;
                         if (fg is Interface)
                             i_ = (Interface)fg;
                         if (isConstructor && c.GenericArguments.Count > 0)
                         {
                             ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0);
+                            functionOpname = assignTo + "." + Name;
                             bool f = true;
                             if (paraml.Parameters.Count > 0) f = false;
-                            foreach(string generic in c.GenericArguments)
+                            foreach (string generic in c.GenericArguments)
                             {
                                 if (!f) ret += ", ";
                                 f = false;
-                                ret += "generic$"+generic;
+                                ret += "generic$" + generic;
                             }
                             ret += "){" + (block != null ? "\n" : "");
                         }
-                        else 
+                        else
+                        {
                             ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                            functionOpname = assignTo + "." + Name;
+                        }
                     }
                     else
+                    {
                         ret += tbs + assignTo + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                        functionOpname = assignTo + ".prototype." + Name;
+                    }
                 }                
                 if(isConstructor)
                 {
@@ -183,6 +201,20 @@ namespace Compilator
                     ret += tbs + "\treturn $this;\n";
                 }
                 ret += tbs + "}\n";
+
+                if (attributes.Count > 0)
+                {
+                    ret += tbs + "var " + functionOpname + "$META = function(){\n";
+                    ret += tbs + "\treturn {";
+                    int i = 0;
+                    foreach (_Attribute a in attributes)
+                    {
+                        ret += "\n" + tbs + "\t\t" + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
+                        i++;
+                    }
+                    ret += "\n" + tbs + "\t};\n";
+                    ret += tbs + "};";
+                }
             }
             return ret;
         }
@@ -193,7 +225,7 @@ namespace Compilator
 
         public override void Semantic()
         {
-            if(parentNotDefined)
+            if (parentNotDefined)
                 Interpreter.semanticError.Add(new Error("Parent for extending function by " + extendingClass + "." + name.Value + "(" + paraml.List() + ") is not found", Interpreter.ErrorType.ERROR, name));
             if(parentIsNotClassOrInterface)
                 Interpreter.semanticError.Add(new Error("You can extend only Class or Interface", Interpreter.ErrorType.ERROR, name));
@@ -213,6 +245,11 @@ namespace Compilator
                 block.Semantic();
                 block.CheckReturnType(returnt?.Value, (returnt?.type == Token.Type.VOID ? true : false));
             }
+        }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
         }
     }
 }

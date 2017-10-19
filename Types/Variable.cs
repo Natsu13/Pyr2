@@ -174,7 +174,13 @@ namespace Compilator
                 {
                     if (this.block.SymbolTable.Find(this.block.assignTo))
                     {
-                        Function asfunc = (Function)this.block.SymbolTable.Get(this.block.assignTo);
+                        Function asfunc;
+                        Types qq = this.block.SymbolTable.Get(this.block.assignTo);
+                        if (!(qq is Function))
+                            asfunc = (Function)this.block.SymbolTable.Get("constructor " + this.block.assignTo);
+                        else
+                            asfunc = (Function)qq;
+
                         Variable var = asfunc.ParameterList.Find(this.value);
                         if (var != null)
                         {
@@ -372,6 +378,11 @@ namespace Compilator
                 Interpreter.semanticError.Add(new Error("Date type "+dateType.Value+" not support 'get' operator", Interpreter.ErrorType.ERROR, token));
             if(isKey && getFoundButBadArgs)
                 Interpreter.semanticError.Add(new Error("Date type " + dateType.Value + " support 'get' operator, but arguments are wrong", Interpreter.ErrorType.ERROR, token));
+        }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
         }
     }
 }

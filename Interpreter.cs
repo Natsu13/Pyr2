@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Compilator
-{
+{    
     public class Interpreter
     {
         string              text;
@@ -27,7 +27,8 @@ namespace Compilator
 
         public static List<Error> semanticError = new List<Compilator.Error>();
         public enum ErrorType { INFO, WARNING, ERROR };
-        public static Dictionary<string, string> fileList = new Dictionary<string, string>();        
+        public static Dictionary<string, string> fileList = new Dictionary<string, string>();
+        public Dictionary<string, Import> imports = new Dictionary<string, Import>();
 
         /// Interpret settings
         public static bool _REDECLARATION =     false;      //If you enable redeclaration
@@ -38,19 +39,40 @@ namespace Compilator
         public enum     LANGUAGES { JAVASCRIPT, CSHARP, PYTHON, PHP, CPP };
         public static   LANGUAGES _LANGUAGE = LANGUAGES.JAVASCRIPT;
         public static bool isForExport = false;
+        public Interpreter parent = null;
 
-        public Interpreter(string text, string filename = "")
+        public Interpreter(string text, string filename = "", Interpreter parent = null)
         {
             this.text = text;
+            this.parent = parent;
             fileList.Add(filename, text);
+            imports = new Dictionary<string, Import>();
             pos = 0;
             current_char = text[pos];
             current_file = filename;
             current_block = new Block(this, true);
             current_block.SymbolTable.initialize();
-            current_token = GetNextToken();                       
+            current_token = GetNextToken();            
         }
-        
+
+        public bool FindImport(string name)
+        {
+            if (imports.ContainsKey(name))
+                return true;
+            else if (parent != null)
+                return parent.FindImport(name);
+            return false;
+        }
+
+        public Import GetImport(string name)
+        {
+            if (imports.ContainsKey(name))
+                return imports[name];
+            else if (parent != null)
+                return parent.GetImport(name);
+            return null;
+        }
+
         public void Error(string error = "Error parsing input")
         {
             if (brekall) return;
@@ -675,6 +697,14 @@ namespace Compilator
                     Eat(Token.Type.END);
                 return node;
             }
+            else if (current_token.type == Token.Type.LSQUARE)
+            {
+                Types t = AttributeCatch();
+                attributes.Clear();
+                return t;
+            }
+            else if (current_token.type == Token.Type.IMPORT)
+                return Import();
             else if (current_token.type == Token.Type.IF)
                 return ConditionCatch();
             else if (current_token.type == Token.Type.ID)
@@ -793,6 +823,65 @@ namespace Compilator
                 return null;
             }
             return new NoOp();
+        }
+
+        public Types Import()
+        {
+            Token im = null;
+            Eat(Token.Type.IMPORT);
+            Token result = current_token;
+            string _as = "";
+            Eat(Token.Type.ID);
+            if(current_token.type == Token.Type.AS)
+            {
+                Eat(Token.Type.AS);
+                _as = current_token.Value;
+                Eat(Token.Type.ID);
+            }
+            im = new Token(Token.Type.STRING, result.Value, result.Pos, current_file);
+            
+            Import i = null;
+            if(_as != "")
+            {
+                i = new Import(im, current_block, this, _as);
+                imports.Add(_as, i);
+            }
+            else
+            {
+                i = new Import(im, current_block, this);
+                imports.Add(i.GetName(), i);
+            }            
+
+            return i;
+        }
+
+        List<_Attribute> attributes = new List<_Attribute>();
+        public Types AttributeCatch()
+        {            
+            Eat(Token.Type.LSQUARE);
+            ParameterList plist = null;
+            Token token = current_token;
+            if (current_token.type == Token.Type.ID)
+                Eat(Token.Type.ID);
+            else
+                Eat(Token.Type.CLASS);
+            if(current_token.type == Token.Type.LPAREN)
+            {
+                plist = Parameters();                
+            }
+            Eat(Token.Type.RSQUARE);
+
+            attributes.Add(new _Attribute(token, plist) { assingBlock = current_block });
+
+            if (current_token.type == Token.Type.LSQUARE)
+                return AttributeCatch();
+            else if (current_token.type == Token.Type.NEWFUNCTION)
+                return DeclareFunction();
+            else if (current_token.type == Token.Type.NEWCLASS)
+                return DeclareClass();
+            else if (current_token.type == Token.Type.NEWINTERFACE)
+                return DeclareInterface();
+            return DeclareVariable();
         }
 
         public Types DeclareWhile()
@@ -938,6 +1027,7 @@ namespace Compilator
 
         public Types DeclareFunction()
         {
+            List<_Attribute> att = new List<_Attribute>(attributes);
             Eat(Token.Type.NEWFUNCTION);
             Token name = current_token;
             if (current_token.type == Token.Type.FUNCTION)
@@ -985,6 +1075,7 @@ namespace Compilator
             func.returnAsArray = returnrArray;
             func.assingBlock = current_block;
             func.assignTo = current_block.assignTo;
+            func.attributes = att;
             if (isModifer(Token.Type.STATIC))
             {
                 func.isStatic = true;
@@ -1033,6 +1124,7 @@ namespace Compilator
 
         public Types DeclareInterface()
         {
+            List<_Attribute> att = new List<_Attribute>(attributes);
             Eat(Token.Type.NEWINTERFACE);
             Token name = current_token;
             Eat(Token.Type.ID);
@@ -1069,6 +1161,7 @@ namespace Compilator
 
             Interface c = new Interface(name, block, parents);
             c.assingBlock = block;
+            c.attributes = att;
 
             if (isModifer(Token.Type.EXTERNAL))
             {
@@ -1088,6 +1181,7 @@ namespace Compilator
 
         public Types DeclareClass()
         {
+            List<_Attribute> att = new List<_Attribute>(attributes);
             Eat(Token.Type.NEWCLASS);
             Token name = current_token;
             Eat(Token.Type.ID);
@@ -1146,6 +1240,7 @@ namespace Compilator
             Class c = new Class(name, block, parents);
             c.assingBlock = block;
             c.SetGenericArgs(garg);
+            c.attributes = att;
 
             if (isModifer(Token.Type.EXTERNAL))
             {
@@ -1165,6 +1260,7 @@ namespace Compilator
 
         public Types DeclareVariable(Token sDateType = null, Types have = null)
         {
+            List<_Attribute> att = new List<_Attribute>(attributes);
             List<string> garg = new List<string>();
             Token dateType = null;
             //int size = -1;
@@ -1233,13 +1329,13 @@ namespace Compilator
                 Token token = current_token;
                 Eat(Token.Type.ASIGN);
                 Types right = Expr();
-                Types node = new Assign(left, token, right, current_block);
+                Types node = new Assign(left, token, right, current_block) { attributes = att };               
                 node.assingBlock = current_block;
                 return node;
             }
             else if (current_token.type == Token.Type.SEMI)
             {
-                Types node = new Assign(left, new Token(Token.Type.ASIGN, "="), new Null(), current_block);
+                Types node = new Assign(left, new Token(Token.Type.ASIGN, "="), new Null(), current_block) { attributes = att };
                 node.assingBlock = current_block;
                 return node;
             }

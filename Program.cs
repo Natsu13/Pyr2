@@ -33,8 +33,10 @@ namespace Compilator
                     continue;
                 if (t.Value is Function tf)
                     outcom += "  _." + tf.Name + " = " + tf.Name + ";\n";
+                else if (t.Value is Import im)
+                    outcom += "  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
                 else
-                    outcom += "  _." + t.Key + " = " + t.Key+";\n";
+                    outcom += "  _." + t.Key + " = " + t.Key + ";\n";
             }
             if (block.SymbolTable.Find("main"))
             {

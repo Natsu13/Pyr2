@@ -75,5 +75,10 @@ namespace Compilator
         {            
             return bt.SupportSecond(second, secondAsVariable);
         }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

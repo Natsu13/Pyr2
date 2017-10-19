@@ -78,5 +78,10 @@ namespace Compilator
         {
             return 0;
         }
+
+        public override string InterpetSelf()
+        {
+            return "new CString("+token.InterpetSelf()+ ");";
+        }
     }
 }

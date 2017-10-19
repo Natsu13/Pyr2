@@ -148,6 +148,11 @@ namespace Compilator
                 if (child == null) continue;
                 child.Semantic();
             }
-        }        
+        }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

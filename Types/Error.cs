@@ -67,5 +67,10 @@ namespace Compilator
         {
             throw new NotImplementedException();
         }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

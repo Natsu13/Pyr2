@@ -9,10 +9,11 @@ namespace Compilator
     public class SymbolTable
     {
         Dictionary<string, Types> table = new Dictionary<string, Types>();
+        Dictionary<string, bool> tableIsCopy = new Dictionary<string, bool>();
         Dictionary<string, int> tableCounter = new Dictionary<string, int>();
         Dictionary<string, Type> tableType = new Dictionary<string, Type>();
         Interpreter interpret;
-        Block assigment_block;        
+        public Block assigment_block;        
 
         public SymbolTable(Interpreter interpret, Block assigment_block, bool first = false)
         {
@@ -36,6 +37,14 @@ namespace Compilator
                 };
                 Add("Iterator", Iterator);
 
+                Token TokenAttribute = new Token(Token.Type.ID, "Attribute");
+                Block BlockAttribute = new Block(interpret) { Parent = assigment_block };
+                Interface Attribute = new Interface(TokenAttribute, BlockAttribute, null)
+                {
+                    isExternal = true
+                };
+                Add("Attribute", Attribute);
+
                 /// Date type string implicit
                 // Add("string",   typeof(TypeString), new List<Token> { TokenIIterable });
                 Token TokenString = new Token(Token.Type.ID, "string");
@@ -58,6 +67,15 @@ namespace Compilator
                 Add("int", Int);
 
                 Add("bool",     typeof(TypeBool));                
+            }
+        }
+
+        public void Copy(string from, string to)
+        {
+            if (table.ContainsKey(from) && from != to)
+            {
+                table.Add(to, table[from]);
+                tableIsCopy[to] = true;
             }
         }
 
@@ -159,6 +177,7 @@ namespace Compilator
         }
 
         public Dictionary<string, Types> Table { get { return table; } }
+        public Dictionary<string, bool> TableIsCopy { get { return tableIsCopy; } }
         public void Add(string name, Type type, List<Token> parent = null)
         {
             table.Add(name, (Types)Activator.CreateInstance(typeof(Class<>).MakeGenericType(type), this.interpret, this.assigment_block, name, parent));
@@ -223,10 +242,12 @@ namespace Compilator
                     }
                     if (found is Function)
                         return ((Function)found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
-                    else if(found is Class)
+                    else if (found is Class)
                         return ((Class)found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
                     else if (found is Interface)
                         return ((Interface)found).Block.SymbolTable.Find(string.Join(".", nams.Skip(1)));
+                    else if (found is Import)
+                        return ((Import)found).Block.SymbolTable.Find(string.Join(".", nams.Skip(1)));
                     return Find(string.Join(".", nams.Skip(1)));
                 }
                 else if(assigment_block.variables.ContainsKey(nams[0]))
@@ -265,7 +286,7 @@ namespace Compilator
                 return false;
             }
         }
-
+        
         public Types Get(string name, ParameterList plist)
         {
             Types r = Get(name);
@@ -312,7 +333,7 @@ namespace Compilator
             return r;
         }
 
-        public Types Get(string name)
+        public Types Get(string name, bool noConstrucotr = false)
         {
             if (name.Split('.')[0] == "this")
                 name = string.Join(".", name.Split('.').Skip(1));
@@ -321,29 +342,31 @@ namespace Compilator
                 string[] nams = name.Split('.');
                 if (Find(nams[0]))
                 {
-                    Types found = Get(nams[0]);
-                    if(found is Assign)
+                    Types found = Get(nams[0], noConstrucotr);
+                    if (found is Assign)
                     {
                         Variable vr = (Variable)((Assign)found).Left;
-                        if(vr.Type != "auto")
+                        if (vr.Type != "auto")
                         {
-                            return Get(vr.Type + "." + string.Join(".", nams.Skip(1)));
+                            return Get(vr.Type + "." + string.Join(".", nams.Skip(1)), noConstrucotr);
                         }
                         if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
                         {
                             if (uop.Op == "new")
                             {
-                                return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)));
+                                return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr);
                             }
                         }
                     }
                     else if (found is Function)
-                        return ((Function)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)));
+                        return ((Function)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
                     else if (found is Class)
-                        return ((Class)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)));
+                        return ((Class)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
                     else if (found is Interface)
-                        return ((Interface)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)));
-                    return Get(string.Join(".", nams.Skip(1)));
+                        return ((Interface)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                    else if (found is Import)
+                        return ((Import)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                    return Get(string.Join(".", nams.Skip(1)), noConstrucotr);
                 }
                 else if (assigment_block.variables.ContainsKey(nams[0]))
                 {
@@ -352,20 +375,23 @@ namespace Compilator
                     {
                         if (uop.Op == "new")
                         {
-                            return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)));
+                            return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr);
                         }
                     }
-                    return vr.assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)));
+                    return vr.assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
                 }
             }
-            if (table.ContainsKey(name))
-                return table[name];
+            /*if (table.Where(t => t.Key.Replace("constructor ", "") == name).Count() > 0 && !noConstrucotr)
+                return table.Where(t => t.Key.Replace("constructor ", "") == name).First().Value;
+            else*/
+            if (table.Where(t => t.Key == name).Count() > 0)
+                return table.Where(t => t.Key == name).First().Value;
             else
             {
                 if (assigment_block.variables.Where(t => t.Key.Split(' ')[0] == name).Count() > 0)
                     return assigment_block.variables[name];
                 if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.Get(name);
+                    return assigment_block.Parent.SymbolTable.Get(name, noConstrucotr);
             }
             /*
             if(table.ContainsKey(name))

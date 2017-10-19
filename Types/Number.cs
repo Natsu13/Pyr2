@@ -33,5 +33,10 @@ namespace Compilator
         {
             return value;
         }
+
+        public override string InterpetSelf()
+        {
+            return "new Number("+token.InterpetSelf()+");";
+        }
     }
 }

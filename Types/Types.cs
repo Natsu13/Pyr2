@@ -16,6 +16,7 @@ namespace Compilator
         public Block assingBlock;
         public abstract int Visit();
         public abstract string Compile(int tabs = 0);
+        public abstract string InterpetSelf();
         public abstract void Semantic();
         public string DoTabs(int tabs)
         {

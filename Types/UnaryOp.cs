@@ -134,6 +134,10 @@ namespace Compilator
             {
                 Types t = assingBlock.SymbolTable.Get(name.Value);
                 if (t is Error) return "";
+                if (t is Import) {
+                    t = ((Import)t).Block.SymbolTable.Get(name.Value);
+                    if (t is Error) return "";
+                }
                 string rt;
 
                 string _name = "";
@@ -141,9 +145,9 @@ namespace Compilator
                 {
                     if (((Class)t).JSName != "") _name = ((Class)t).JSName;
                     else _name = ((Class)t).Name.Value;
-                }
-
-                if (t is Class && ((Class)t).assingBlock.SymbolTable.Find("constructor " + name.Value))
+                }                
+                
+                if (t is Class && ((Class)t).assingBlock.SymbolTable.Find("constructor " + _name))
                 {
                     string generic = "";
                     bool fir = true;
@@ -157,7 +161,7 @@ namespace Compilator
                         if (gf is Interface) gname = ((Interface)gf).getName();
                         generic += "'"+ gname + "'";
                     }
-                    Function f = (Function)(((Class)t).assingBlock.SymbolTable.Get("constructor " + name.Value));
+                    Function f = (Function)(((Class)t).assingBlock.SymbolTable.Get("constructor " + _name));
                     if (isArray)
                     {
                         Variable va = null;
@@ -182,7 +186,18 @@ namespace Compilator
                     }
                     else
                     {
-                        rt = tbs + _name + "." + f.Name + "(" + plist?.Compile();
+                        if (t.assingBlock.Interpret.FindImport(name.Value.Split('.').First()))
+                        {
+                            Import im = t.assingBlock.Interpret.GetImport(name.Value.Split('.').First());
+                            if(im.As != null)
+                                rt = tbs + im.As + "." + _name + "." + f.Name + "(" + plist?.Compile();
+                            else if(name.Value.Split('.').First() != name.Value)
+                                rt = tbs + name.Value.Split('.').First() + "." + _name + "." + f.Name + "(" + plist?.Compile();
+                            else
+                                rt = tbs + _name + "." + f.Name + "(" + plist?.Compile();
+                        }
+                        else
+                            rt = tbs + _name + "." + f.Name + "(" + plist?.Compile();
                         if (plist != null && plist.Parameters.Count > 0 && generic != "")
                             rt += ", ";
                         rt += generic;
@@ -220,7 +235,13 @@ namespace Compilator
                     }
                     else
                     {
-                        rt = tbs + "new " + _name + "(" + plist?.Compile() + ")";
+                        if (t.assingBlock.Interpret.FindImport(name.Value.Split('.').First()))
+                        {
+                            rt = tbs + "new " + name.Value.Split('.').First() + "." + _name + "(" + plist?.Compile() + ")";
+
+                        }
+                        else
+                            rt = tbs + "new " + _name + "(" + plist?.Compile() + ")";
                     }
                 }
                 return (inParen ? "(" : "") + rt + (inParen ? ")" : "");
@@ -258,7 +279,10 @@ namespace Compilator
             if (o == "call")
             {
                 if (asArgument) return;
-                Types t = null;
+                Types t = null;               
+
+                if (usingFunction is Function && usingFunction.attributes.Where(qt => ((_Attribute)qt).GetName(true) == "Obsolete").Count() > 0)
+                    Interpreter.semanticError.Add(new Error("Function " + name.Value + " is Obsolete", Interpreter.ErrorType.ERROR, name));
 
                 Dictionary<string, Types> genericArgsTypes = new Dictionary<string, Types>();                
                 if (usingFunction is Function _f)
@@ -389,6 +413,8 @@ namespace Compilator
                             Interpreter.semanticError.Add(new Error("You must specify all generic types when creating instance of class '" + name.Value + "'", Interpreter.ErrorType.ERROR, name));
                         }
                     }
+                    if (t is Class && ((Class)t).attributes.Where(qt => ((_Attribute)qt).GetName(true) == "Obsolete").Count() > 0)
+                        Interpreter.semanticError.Add(new Error("Class " + name.Value + " is Obsolete", Interpreter.ErrorType.ERROR, name));
                 }
             }
             if (o == "return")
@@ -405,6 +431,11 @@ namespace Compilator
             else if (op.type == Token.Type.MINUS)
                 return -expr.Visit();
             return 0;
+        }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
         }
     }
 }

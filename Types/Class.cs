@@ -17,6 +17,7 @@ namespace Compilator
         public Token _dynamic;
         public string JSName = "";
         List<string> genericArguments = new List<string>();
+        public List<_Attribute> attributes = new List<_Attribute>();
 
         public Class(Token name, Block block, List<Token> parents)
         {
@@ -81,6 +82,19 @@ namespace Compilator
                         ret += tbs + "\tthis." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
                 }
                 ret += tbs + "}\n";
+                if (attributes.Count > 0)
+                {
+                    ret += tbs + "var " + name.Value + "$META = function(){\n";                    
+                    ret += tbs + "\treturn {";
+                    int i = 0;
+                    foreach (_Attribute a in attributes)
+                    {
+                        ret += "\n" + tbs + "\t\t" + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
+                        i++;
+                    }
+                    ret += "\n" + tbs + "\t};\n";
+                    ret += tbs + "};";
+                }
                 ret += block.Compile(tabs, true);
                 return ret;
             }
@@ -137,9 +151,14 @@ namespace Compilator
             }
             return false;
         }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
     }
 
-    [Obsolete]
+    [Obsolete("Please use not Generic Class instead")]
     public class Class<T>:Types where T:new()
     {
         string name;
@@ -182,6 +201,11 @@ namespace Compilator
         public override int Visit()
         {
             return 0;
-        }        
+        }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

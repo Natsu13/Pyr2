@@ -21,7 +21,8 @@ namespace Compilator
             IF, ELSE, ELSEIF, FOR, WHILE,
             EQUAL, NOTEQUAL, AND, OR, MORE, LESS, 
             TRUE, FALSE,
-            IN, GET
+            IN, GET,
+            IMPORT
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
@@ -48,7 +49,8 @@ namespace Compilator
             { "is",         new Token(Type.IS, "is") },
             { "as",         new Token(Type.AS, "as") },
             { "dynamic",    new Token(Type.DYNAMIC, "dynamic") },
-            { "declare",    new Token(Type.DECLARE, "declare") }
+            { "declare",    new Token(Type.DECLARE, "declare") },
+            { "import",     new Token(Type.IMPORT, "import") }
         };
 
         public Type type;
@@ -79,6 +81,11 @@ namespace Compilator
         public Token(Type type, string value, int pos, int endpos, string file = "") : this(type, value, pos, file)
         {
             this.endpos = endpos;
+        }
+
+        public string InterpetSelf()
+        {
+            return "new Token("+Enum.GetName(typeof(Type), type)+", "+value+", "+pos+", "+endpos+", "+file+")";
         }
 
         public static Token Combine(Token t1, Token t2)

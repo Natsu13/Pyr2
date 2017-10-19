@@ -75,6 +75,11 @@ namespace Compilator
             return source.getToken();
         }
 
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
+
         public override void Semantic()
         {
             if (!isIterable)

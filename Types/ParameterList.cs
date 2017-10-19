@@ -218,5 +218,10 @@ namespace Compilator
         {
             return 0;
         }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -184,5 +184,10 @@ namespace Compilator
                 return left.Visit() / right.Visit();
             return 0;
         }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

@@ -14,6 +14,8 @@ namespace Compilator
         bool isMismash = false;
         bool isRedeclared = false;
         string originlDateType = "";
+        public List<_Attribute> attributes;
+
         public Assign(Types left, Token op, Types right, Block current_block = null)
         {
             this.left = left;
@@ -52,6 +54,11 @@ namespace Compilator
             }                        
         }
 
+        public override string InterpetSelf()
+        {
+            return "new Assign("+left.InterpetSelf()+", "+token.InterpetSelf()+ ", "+right.InterpetSelf()+", "+ left.assingBlock.InterpetSelf()+ ")";
+        }
+
         public override Token getToken() { return null; }
 
         public Types Left { get { return left; } } 
@@ -87,7 +94,9 @@ namespace Compilator
                 right.assingBlock = ((Variable)left).Block;
                 if (right is UnaryOp)
                     ((UnaryOp)right).endit = false;
-                return DoTabs(tabs) + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + right.Compile(0) + ";";
+                string tbs = DoTabs(tabs);
+                string ret = tbs + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + right.Compile(0) + ";";                
+                return ret;
             }
             else
                 return DoTabs(tabs) + addName + left.Compile(0) + " = " + right.Compile(0) + ";";

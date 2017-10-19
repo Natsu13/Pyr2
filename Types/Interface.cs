@@ -16,6 +16,7 @@ namespace Compilator
         public bool isDynamic = false;
         public Token _dynamic;
         public string JSName = "";
+        public List<_Attribute> attributes;
 
         public Interface(Token name, Block block, List<Token> parents)
         {
@@ -126,6 +127,11 @@ namespace Compilator
                 }
             }
             return false;
+        }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
         }
     }
 }

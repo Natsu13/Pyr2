@@ -45,6 +45,11 @@ namespace Compilator
         }
         public override Token getToken() { return null; }
 
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
+
         public override void Semantic()
         {
             foreach(KeyValuePair<Types, Block> c in conditions)

@@ -29,5 +29,10 @@ namespace Compilator
         }
 
         public override Token getToken() { return null; }
+
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

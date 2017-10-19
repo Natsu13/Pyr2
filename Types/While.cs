@@ -34,6 +34,11 @@ namespace Compilator
             return expr.getToken();
         }
 
+        public override string InterpetSelf()
+        {
+            throw new NotImplementedException();
+        }
+
         public override void Semantic()
         {
 

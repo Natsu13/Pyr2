@@ -18,6 +18,7 @@ namespace Compilator
         public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR, WHILE };
         BlockType type = BlockType.NONE;
         public bool isInConstructor = false;
+        public Import import = null;
 
         public Block(Interpreter interpret, bool first = false)
         {

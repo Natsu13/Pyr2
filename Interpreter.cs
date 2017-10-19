@@ -45,7 +45,8 @@ namespace Compilator
         {
             this.text = text;
             this.parent = parent;
-            fileList.Add(filename, text);
+            if(!fileList.ContainsKey(filename))
+                fileList.Add(filename, text);
             imports = new Dictionary<string, Import>();
             pos = 0;
             current_char = text[pos];
@@ -129,7 +130,7 @@ namespace Compilator
 
                 if(current_char == '/' && Peek() == '/')
                 {
-                    while (current_char != '\n')
+                    while (current_char != '\n' && current_char != '\0')
                         Advance();
                     continue;
                 }
@@ -835,8 +836,8 @@ namespace Compilator
             if(current_token.type == Token.Type.AS)
             {
                 Eat(Token.Type.AS);
-                _as = current_token.Value;
-                Eat(Token.Type.ID);
+                _as = current_token.Value;                
+                Eat(current_token.type);
             }
             im = new Token(Token.Type.STRING, result.Value, result.Pos, current_file);
             

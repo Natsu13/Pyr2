@@ -78,12 +78,9 @@ namespace Compilator
                 tableIsCopy[to] = true;
             }
         }
-
-        public static bool initialized = false;
+        
         public void initialize()
         {
-            if (initialized) return;
-            initialized = true;
             //Function js
             Token Function_js = new Token(Token.Type.ID, "js");
             ParameterList plist_js = new ParameterList(true);
@@ -91,6 +88,13 @@ namespace Compilator
             plist_js.parameters.Add(new Variable(new Token(Token.Type.ID, "code"), Block_js, new Token(Token.Type.CLASS, "string")));
             Function js = new Function(Function_js, Block_js, plist_js, new Token(Token.Type.VOID, "void"), interpret) { isExternal = true, isConstructor = false, isOperator = false, isStatic = false };
             Add("js", js);
+            //Function _default
+            Token Function__default = new Token(Token.Type.ID, "_default");
+            ParameterList plist_default = new ParameterList(true);
+            Block Block__default = new Block(interpret) { Parent = assigment_block };
+            plist_default.parameters.Add(new Variable(new Token(Token.Type.ID, "type"), Block_js, new Token(Token.Type.CLASS, "Type")));
+            Function _default = new Function(Function__default, Block__default, plist_default, new Token(Token.Type.CLASS, "object"), interpret) { isExternal = true, isConstructor = false, isOperator = false, isStatic = false };
+            Add("_default", _default);
             //Function alert
             Token Function_alert = new Token(Token.Type.ID, "alert");
             ParameterList plist_alert = new ParameterList(true);
@@ -270,7 +274,9 @@ namespace Compilator
                 if (assigment_block.variables.ContainsKey(name))
                     return true;
                 if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.Find(name);                
+                    return assigment_block.Parent.SymbolTable.Find(name);
+                if (interpret.FindImport(name))
+                    return interpret.GetImport(name).Block.SymbolTable.Find(name);
                 return false;
             }
         }
@@ -365,7 +371,17 @@ namespace Compilator
                     else if (found is Interface)
                         return ((Interface)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
                     else if (found is Import)
-                        return ((Import)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                    {
+                        Types ttt = ((Import)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                        if(ttt is Error)
+                        {
+                            if (((Import)found).Block.SymbolTable.Find(name))
+                            {
+                                return ((Import)found).Block.SymbolTable.Get(name, noConstrucotr);
+                            }
+                        }
+                        return ttt;
+                    }
                     return Get(string.Join(".", nams.Skip(1)), noConstrucotr);
                 }
                 else if (assigment_block.variables.ContainsKey(nams[0]))
@@ -385,7 +401,17 @@ namespace Compilator
                 return table.Where(t => t.Key.Replace("constructor ", "") == name).First().Value;
             else*/
             if (table.Where(t => t.Key == name).Count() > 0)
+            {
+                Types ttt = table.Where(t => t.Key == name).First().Value;
+                if (ttt is Import)
+                {
+                    if (((Import)ttt).Block.SymbolTable.Find(name))
+                    {
+                        return ((Import)ttt).Block.SymbolTable.Get(name, noConstrucotr);
+                    }
+                }
                 return table.Where(t => t.Key == name).First().Value;
+            }
             else
             {
                 if (assigment_block.variables.Where(t => t.Key.Split(' ')[0] == name).Count() > 0)
@@ -393,15 +419,10 @@ namespace Compilator
                 if (assigment_block.Parent != null)
                     return assigment_block.Parent.SymbolTable.Get(name, noConstrucotr);
             }
-            /*
-            if(table.ContainsKey(name))
-                return table[name];
-            else
+            if (interpret.FindImport(name))
             {
-                if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.Get(name);
+                return interpret.GetImport(name).Block.SymbolTable.Get(name, noConstrucotr);
             }
-            */
             return new Error("Internal error #100");
         }
         public Type GetType(string name)

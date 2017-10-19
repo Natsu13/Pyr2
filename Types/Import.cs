@@ -15,27 +15,49 @@ namespace Compilator
         Interpreter interpret;
         Block block;
         string _as = "";
+        Types _ihaveit = null;
 
         public Import(Token whatimpot, Block _block, Interpreter inter, string _as = null)
         {
             this._as = _as;
             string dir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             this.import = whatimpot;
+            
+            if (_block.SymbolTable.Find(GetModule()))
+            {
+                _ihaveit = _block.SymbolTable.Get(GetModule());   
+            }
             string path = whatimpot.Value.Replace('.', '\\');
             if (File.Exists(dir + @"\" + path + ".p"))
             {
                 found = true;
-                string code = File.ReadAllText(dir + @"\" + path + ".p");
-                interpret = new Interpreter(code, "" + path + ".p", inter);
-                interpret.isConsole = inter.isConsole;
-                block = (Block)interpret.Interpret();
-                if (_as == null)
-                    _block.SymbolTable.Add(GetName(), this);
+                if (_ihaveit == null)
+                {
+                    string code = File.ReadAllText(dir + @"\" + path + ".p");
+                    interpret = new Interpreter(code, "" + path + ".p", inter);
+                    interpret.isConsole = inter.isConsole;
+                    block = (Block)interpret.Interpret();
+                    block.import = this;
+                    if (_as == null)
+                        _block.SymbolTable.Add(GetName(), this);
+                    else
+                    {
+                        _block.SymbolTable.Add(_as, this);
+                        block.SymbolTable.Copy(whatimpot.Value.Split('.').Last(), _as);
+                        this._as = string.Join(".", whatimpot.Value.Split('.').Take(whatimpot.Value.Split('.').Length - 1));
+                    }
+                }
                 else
                 {
-                    _block.SymbolTable.Add(_as, this);
-                    block.SymbolTable.Copy(whatimpot.Value.Split('.').Last(), _as);
-                    this._as = string.Join(".", whatimpot.Value.Split('.').Take(whatimpot.Value.Split('.').Length - 1));
+                    if (_as == null)
+                        _block.SymbolTable.Add(GetName(), _ihaveit.assingBlock.Parent.import);
+                    else
+                    {
+                        _block.SymbolTable.Add(_as, _ihaveit.assingBlock.Parent.import);
+                        //Block block = new Block(interpret);
+                        //block.SymbolTable.Copy(whatimpot.Value.Split('.').Last(), _as);
+                        this._as = string.Join(".", whatimpot.Value.Split('.').Take(whatimpot.Value.Split('.').Length - 1));
+                    }
                 }
             }                
         }
@@ -48,7 +70,7 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
-            if (!found) return "";
+            if (!found || _ihaveit != null) return "";
 
             string compiled = block.Compile();
             compiled = compiled.Replace("\n", "\n  ");
@@ -58,9 +80,9 @@ namespace Compilator
 
             string outcom = "\n"+tbs + "//Imported "+import.Value+"\n";
             if(n.Where(c => c == '.').Count() > 0)
-                outcom += tbs + n + " = function (_){\n  'use strict';\n";
+                outcom += tbs + n + " = function (_, __){\n  'use strict';\n";
             else
-                outcom += tbs + "var " +n+" = function (_){\n  'use strict';\n";
+                outcom += tbs + "var " +n+" = function (_, __){\n  'use strict';\n";
             outcom += "  " + compiled.Substring(0, compiled.Length) + "\n";
             foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
             {
@@ -77,12 +99,15 @@ namespace Compilator
                 if (t.Value is Function tf)
                     outcom += tbs + "  _." + tf.Name + " = " + tf.Name + ";\n";
                 else if (t.Value is Import im)
+                {
                     outcom += tbs + "  _." + t.Key + " = " + im.As + "." + im.GetModule() + ";\n";
+                    outcom += tbs + "  var " + t.Key + " = " + im.As + "." + im.GetModule() + ";\n";
+                }
                 else
                     outcom += tbs + "  _." + t.Key + " = " + t.Key + ";\n";
             }
             outcom += tbs + "\n  return _;\n";
-            outcom += tbs + "}(typeof " + n + " === 'undefined' ? {} : " + n + ");\n";
+            outcom += tbs + "}(typeof " + n + " === 'undefined' ? {} : " + n + ", this);\n";
 
             return outcom;
         }
@@ -91,7 +116,7 @@ namespace Compilator
         {
             if (!found)
                 Interpreter.semanticError.Add(new Error("Imported class " + import.Value + " not found!", Interpreter.ErrorType.ERROR, import));
-            else
+            else if(block != null)
                 block.Semantic();
         }
 

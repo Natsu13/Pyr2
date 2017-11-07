@@ -121,12 +121,12 @@ namespace Compilator
 
         public override void Semantic()
         {
-            if (assingBlock.SymbolTable.Get(left.TryVariable().Value) is Properties ps)
+            if (assingBlock?.SymbolTable.Get(left.TryVariable().Value) is Properties ps)
             {
                 if(ps.Setter == null)
                     Interpreter.semanticError.Add(new Error("#800 Propertie " + ((Properties)left).variable.TryVariable().Value + " don't define setter!", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
             }
-            if (assingBlock.SymbolTable.Get(right.TryVariable().Value) is Properties pg)
+            if (assingBlock?.SymbolTable.Get(right.TryVariable().Value) is Properties pg)
             {
                 if(pg.Getter == null)
                     Interpreter.semanticError.Add(new Error("#801 Propertie " + ((Properties)left).variable.TryVariable().Value + " don't define getter!", Interpreter.ErrorType.ERROR, right.TryVariable().getToken()));

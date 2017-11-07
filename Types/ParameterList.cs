@@ -206,7 +206,7 @@ namespace Compilator
         {
             if (cantdefault)
             {
-                Interpreter.semanticError.Add(new Error("Optional parameters must follow all required parameters", Interpreter.ErrorType.ERROR, token));
+                Interpreter.semanticError.Add(new Error("#113 Optional parameters must follow all required parameters", Interpreter.ErrorType.ERROR, token));
             }
             foreach (Types par in parameters)
             {

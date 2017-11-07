@@ -22,7 +22,7 @@ namespace Compilator
             EQUAL, NOTEQUAL, AND, OR, MORE, LESS, 
             TRUE, FALSE,
             IN, GET,
-            IMPORT
+            IMPORT, SET
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {

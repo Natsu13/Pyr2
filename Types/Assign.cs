@@ -87,14 +87,31 @@ namespace Compilator
 
             if ((((Variable)left).Block.Type == Block.BlockType.CONDITION && ((Variable)left).Block.Parent.variables.ContainsKey(((Variable)left).Value)))            
                 isDeclare = false;
-            
-            if (left is Variable)
+
+            Types maybeIs = assingBlock.SymbolTable.Get(left.TryVariable().Value);
+            Types maybeIs2 = assingBlock.SymbolTable.Get(right.TryVariable().Value);
+
+            right.assingBlock = ((Variable)left).Block;
+            if (right is UnaryOp)
+                ((UnaryOp)right).endit = false;
+
+            if(assingBlock.SymbolTable.Find(left.TryVariable().Value) &&  maybeIs is Properties)
             {
-                //if (((Variable)left).Block.blockAssignTo != "") return "";
-                right.assingBlock = ((Variable)left).Block;
-                if (right is UnaryOp)
-                    ((UnaryOp)right).endit = false;
-                string tbs = DoTabs(tabs);
+                string[] varname = left.TryVariable().Value.Split('.');
+                if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
+                    varname[0] = "$this";
+                return DoTabs(tabs) + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".set(" + right.Compile(0) + ");";
+            }
+            else if (assingBlock.SymbolTable.Find(right.TryVariable().Value) && maybeIs2 is Properties)
+            {
+                string[] varname = right.TryVariable().Value.Split('.');
+                if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
+                    varname[0] = "$this";
+                return DoTabs(tabs) + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".get();";
+            }
+            else if (left is Variable)
+            {                
+                string tbs = DoTabs(tabs);                
                 string ret = tbs + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + right.Compile(0) + ";";                
                 return ret;
             }
@@ -123,7 +140,18 @@ namespace Compilator
                         }
                         if (((Variable)left).Value.Split('.')[0] == "this")
                         {
-                            Assign ava = (Assign)t;
+                            string left_type = "auto";
+                            if (t is Assign ava)
+                            {
+                                left_type = ava.GetType();
+                            }
+                            else if (t is Properties prop)
+                            {
+                                string ty = prop.variable.TryVariable().Type;
+                                if (ty == "auto")
+                                    prop.variable.TryVariable().Check();
+                                left_type = prop.variable.TryVariable().Type;
+                            }
                             string type = "auto";
                             if (right is CString) type = "string";
                             else if (right is Number) type = "int";
@@ -139,12 +167,15 @@ namespace Compilator
                             else if (right is BinOp) type = ((BinOp)right).OutputType.Value;
                             else if (right is UnaryOp) type = ((UnaryOp)right).OutputType.Value;
 
-                            if (ava.GetType() != type)
+                            if (left_type != type)
                             {
-                                Interpreter.semanticError.Add(new Error("#101 Variable " + ((Variable)left).Value + " with type '" + ava.GetType() + "' can't be implicitly converted to '" + type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
+                                Interpreter.semanticError.Add(new Error("#101 Variable " + ((Variable)left).Value + " with type '" + left_type + "' can't be implicitly converted to '" + type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                             }
-                        }else
+                        }
+                        else
+                        {
                             ((Variable)left).setType(((Variable)((Assign)t).Left).getType());
+                        }
                     }
                     else if (right is Variable && (((Variable)right).getToken().type == Token.Type.TRUE || ((Variable)right).getToken().type == Token.Type.FALSE))
                         ((Variable)left).setType(new Token(Token.Type.BOOL, "bool"));
@@ -161,7 +192,12 @@ namespace Compilator
                     {
                         if (((Variable)right).Type == "auto")
                         {
-                            if (right is Variable && ((Variable)right).getToken().type == Token.Type.TRUE)
+                            right.TryVariable().Check();
+                            if (((Variable)right).Type != "auto")
+                            { 
+                                //check fixed it o.o    
+                            }
+                            else if (right is Variable && ((Variable)right).getToken().type == Token.Type.TRUE)
                                 ((Variable)right).setType(new Token(Token.Type.BOOL, "bool"));
                             else if (right is Variable && ((Variable)right).getToken().type == Token.Type.FALSE)
                                 ((Variable)right).setType(new Token(Token.Type.BOOL, "bool"));
@@ -173,13 +209,13 @@ namespace Compilator
                                     Function asfunc = (Function)rblock.SymbolTable.Get(rblock.assignTo);
                                     Variable var = asfunc.ParameterList.Find(((Variable)right).Value);
                                     Types vaq = (Types)rblock.SymbolTable.Get(((Variable)right).Value);
-                                    if(vaq != null)
+                                    if (vaq != null)
                                     {
-                                        if(vaq is Assign)
+                                        if (vaq is Assign)
                                         {
                                             right = vaq;
                                         }
-                                        if(vaq is Error)
+                                        if (vaq is Error)
                                             Interpreter.semanticError.Add(new Error("#103 Variable " + ((Variable)right).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)right).getToken()));
                                     }
                                     else if (var != null)

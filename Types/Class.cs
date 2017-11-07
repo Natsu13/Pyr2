@@ -68,33 +68,44 @@ namespace Compilator
                 foreach (string generic in genericArguments)
                 {
                     block.SymbolTable.Add(generic, new Generic(this, block, generic));
-                    ret += tbs+"\tthis.generic$" + generic + " = null;\n";
+                    ret += tbs+"  this.generic$" + generic + " = null;\n";
                 }
                 foreach (Token parent in parents)
                 {
-                    ret += tbs + "\t" + parent.Value + ".call(this);\n";
+                    ret += tbs + "  " + parent.Value + ".call(this);\n";
                 }
                 foreach (KeyValuePair<string, Assign> var in block.variables)
                 {
                     if (var.Value.Right.getToken().type == Token.Type.NULL)
-                        ret += tbs + "\tthis." + var.Key + " = null;\n";
+                        ret += tbs + "  this." + var.Key + " = null;\n";
                     else
-                        ret += tbs + "\tthis." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                        ret += tbs + "  this." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                }
+                foreach (Types type in block.children)
+                {
+                    if(type is Properties prop)
+                    {
+                        ret += tbs + "  this.Property$" + prop.variable.TryVariable().Value + ".$self = this;\n";
+                    }
                 }
                 ret += tbs + "}\n";
+                
+                ret += tbs + "var " + name.Value + "$META = function(){\n";                    
+                ret += tbs + "  return {";
+                ret += "\n" + tbs + "    type: 'class'" + (attributes.Count > 0 ? ", " : "");
                 if (attributes.Count > 0)
                 {
-                    ret += tbs + "var " + name.Value + "$META = function(){\n";                    
-                    ret += tbs + "\treturn {";
+                    ret += "\n" + tbs + "    attributes: {";
                     int i = 0;
                     foreach (_Attribute a in attributes)
                     {
-                        ret += "\n" + tbs + "\t\t" + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
+                        ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
                         i++;
                     }
-                    ret += "\n" + tbs + "\t};\n";
-                    ret += tbs + "};";
+                    ret += "\n" + tbs + "    },";
                 }
+                ret += "\n" + tbs + "  };\n";            
+                ret += tbs + "};\n";                
                 ret += block.Compile(tabs, true);
                 return ret;
             }
@@ -106,6 +117,10 @@ namespace Compilator
             foreach (KeyValuePair<string, Assign> var in block.variables)
             {
                 var.Value.Semantic();
+            }
+            foreach (_Attribute a in attributes)
+            {
+                a.Semantic();
             }
             block.Semantic();
         }

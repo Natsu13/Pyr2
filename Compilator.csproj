@@ -63,6 +63,7 @@
     <Compile Include="Types\Null.cs" />
     <Compile Include="Types\ParameterList.cs" />
     <Compile Include="Types\CString.cs" />
+    <Compile Include="Types\Properties.cs" />
     <Compile Include="Types\SymbolTable.cs" />
     <Compile Include="Types\Types.cs" />
     <Compile Include="Category.cs" />

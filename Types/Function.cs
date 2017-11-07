@@ -175,13 +175,13 @@ namespace Compilator
                 if(isConstructor)
                 {
                     if (block == null) ret += "\n";
-                    ret += tbs + "\tvar $this = Object.create(" + fromClass + ".prototype);\n";
-                    ret += tbs + "\t" + fromClass + ".call($this);\n";
+                    ret += tbs + "  var $this = Object.create(" + fromClass + ".prototype);\n";
+                    ret += tbs + "  " + fromClass + ".call($this);\n";
                     if(c != null)
                     {
                         foreach (string generic in c.GenericArguments)
                         {                            
-                            ret += tbs + "\t$this.generic$" + generic + " = generic$" + generic+";\n";
+                            ret += tbs + "  $this.generic$" + generic + " = generic$" + generic+";\n";
                         }
                     }
                 }
@@ -190,7 +190,7 @@ namespace Compilator
                 {                    
                     if (t is Assign a)
                     {
-                        ret += tbs + "\tif(typeof "+a.Left.Compile()+" == \"undefined\") " + a.Left.Compile()+" = " + a.Right.Compile()+";\n";
+                        ret += tbs + "  if(typeof "+a.Left.Compile()+" == \"undefined\") " + a.Left.Compile()+" = " + a.Right.Compile()+";\n";
                     }
                 }
 
@@ -198,23 +198,30 @@ namespace Compilator
                     ret += block.Compile(tabs + 1);
                 if (isConstructor)
                 {
-                    ret += tbs + "\treturn $this;\n";
+                    ret += tbs + "  return $this;\n";
                 }
                 ret += tbs + "}\n";
-
+                
+                if(functionOpname.Split('.').Count() > 1)
+                    ret += tbs + functionOpname + "$META = function(){\n";
+                else
+                    ret += tbs + "var " + functionOpname + "$META = function(){\n";
+                ret += tbs + "  return {";
+                ret += "\n" + tbs + "    type: '"+(isConstructor?"constructor":"function")+"'" + (attributes.Count > 0 ? ", " : "");
                 if (attributes.Count > 0)
                 {
-                    ret += tbs + "var " + functionOpname + "$META = function(){\n";
-                    ret += tbs + "\treturn {";
+                    ret += "\n" + tbs + "    attributes: {";
                     int i = 0;
                     foreach (_Attribute a in attributes)
                     {
-                        ret += "\n" + tbs + "\t\t" + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
+                        ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
                         i++;
                     }
-                    ret += "\n" + tbs + "\t};\n";
-                    ret += tbs + "};";
+                    ret += "\n" + tbs + "    },";
                 }
+                ret += "\n" + tbs + "  };\n";
+                ret += tbs + "};\n";
+                
             }
             return ret;
         }
@@ -244,6 +251,10 @@ namespace Compilator
             {
                 block.Semantic();
                 block.CheckReturnType(returnt?.Value, (returnt?.type == Token.Type.VOID ? true : false));
+            }
+            foreach (_Attribute a in attributes)
+            {
+                a.Semantic();
             }
         }
 

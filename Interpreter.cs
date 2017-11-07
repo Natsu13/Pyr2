@@ -157,6 +157,11 @@ namespace Compilator
                     Advance(); Advance();
                     return new Token(Token.Type.DEFINERETURN, "->", current_token_pos, current_file);
                 }
+                if(current_char == '=' && Peek() == '>')
+                {
+                    Advance(); Advance();
+                    return new Token(Token.Type.SET, "=>", current_token_pos, current_file);
+                }
                 if (current_char == '=' && Peek() == '=') {
                     Advance(); Advance();
                     return new Token(Token.Type.EQUAL, "==", current_token_pos, current_file);
@@ -1324,7 +1329,34 @@ namespace Compilator
                 (left as Variable).genericArgs = garg;
                 if (isArray)
                     (left as Variable).MadeArray(true);
-            }            
+            }     
+            if(current_token.type == Token.Type.SET)
+            {
+                Eat(Token.Type.SET);
+                Eat(Token.Type.BEGIN);
+
+                Types get_block = null, set_block = null;
+                string type = "";
+
+                while(current_token.Value == "get" || current_token.Value == "set")
+                {
+                    type = current_token.Value;
+                    Eat(current_token.type);
+                    Types b = Statement();
+                    if (type == "set") set_block = b;
+                    else get_block = b;
+                }
+
+                Eat(Token.Type.END);
+
+                Properties p = new Properties(left, get_block, set_block, current_block);
+                p.assingBlock = current_block;
+                if (get_block is Block bg)
+                    bg.Type = Block.BlockType.PROPERTIES;
+                if (set_block is Block bs)
+                    bs.Type = Block.BlockType.PROPERTIES;
+                return p;
+            }
             if(current_token.type == Token.Type.ASIGN)
             {
                 Token token = current_token;
@@ -1390,6 +1422,8 @@ namespace Compilator
                 Eat(Token.Type.TRUE);
             else if (current_token.type == Token.Type.FALSE)
                 Eat(Token.Type.FALSE);
+            else if (current_token.type == Token.Type.CLASS)
+                Eat(Token.Type.CLASS);
             else
                 Eat(Token.Type.ID);           
 

@@ -15,7 +15,7 @@ namespace Compilator
         public string blockClassTo = "";
         Block parent = null;
         SymbolTable symbolTable;        
-        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR, WHILE };
+        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR, WHILE, PROPERTIES };
         BlockType type = BlockType.NONE;
         public bool isInConstructor = false;
         public Import import = null;
@@ -29,6 +29,15 @@ namespace Compilator
         public BlockType Type { get { return type; } set { type = value; } }
         public Interpreter Interpret { get { return this.interpret; } }
         public SymbolTable SymbolTable { get { return symbolTable; } }
+        
+        public bool isType(BlockType type)
+        {
+            if (this.type == type)
+                return true;
+            if (parent != null && parent.isType(type))
+                return true;
+            return false;
+        }
 
         public string getClass()
         {

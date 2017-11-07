@@ -46,10 +46,12 @@ namespace Compilator
 
         public override void Semantic()
         {
-            if(_class == null)
+            if (_class == null)
                 Interpreter.semanticError.Add(new Error("Class "+ nclass.Value+" not found!", Interpreter.ErrorType.ERROR, nclass));
+            else if (!((Class)_class).haveParent("Attribute"))
+                Interpreter.semanticError.Add(new Error("Class " + nclass.Value + " must be Attribute!", Interpreter.ErrorType.ERROR, nclass));
             uop.Semantic();
-            plist.Semantic();
+            plist?.Semantic();
         }
 
         public override int Visit() { return 0; }

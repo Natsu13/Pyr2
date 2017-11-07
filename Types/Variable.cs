@@ -145,6 +145,10 @@ namespace Compilator
                     {
                         this.dateType = new Token(Token.Type.CLASS, "object");
                     }
+                    else if (this.block.SymbolTable.Get(newname) is Properties prop)
+                    {
+                        this.dateType = prop.variable.TryVariable().dateType;
+                    }
                     else if (((Assign)this.block.SymbolTable.Get(newname)).Right is UnaryOp)
                     {
                         if (((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Op == "call")
@@ -224,12 +228,25 @@ namespace Compilator
             else if (_class != null)
                 nameclass = _class.Name;
 
+            var t__ = "this" + (Value == "this"?"":".");
+            if (assingBlock != null && assingBlock.isType(Block.BlockType.PROPERTIES))
+                t__ = "this.$self" + (Value == "this"?"":".");
+
+            var not = Value;
+
             if (Value.Split('.')[0] == "this")
             {
+                not = t__ + string.Join(".", value.Split('.').Skip(1));
                 vname = string.Join(".", value.Split('.').Skip(1)) + (isKey ? "[" + key.Compile() + "]" : "");
 
                 if (block.isInConstructor)
                 {
+                    if(block.SymbolTable.Get(this.value) is Properties)
+                    {
+                        if (asDateType != null)
+                            return DoTabs(tabs) + (inParen ? "(" : "") + "($this.Property$" + vname + "_getter().constructor.name == '" + nameclass + "' ? $this.Property$" + vname + "_getter() : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
+                        return DoTabs(tabs) + (inParen ? "(" : "") + "$this.Property$" + string.Join(".", value.Split('.').Skip(1)) + "_getter()" + (isKey ? "["+key.Compile()+"]" : "") + (inParen ? ")" : "");
+                    }
                     if (asDateType != null)
                         return DoTabs(tabs) + (inParen ? "(" : "") + "($this." + vname + ".constructor.name == '" + nameclass + "' ? $this." + vname + " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
                     return DoTabs(tabs) + (inParen ? "(" : "") + "$this." + string.Join(".", value.Split('.').Skip(1)) + (isKey ? "["+key.Compile()+"]" : "") + (inParen ? ")" : "");
@@ -237,10 +254,19 @@ namespace Compilator
             }
 
             if (block.SymbolTable.Get(this.value) is Generic)
-                vname = "this.generic$" + Value + (isKey ? "[" + key.Compile() + "]" : "");
+                vname = t__ + "generic$" + Value + (isKey ? "[" + key.Compile() + "]" : "");
+            else if (block.SymbolTable.Get(this.value) is Properties)
+            {              
+                if (value.Split('.')[0] == "this")
+                {                    
+                    vname = t__ + ".Property$" + string.Join(".", value.Split('.').Skip(1)) + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
+                }
+                else
+                    vname = t__ + ".Property$" + Value + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
+            }
             else
-            {               
-                vname = Value + (isKey ? "[" + key.Compile() + "]" : "");
+            {
+                vname = not + (isKey ? "[" + key.Compile() + "]" : "");
             }
             if (dateType.Value == "auto")
                 Check();
@@ -253,7 +279,7 @@ namespace Compilator
                 {
                     Function opp = (Function)oppq;
                     if (!opp.isExternal)
-                        vname = Value + "." + opp.Name + "(" + key.Compile() + ")";
+                        vname = not + "." + opp.Name + "(" + key.Compile() + ")";
                 }
                 else if(oppq is Error && ((Error)oppq).Message == "Found but arguments are bad!") getFoundButBadArgs = true;
             }

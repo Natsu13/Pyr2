@@ -32,7 +32,15 @@ namespace Compilator
                 if (t.Value is Interface && ((Interface)t.Value).isExternal)
                     continue;
                 if (t.Value is Function tf)
+                {
                     outcom += "  _." + tf.Name + " = " + tf.Name + ";\n";
+                    outcom += "  _." + tf.Name + "$META = " + tf.Name + "$META;\n";
+                }
+                else if (t.Value is Class tc)
+                {
+                    outcom += "  _." + t.Key + " = " + t.Key + ";\n";
+                    outcom += "  _." + t.Key + "$META = " + t.Key + "$META;\n";
+                }
                 else if (t.Value is Import im)
                     outcom += "  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
                 else

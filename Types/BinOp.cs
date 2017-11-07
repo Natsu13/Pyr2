@@ -126,11 +126,11 @@ namespace Compilator
 
             if (!v.SupportOp(op.type))
             {
-                Interpreter.semanticError.Add(new Error("#112 Varible type '" + v.Type + "' not support operator " + Variable.GetOperatorStatic(op.type), Interpreter.ErrorType.ERROR, left.getToken()));
+                Interpreter.semanticError.Add(new Error("#300 Varible type '" + v.Type + "' not support operator " + Variable.GetOperatorStatic(op.type), Interpreter.ErrorType.ERROR, left.getToken()));
             }
             else if (!v.SupportSecond(op.type, right, r))
             {
-                Interpreter.semanticError.Add(new Error("#200 Operator " + Variable.GetOperatorStatic(op.type) + " cannot be applied for '" + v.Type + "' and '" + r.Type + "'", Interpreter.ErrorType.ERROR, op));
+                Interpreter.semanticError.Add(new Error("#301 Operator " + Variable.GetOperatorStatic(op.type) + " cannot be applied for '" + v.Type + "' and '" + r.Type + "'", Interpreter.ErrorType.ERROR, op));
             }
         }        
 

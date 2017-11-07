@@ -282,7 +282,7 @@ namespace Compilator
                 Types t = null;               
 
                 if (usingFunction is Function && usingFunction.attributes.Where(qt => ((_Attribute)qt).GetName(true) == "Obsolete").Count() > 0)
-                    Interpreter.semanticError.Add(new Error("Function " + name.Value + " is Obsolete", Interpreter.ErrorType.ERROR, name));
+                    Interpreter.semanticError.Add(new Error("#704 Function " + name.Value + " is Obsolete", Interpreter.ErrorType.ERROR, name));
 
                 Dictionary<string, Types> genericArgsTypes = new Dictionary<string, Types>();                
                 if (usingFunction is Function _f)
@@ -309,7 +309,7 @@ namespace Compilator
                 plist.Semantic();
 
                 if (block.Parent?.Parent == null)
-                    Interpreter.semanticError.Add(new Error("Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
+                    Interpreter.semanticError.Add(new Error("#000 Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
                 if (block.assingBlock != null && !block.assingBlock.SymbolTable.Find(name.Value))
                 {
                     string nwnam = name.Value.Split('.')[0];
@@ -322,7 +322,7 @@ namespace Compilator
                         if (t is Interface && ((Interface)t).isDynamic) { return; }
                     }
                     if(t is Error)
-                        Interpreter.semanticError.Add(new Error("Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                        Interpreter.semanticError.Add(new Error("#707 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
                 }
 
                 plist.GenericTUsage = genericArgsTypes;
@@ -360,7 +360,7 @@ namespace Compilator
                     }
                     if (tt == null)
                     {
-                        Interpreter.semanticError.Add(new Error("Function with name " + name.Value + "("+plist.List()+") has been found but parameters is wrong. Here is possible solutions:" + possible, Interpreter.ErrorType.ERROR, name));
+                        Interpreter.semanticError.Add(new Error("#705 Function with name " + name.Value + "("+plist.List()+") has been found but parameters is wrong. Here is possible solutions:" + possible, Interpreter.ErrorType.ERROR, name));
                     }
                 }
                 else
@@ -390,7 +390,7 @@ namespace Compilator
                                 Lambda ql = (Lambda)t;
                                 possible += "\n\t" + ql.RealName + "(" + ql.ParameterList.List() + ")";
                             }
-                            Interpreter.semanticError.Add(new Error("Function with name " + name.Value + "("+plist.List()+") has been found but parameters is wrong. Here is possible solution:" + possible, Interpreter.ErrorType.ERROR, name));
+                            Interpreter.semanticError.Add(new Error("#706 Function with name " + name.Value + "("+plist.List()+") has been found but parameters is wrong. Here is possible solution:" + possible, Interpreter.ErrorType.ERROR, name));
                         }
                     }
                 }
@@ -401,7 +401,7 @@ namespace Compilator
                 if (plist != null) plist.Semantic();
                 if (!assingBlock.SymbolTable.Find(name.Value))
                 {
-                    Interpreter.semanticError.Add(new Error("Class '" + name.Value + "' not found", Interpreter.ErrorType.ERROR, name));
+                    Interpreter.semanticError.Add(new Error("#603 Class '" + name.Value + "' not found", Interpreter.ErrorType.ERROR, name));
                 }
                 else
                 {
@@ -410,11 +410,11 @@ namespace Compilator
                     {
                         if(((Class)t).GenericArguments.Count != genericArgments.Count)
                         {
-                            Interpreter.semanticError.Add(new Error("You must specify all generic types when creating instance of class '" + name.Value + "'", Interpreter.ErrorType.ERROR, name));
+                            Interpreter.semanticError.Add(new Error("#200 You must specify all generic types when creating instance of class '" + name.Value + "'", Interpreter.ErrorType.ERROR, name));
                         }
                     }
                     if (t is Class && ((Class)t).attributes.Where(qt => ((_Attribute)qt).GetName(true) == "Obsolete").Count() > 0)
-                        Interpreter.semanticError.Add(new Error("Class " + name.Value + " is Obsolete", Interpreter.ErrorType.ERROR, name));
+                        Interpreter.semanticError.Add(new Error("#708 Class " + name.Value + " is Obsolete", Interpreter.ErrorType.ERROR, name));
                 }
             }
             if (o == "return")

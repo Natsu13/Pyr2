@@ -887,6 +887,8 @@ namespace Compilator
                 return DeclareClass();
             else if (current_token.type == Token.Type.NEWINTERFACE)
                 return DeclareInterface();
+            else if (current_token.type == Token.Type.BEGIN)
+                return CatchBlock(Block.BlockType.NONE);
             return DeclareVariable();
         }
 
@@ -945,6 +947,8 @@ namespace Compilator
 
         public Block CatchBlock(Block.BlockType btype, bool eatEnd = true, Block ablock = null)
         {
+            List<_Attribute> att = new List<_Attribute>(attributes);
+            attributes.Clear();
             Block _bloc;
             current_block_with_variable = ablock;
             Block.BlockType last_block_type = current_block_type;
@@ -952,6 +956,7 @@ namespace Compilator
             if(btype != Block.BlockType.CONDITION && btype != Block.BlockType.FOR)
                 main_block_type = btype;
             Block save_block = current_block;
+            Token token = current_token;
             Types block = Statement(eatEnd);
             if (!(block is Block))
             {
@@ -962,6 +967,8 @@ namespace Compilator
             _bloc.Parent = save_block;
             if (block == null || block is NoOp) return null;
             _bloc.Type = current_block_type;
+            _bloc.Attributes = att;
+            _bloc.setToken(token);
             current_block_type = last_block_type;
             return _bloc;
         }
@@ -1034,6 +1041,7 @@ namespace Compilator
         public Types DeclareFunction()
         {
             List<_Attribute> att = new List<_Attribute>(attributes);
+            attributes.Clear();
             Eat(Token.Type.NEWFUNCTION);
             Token name = current_token;
             if (current_token.type == Token.Type.FUNCTION)
@@ -1131,6 +1139,7 @@ namespace Compilator
         public Types DeclareInterface()
         {
             List<_Attribute> att = new List<_Attribute>(attributes);
+            attributes.Clear();
             Eat(Token.Type.NEWINTERFACE);
             Token name = current_token;
             Eat(Token.Type.ID);
@@ -1188,6 +1197,7 @@ namespace Compilator
         public Types DeclareClass()
         {
             List<_Attribute> att = new List<_Attribute>(attributes);
+            attributes.Clear();
             Eat(Token.Type.NEWCLASS);
             Token name = current_token;
             Eat(Token.Type.ID);
@@ -1267,6 +1277,7 @@ namespace Compilator
         public Types DeclareVariable(Token sDateType = null, Types have = null)
         {
             List<_Attribute> att = new List<_Attribute>(attributes);
+            attributes.Clear();
             List<string> garg = new List<string>();
             Token dateType = null;
             //int size = -1;

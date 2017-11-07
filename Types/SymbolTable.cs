@@ -423,7 +423,7 @@ namespace Compilator
             {
                 return interpret.GetImport(name).Block.SymbolTable.Get(name, noConstrucotr);
             }
-            return new Error("Internal error #100");
+            return new Error("#100 Internal error");
         }
         public Type GetType(string name)
         {

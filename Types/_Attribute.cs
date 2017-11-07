@@ -31,7 +31,9 @@ namespace Compilator
                 }
                 return newName;
             }
-            return _class.TryVariable().Value;
+            if(_class == null)
+                _class = assingBlock.SymbolTable.Get(nclass.Value);
+            return _class?.TryVariable().Value;
         }
 
         public override string Compile(int tabs = 0)
@@ -47,9 +49,9 @@ namespace Compilator
         public override void Semantic()
         {
             if (_class == null)
-                Interpreter.semanticError.Add(new Error("Class "+ nclass.Value+" not found!", Interpreter.ErrorType.ERROR, nclass));
+                Interpreter.semanticError.Add(new Error("#600 Class "+ nclass.Value+" not found!", Interpreter.ErrorType.ERROR, nclass));
             else if (!((Class)_class).haveParent("Attribute"))
-                Interpreter.semanticError.Add(new Error("Class " + nclass.Value + " must be Attribute!", Interpreter.ErrorType.ERROR, nclass));
+                Interpreter.semanticError.Add(new Error("#601 Class " + nclass.Value + " must be Attribute!", Interpreter.ErrorType.ERROR, nclass));
             uop.Semantic();
             plist?.Semantic();
         }

@@ -115,7 +115,7 @@ namespace Compilator
         public override void Semantic()
         {
             if (!found)
-                Interpreter.semanticError.Add(new Error("Imported class " + import.Value + " not found!", Interpreter.ErrorType.ERROR, import));
+                Interpreter.semanticError.Add(new Error("#900 Imported class " + import.Value + " not found!", Interpreter.ErrorType.ERROR, import));
             else if(block != null)
                 block.Semantic();
         }

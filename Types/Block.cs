@@ -19,8 +19,10 @@ namespace Compilator
         BlockType type = BlockType.NONE;
         public bool isInConstructor = false;
         public Import import = null;
+        List<_Attribute> attributes = new List<_Attribute>();
+        Token token = null;
 
-        public Block(Interpreter interpret, bool first = false)
+        public Block(Interpreter interpret, bool first = false, Token token = null)
         {
             this.interpret = interpret;
             symbolTable = new SymbolTable(interpret, this, first);
@@ -29,12 +31,25 @@ namespace Compilator
         public BlockType Type { get { return type; } set { type = value; } }
         public Interpreter Interpret { get { return this.interpret; } }
         public SymbolTable SymbolTable { get { return symbolTable; } }
+        public List<_Attribute> Attributes { get { return attributes; } set { attributes = value; } }
         
         public bool isType(BlockType type)
         {
             if (this.type == type)
                 return true;
             if (parent != null && parent.isType(type))
+                return true;
+            return false;
+        }
+
+        public bool isAttribute(string name, bool one = false)
+        {
+            foreach(var attr in attributes)
+            {
+                if (attr.GetName(true) == name)
+                    return true;
+            }
+            if (!one && parent != null && parent.isAttribute(name))
                 return true;
             return false;
         }
@@ -48,7 +63,8 @@ namespace Compilator
             return "";
         }
 
-        public override Token getToken(){ return null; }
+        public override Token getToken(){ return token; }
+        public void setToken(Token t) { token = t; }
 
         public void CheckReturnType(string type, bool isNull)
         {
@@ -63,7 +79,7 @@ namespace Compilator
                         if (uop.Expr != null)
                         {
                             Function asfunc = (Function)SymbolTable.Get(assignTo);
-                            Interpreter.semanticError.Add(new Error("Because your function " + assignTo + "(" + asfunc.ParameterList.List() + ") return void you can't return value", Interpreter.ErrorType.ERROR, uop.getToken()));                            
+                            Interpreter.semanticError.Add(new Error("#400 Because your function " + assignTo + "(" + asfunc.ParameterList.List() + ") return void you can't return value", Interpreter.ErrorType.ERROR, uop.getToken()));                            
                         }
                         continue;
                     }
@@ -83,22 +99,22 @@ namespace Compilator
                                 continue;
                             if (ava == null)
                             {
-                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " not exists", Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).getToken()));
+                                Interpreter.semanticError.Add(new Error("#401 Variable " + ((Variable)uop.Expr).Value + " not exists", Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).getToken()));
                                 continue;
                             }
                             if (type != null && ava.GetType() != type)
-                                Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " with type " + ava.GetType() + " can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).getToken()));
+                                Interpreter.semanticError.Add(new Error("#402 Variable " + ((Variable)uop.Expr).Value + " with type " + ava.GetType() + " can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).getToken()));
                             if (type == null) type = ava.GetType();
                         }
                         else if (type != null && ((Variable)uop.Expr).Type != type)
-                            Interpreter.semanticError.Add(new Error("Variable " + ((Variable)uop.Expr).Value + " with type " + ((Variable)uop.Expr).Type + " can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).getToken()));
+                            Interpreter.semanticError.Add(new Error("#403 Variable " + ((Variable)uop.Expr).Value + " with type " + ((Variable)uop.Expr).Type + " can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).getToken()));
                         else if (type == null)
                             type = ((Variable)uop.Expr).Type;
                     }
                     else if(type != null && (uop.Expr is Number && type != "int"))
-                        Interpreter.semanticError.Add(new Error("int can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Number)uop.Expr).getToken()));
+                        Interpreter.semanticError.Add(new Error("#404 int can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Number)uop.Expr).getToken()));
                     else if(type != null && (uop.Expr is CString && type != "string"))
-                        Interpreter.semanticError.Add(new Error("string can't be converted to " + type, Interpreter.ErrorType.ERROR, ((CString)uop.Expr).getToken()));
+                        Interpreter.semanticError.Add(new Error("#405 string can't be converted to " + type, Interpreter.ErrorType.ERROR, ((CString)uop.Expr).getToken()));
                     else if(type == null)
                     {
                         if (uop.Expr is Number) type = "int";
@@ -153,6 +169,10 @@ namespace Compilator
 
         public override void Semantic()
         {
+            if (isAttribute("Obsolete", true))
+            {
+                Interpreter.semanticError.Add(new Error("#499 Block of code is marked as Obsolete!", Interpreter.ErrorType.WARNING, getToken()));
+            }
             foreach (Types child in children)
             {
                 if (child == null) continue;

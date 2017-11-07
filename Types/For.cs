@@ -84,7 +84,7 @@ namespace Compilator
         {
             if (!isIterable)
             {
-                Interpreter.semanticError.Add(new Error(source.TryVariable().Value + " with class '"+ className + "' is not Iterable", Interpreter.ErrorType.ERROR, source.getToken()));
+                Interpreter.semanticError.Add(new Error("#500 "+source.TryVariable().Value + " with class '"+ className + "' is not Iterable", Interpreter.ErrorType.ERROR, source.getToken()));
             }
             if (source is UnaryOp uoq && ((UnaryOp)source).Op == "call")
             {

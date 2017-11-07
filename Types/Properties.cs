@@ -19,6 +19,9 @@ namespace Compilator
             current_block.SymbolTable.Add(variable.TryVariable().Value, this);
         }
 
+        public Types Getter { get { return getter; } }
+        public Types Setter { get { return setter; } }
+
         public override string Compile(int tabs = 0)
         {
             if (assingBlock.Type != Block.BlockType.CLASS)
@@ -65,7 +68,7 @@ namespace Compilator
         public override void Semantic()
         {
             if(assingBlock.Type != Block.BlockType.CLASS)
-                Interpreter.semanticError.Add(new Error("Properties can be used only in Class!", Interpreter.ErrorType.ERROR, getToken()));
+                Interpreter.semanticError.Add(new Error("#602 Properties can be used only in Class!", Interpreter.ErrorType.ERROR, getToken()));
             variable.Semantic();
             setter.Semantic();
             getter.Semantic();

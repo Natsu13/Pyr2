@@ -401,9 +401,14 @@ namespace Compilator
             if (this.dateType.Value == "auto")
                 Check();
             if (isKey && !SupportOp(Token.Type.GET))
-                Interpreter.semanticError.Add(new Error("Date type "+dateType.Value+" not support 'get' operator", Interpreter.ErrorType.ERROR, token));
+                Interpreter.semanticError.Add(new Error("#302 Date type "+dateType.Value+" not support 'get' operator", Interpreter.ErrorType.ERROR, token));
             if(isKey && getFoundButBadArgs)
-                Interpreter.semanticError.Add(new Error("Date type " + dateType.Value + " support 'get' operator, but arguments are wrong", Interpreter.ErrorType.ERROR, token));
+                Interpreter.semanticError.Add(new Error("#303 Date type " + dateType.Value + " support 'get' operator, but arguments are wrong", Interpreter.ErrorType.ERROR, token));
+            if(block.SymbolTable.Get(this.value) is Properties p)
+            {
+                if(p.Getter == null)
+                    Interpreter.semanticError.Add(new Error("#802 Properties "+this.value+" don't define getter!", Interpreter.ErrorType.ERROR, token));
+            }
         }
 
         public override string InterpetSelf()

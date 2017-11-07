@@ -233,19 +233,19 @@ namespace Compilator
         public override void Semantic()
         {
             if (parentNotDefined)
-                Interpreter.semanticError.Add(new Error("Parent for extending function by " + extendingClass + "." + name.Value + "(" + paraml.List() + ") is not found", Interpreter.ErrorType.ERROR, name));
+                Interpreter.semanticError.Add(new Error("#700 Parent for extending function by " + extendingClass + "." + name.Value + "(" + paraml.List() + ") is not found", Interpreter.ErrorType.ERROR, name));
             if(parentIsNotClassOrInterface)
-                Interpreter.semanticError.Add(new Error("You can extend only Class or Interface", Interpreter.ErrorType.ERROR, name));
+                Interpreter.semanticError.Add(new Error("#701 You can extend only Class or Interface", Interpreter.ErrorType.ERROR, name));
             if (isStatic && assingBlock.Type != Block.BlockType.INTERFACE && assingBlock.Type != Block.BlockType.CLASS && !isExtending)
-                Interpreter.semanticError.Add(new Error("Static modifier outside class or interface is useless", Interpreter.ErrorType.WARNING, _static));
+                Interpreter.semanticError.Add(new Error("#799 Static modifier outside class or interface is useless", Interpreter.ErrorType.WARNING, _static));
             else if(isStatic && assingBlock.Type == Block.BlockType.INTERFACE)
-                Interpreter.semanticError.Add(new Error("Illegal modifier for the interface static "+assingBlock.assignTo+"."+name.Value+"("+paraml.List()+")", Interpreter.ErrorType.ERROR, _static));
+                Interpreter.semanticError.Add(new Error("#702 Illegal modifier for the interface static "+assingBlock.assignTo+"."+name.Value+"("+paraml.List()+")", Interpreter.ErrorType.ERROR, _static));
             //else if(!isStatic && isConstructor)
             //    Interpreter.semanticError.Add(new Error("Constructor " + name.Value + "(" + paraml.List() + ") of class " + assingBlock.assignTo + " must be static", Interpreter.ErrorType.ERROR, _constuctor));
             ParameterList.Semantic();
             if (block == null && assingBlock.Type != Block.BlockType.INTERFACE && !isExternal)
             {
-                Interpreter.semanticError.Add(new Error("The body of function " + assingBlock.assignTo + "." + name.Value + "(" + paraml.List() + ") must be defined", Interpreter.ErrorType.ERROR, name));
+                Interpreter.semanticError.Add(new Error("#703 The body of function " + assingBlock.assignTo + "." + name.Value + "(" + paraml.List() + ") must be defined", Interpreter.ErrorType.ERROR, name));
             }
             else if (!isExternal && block != null)
             {

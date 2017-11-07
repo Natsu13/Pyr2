@@ -59,7 +59,7 @@ namespace Compilator
                 {
                     if(assingBlock?.FindVariable(consume) == null)
                     {
-                        Interpreter.semanticError.Add(new Error("Variable " + consume + " not exist!", Interpreter.ErrorType.ERROR, token));
+                        Interpreter.semanticError.Add(new Error("#112 Variable " + consume + " not exist!", Interpreter.ErrorType.ERROR, token));
                     }
                     consume = "";
                     state = 0;

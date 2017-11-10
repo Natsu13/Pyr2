@@ -1353,7 +1353,14 @@ namespace Compilator
                 {
                     type = current_token.Value;
                     Eat(current_token.type);
-                    Types b = Statement();
+                    Types b;
+                    if (current_token.type == Token.Type.SEMI)
+                    {
+                        b = new Block(this);
+                        Eat(Token.Type.SEMI);
+                    }
+                    else
+                        b = Statement();
                     if (type == "set") set_block = b;
                     else get_block = b;
                 }

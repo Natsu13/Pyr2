@@ -10,6 +10,8 @@ namespace Compilator
     {
         public Types variable;
         Types getter, setter;
+        bool isAutoDefined = false;
+        bool isOneNotDefined = false;
         
         public Properties(Types variable, Types getter = null, Types setter = null, Block current_block = null)
         {
@@ -17,6 +19,17 @@ namespace Compilator
             this.setter = setter;
             this.getter = getter;
             current_block.SymbolTable.Add(variable.TryVariable().Value, this);
+
+            if(getter is Block gb && gb.children.Count == 0)
+            {
+                if (setter != null && setter is Block sesb && sesb.children.Count != 0) isOneNotDefined = true;
+            }
+            if(setter is Block sb && sb.children.Count == 0)
+            {
+                if (getter != null && getter is Block gegb && gegb.children.Count != 0) isOneNotDefined = true;
+            }
+            if ((getter is Block gbb && gbb.children.Count == 0) && (setter is Block ssb && ssb.children.Count == 0))
+                isAutoDefined = true;
         }
 
         public Types Getter { get { return getter; } }
@@ -25,6 +38,9 @@ namespace Compilator
         public override string Compile(int tabs = 0)
         {
             if (assingBlock.Type != Block.BlockType.CLASS)
+                return "";
+
+            if (isOneNotDefined)
                 return "";
 
             if (variable is Variable)
@@ -39,16 +55,26 @@ namespace Compilator
             string tab = DoTabs(tabs + 1);
             string ret = "";
             ret += assingBlock.getClass() + ".prototype.Property$" + var_name + " = {\n";
+            if (isAutoDefined)
+            {
+                ret += "  $value: ''"+(this.setter != null || this.getter != null?",\n":"");
+            }
             if (this.getter != null)
             {
                 ret += "  get: function(){\n";
-                ret += getter.Compile(tabs + 2);
+                if (isAutoDefined)
+                    ret += "    return this.$value;\n";
+                else
+                    ret += getter.Compile(tabs + 2);
                 ret += "  }"+(this.setter != null?",":"")+"\n";
             }
             if (this.setter != null)
             {
                 ret += "  set: function(value){\n";
-                ret += setter.Compile(tabs + 2);
+                if (isAutoDefined)
+                    ret += "    this.$value = value;\n";
+                else
+                    ret += setter.Compile(tabs + 2);
                 ret += "  }\n";
             }
             ret += "}";
@@ -69,6 +95,8 @@ namespace Compilator
         {
             if(assingBlock.Type != Block.BlockType.CLASS)
                 Interpreter.semanticError.Add(new Error("#602 Properties can be used only in Class!", Interpreter.ErrorType.ERROR, getToken()));
+            if(isOneNotDefined)
+                Interpreter.semanticError.Add(new Error("#604 Properties must define body!", Interpreter.ErrorType.ERROR, getToken()));
             variable.Semantic();
             setter.Semantic();
             getter.Semantic();

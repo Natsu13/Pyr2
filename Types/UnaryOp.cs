@@ -308,7 +308,7 @@ namespace Compilator
 
                 if(plist.assingBlock == null)
                     plist.assingBlock = assingBlock;
-                plist.Semantic();
+                plist.Semantic(usingFunction?.ParameterList, usingFunction?.RealName);
 
                 if (block.Parent?.Parent == null)
                     Interpreter.semanticError.Add(new Error("#000 Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));

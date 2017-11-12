@@ -233,10 +233,31 @@ namespace Compilator
         public override int GetHashCode()
         {
             return List().GetHashCode();
-        }        
+        }
 
         public override void Semantic()
         {
+            Semantic(null, "");
+        }
+        public void Semantic(ParameterList plist = null, string fname = "")
+        {
+            if(defaultCustom.Count != 0 && plist != null)
+            {
+                foreach (var q in defaultCustom)
+                {
+                    bool found = false;
+                    foreach (var p in plist.parameters)
+                    {
+                        if (p is Assign pa)
+                            if(pa.Left.TryVariable().Value == q.Key)
+                                found = true;
+                    }
+                    if(!found)
+                    {
+                        Interpreter.semanticError.Add(new Error("#1xx Parameter "+q.Key+" not found in function "+fname, Interpreter.ErrorType.ERROR, token));
+                    }
+                }
+            }
             if(cantDefaultThenNormal)
                 Interpreter.semanticError.Add(new Error("#1xx When you define default you can put normal", Interpreter.ErrorType.ERROR, token));
             if (cantdefault)

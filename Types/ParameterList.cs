@@ -13,7 +13,9 @@ namespace Compilator
         public bool cantdefault = false;
         public Token token;
         public bool allowMultipel = false;
+        public bool cantDefaultThenNormal = false;
         Dictionary<string, Types> genericTusage = new Dictionary<string, Types>();
+        public Dictionary<string, Types> defaultCustom = new Dictionary<string, Types>();
 
         public ParameterList(bool declare)
         {
@@ -65,6 +67,11 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
+            return Compile(tabs, null);
+        }
+
+        public string Compile(int tabs = 0, ParameterList plist = null)
+        {
             string ret = "";            
             foreach(Types par in parameters)
             {
@@ -86,6 +93,32 @@ namespace Compilator
                         ret += par.Compile(0);
                 }
                 else ret += par.Compile(0);                
+            }
+            if(defaultCustom.Count != 0 && plist != null)
+            {
+                int i = 0;
+                foreach(var p in plist.parameters)
+                {
+                    i++;
+                    bool found = false;
+                    if (i-1 < parameters.Count)
+                        continue;                    
+                    if (p is Assign pa)
+                    {
+                        foreach (var q in defaultCustom)
+                        {
+                            if (pa.Left.TryVariable().Value == q.Key)
+                            {
+                                ret += ", " + q.Value.Compile();
+                                found = true;
+                            }
+                        }
+                    }
+                    if (!found)
+                    {
+                        ret += ", undefined";
+                    }
+                }
             }
             assingBlock = null;
             return ret;
@@ -204,12 +237,14 @@ namespace Compilator
 
         public override void Semantic()
         {
+            if(cantDefaultThenNormal)
+                Interpreter.semanticError.Add(new Error("#1xx When you define default you can put normal", Interpreter.ErrorType.ERROR, token));
             if (cantdefault)
-            {
                 Interpreter.semanticError.Add(new Error("#113 Optional parameters must follow all required parameters", Interpreter.ErrorType.ERROR, token));
-            }
             foreach (Types par in parameters)
             {
+                if (par.assingBlock == null)
+                    par.assingBlock = assingBlock;
                 par.Semantic();
             }
         }

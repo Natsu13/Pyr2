@@ -47,7 +47,7 @@ namespace Compilator
                 }
             }
             return "'"+o+"'";
-        }
+        }        
 
         public override void Semantic()
         {
@@ -57,7 +57,7 @@ namespace Compilator
             {
                 if (state == 1 && value[i] == '}')
                 {
-                    if(assingBlock?.FindVariable(consume) == null)
+                    if(assingBlock?.SymbolTable.Find(consume) == null)
                     {
                         Interpreter.semanticError.Add(new Error("#112 Variable " + consume + " not exist!", Interpreter.ErrorType.ERROR, token));
                     }

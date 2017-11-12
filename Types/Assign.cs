@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -81,6 +82,8 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
+            if (attributes?.Where(x => x.GetName(true) == "Debug").Count() > 0)         
+                Debugger.Break();
             string addName = "";
             if (assingBlock.Parent != null && assingBlock.Parent.SymbolTable.Find(((Variable)left).Value))
                 isDeclare = false;

@@ -45,6 +45,14 @@ namespace Compilator
                 };
                 Add("Attribute", Attribute);
 
+                Token TokenDebug = new Token(Token.Type.ID, "Debug");
+                Block BlockDebug = new Block(interpret) { Parent = assigment_block };
+                Class Debug = new Class(TokenDebug, BlockDebug, new List<Token> { TokenAttribute })
+                {
+                    isExternal = true
+                };
+                Add("Debug", Debug);
+
                 /// Date type string implicit
                 // Add("string",   typeof(TypeString), new List<Token> { TokenIIterable });
                 Token TokenString = new Token(Token.Type.ID, "string");

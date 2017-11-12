@@ -119,7 +119,7 @@ namespace Compilator
                         nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t)?.Name;
                     if (plist == null)
                         return tbs + (inParen ? "(" : "") + nname + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
-                    return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile(0, usingFunction?.ParameterList) + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
                 else
                 {
@@ -127,7 +127,7 @@ namespace Compilator
                         return tbs + (inParen ? "(" : "") + newname + (inParen ? ")" : "") + (endit ? ";" : "");
                     if (plist == null)
                         return tbs + (inParen ? "(" : "") + newname + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
-                    return tbs + (inParen ? "(" : "") + newname + "(" + plist.Compile() + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + newname + "(" + plist.Compile(0, usingFunction?.ParameterList) + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
             }
             if (o == "new")
@@ -306,6 +306,8 @@ namespace Compilator
                     }
                 }
 
+                if(plist.assingBlock == null)
+                    plist.assingBlock = assingBlock;
                 plist.Semantic();
 
                 if (block.Parent?.Parent == null)

@@ -341,6 +341,30 @@ namespace Compilator
             }
         }
 
+        static int Token_save_pos;
+        static int Token_save_po;
+        static Token Tojen_save_token;
+        static char Token_save_char;
+
+        public void SaveTokenState()
+        {
+            Token_save_pos = current_token_pos;
+            Token_save_po = pos;
+            Tojen_save_token = current_token;
+            Token_save_char = current_char;
+        }
+
+        public void LoadTokenState()
+        {
+            if (Tojen_save_token == null)
+                return;
+            current_token_pos = Token_save_pos;
+            pos = Token_save_po;
+            current_token = Tojen_save_token;
+            current_char = Token_save_char;
+            Tojen_save_token = null;
+        }
+
         public ParameterList Parameters(bool declare = false)
         {
             ParameterList plist = new ParameterList(declare);
@@ -392,8 +416,33 @@ namespace Compilator
                 }
                 else
                 {
+                    SaveTokenState();
+                    string defname = "";
+                    bool isDefaultDefined = false;
+                    if(current_token.type == Token.Type.ID)
+                    {
+                        Token id = current_token;
+                        Eat(Token.Type.ID);
+                        if(current_token.type == Token.Type.COLON)
+                        {
+                            Eat(Token.Type.COLON);
+                            defname = id.Value;
+                            isDefaultDefined = true;
+                            defaultstart = true;
+                        }
+                        else
+                        {
+                            LoadTokenState();
+                        }
+                    }                    
                     Types vname = Expr();
-                    plist.parameters.Add(vname);
+                    if (isDefaultDefined)
+                        plist.defaultCustom.Add(defname, vname);
+                    else
+                    {
+                        if (defaultstart) plist.cantDefaultThenNormal = true;
+                        plist.parameters.Add(vname);
+                    }
                 }
                 if (current_token.type == Token.Type.COMMA)
                     Eat(Token.Type.COMMA);

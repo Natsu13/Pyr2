@@ -347,7 +347,7 @@ namespace Compilator
             return r;
         }
 
-        public Types Get(string name, bool noConstrucotr = false)
+        public Types Get(string name, bool noConstrucotr = false, bool getImport = false)
         {
             if (name.Split('.')[0] == "this")
                 name = string.Join(".", name.Split('.').Skip(1));
@@ -356,41 +356,43 @@ namespace Compilator
                 string[] nams = name.Split('.');
                 if (Find(nams[0]))
                 {
-                    Types found = Get(nams[0], noConstrucotr);
+                    Types found = Get(nams[0], noConstrucotr, getImport);
                     if (found is Assign)
                     {
                         Variable vr = (Variable)((Assign)found).Left;
                         if (vr.Type != "auto")
                         {
-                            return Get(vr.Type + "." + string.Join(".", nams.Skip(1)), noConstrucotr);
+                            return Get(vr.Type + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                         }
                         if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
                         {
                             if (uop.Op == "new")
                             {
-                                return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr);
+                                return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                             }
                         }
                     }
                     else if (found is Function)
-                        return ((Function)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                        return ((Function)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                     else if (found is Class)
-                        return ((Class)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                        return ((Class)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                     else if (found is Interface)
-                        return ((Interface)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                        return ((Interface)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                     else if (found is Import)
                     {
-                        Types ttt = ((Import)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                        if (getImport)
+                            return found;
+                        Types ttt = ((Import)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                         if(ttt is Error)
                         {
                             if (((Import)found).Block.SymbolTable.Find(name))
                             {
-                                return ((Import)found).Block.SymbolTable.Get(name, noConstrucotr);
+                                return ((Import)found).Block.SymbolTable.Get(name, noConstrucotr, getImport);
                             }
                         }
                         return ttt;
                     }
-                    return Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                    return Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                 }
                 else if (assigment_block.variables.ContainsKey(nams[0]))
                 {
@@ -399,10 +401,10 @@ namespace Compilator
                     {
                         if (uop.Op == "new")
                         {
-                            return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr);
+                            return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                         }
                     }
-                    return vr.assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr);
+                    return vr.assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                 }
             }
             /*if (table.Where(t => t.Key.Replace("constructor ", "") == name).Count() > 0 && !noConstrucotr)
@@ -413,9 +415,11 @@ namespace Compilator
                 Types ttt = table.Where(t => t.Key == name).First().Value;
                 if (ttt is Import)
                 {
+                    if (getImport)
+                        return ttt;
                     if (((Import)ttt).Block.SymbolTable.Find(name))
                     {
-                        return ((Import)ttt).Block.SymbolTable.Get(name, noConstrucotr);
+                        return ((Import)ttt).Block.SymbolTable.Get(name, noConstrucotr, getImport);
                     }
                 }
                 return table.Where(t => t.Key == name).First().Value;
@@ -425,11 +429,11 @@ namespace Compilator
                 if (assigment_block.variables.Where(t => t.Key.Split(' ')[0] == name).Count() > 0)
                     return assigment_block.variables[name];
                 if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.Get(name, noConstrucotr);
+                    return assigment_block.Parent.SymbolTable.Get(name, noConstrucotr, getImport);
             }
             if (interpret.FindImport(name))
             {
-                return interpret.GetImport(name).Block.SymbolTable.Get(name, noConstrucotr);
+                return interpret.GetImport(name).Block.SymbolTable.Get(name, noConstrucotr, getImport);
             }
             return new Error("#100 Internal error");
         }

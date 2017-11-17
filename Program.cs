@@ -174,6 +174,7 @@ namespace Compilator
                 if (!iserror || Interpreter._WRITEDEBUG)
                 {
                     System.IO.StreamWriter file = new System.IO.StreamWriter("output.js");
+                    outcom = "//Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec\n//On "+DateTime.Now.ToLocalTime()+"\n//By PYR compiler\n" + outcom;
                     file.WriteLine(outcom);
                     file.Close();
                     if (iserror && Interpreter._WRITEDEBUG)

@@ -65,16 +65,43 @@ namespace Compilator
             return ret;
         }
 
+        public List<string> ToList()
+        {
+            List<string> list = new List<string>();
+            foreach (var p in parameters)
+            {
+                if(p is Assign pa)
+                {
+                    list.Add(pa.Left.TryVariable().Value);
+                }
+                else if(p is Variable pv)
+                {
+                    list.Add(pv.Value);
+                }
+                else if(p is Lambda pl)
+                {
+                    list.Add(pl.RealName);
+                }
+            }
+            return list;
+        }
+
         public override string Compile(int tabs = 0)
         {
             return Compile(tabs, null);
         }
 
-        public string Compile(int tabs = 0, ParameterList plist = null)
+        public string Compile(int tabs = 0, ParameterList plist = null, ParameterList myList = null)
         {
-            string ret = "";            
-            foreach(Types par in parameters)
+            string ret = "";
+            Dictionary<string, bool> argDefined = new Dictionary<string, bool>();
+            List<string> argNamed = plist?.ToList();
+            int i = 0;
+            foreach (Types par in parameters)
             {
+                if(argNamed != null)
+                    argDefined[argNamed[i]] = true;
+
                 par.endit = false;
                 if (par is Variable && assingBlock != null)
                 {
@@ -92,11 +119,32 @@ namespace Compilator
                     else
                         ret += par.Compile(0);
                 }
-                else ret += par.Compile(0);                
+                else ret += par.Compile(0);
+                i++;
+            }
+            if (myList != null)
+            {
+                foreach (Types par in plist.Parameters)
+                {
+                    if (par is Assign para)
+                    {
+                        if (!argDefined.ContainsKey(para.Left.TryVariable().Value))
+                        {
+                            ret += (ret != "" ? ", " : "") + "undefined";
+                        }
+                    }
+                    else if(par is Variable parv)
+                    {
+                        if (!argDefined.ContainsKey(parv.Value))
+                        {
+                            ret += (ret != "" ? ", " : "") + "undefined";
+                        }
+                    }
+                }
             }
             if(defaultCustom.Count != 0 && plist != null)
             {
-                int i = 0;
+                i = 0;
                 foreach(var p in plist.parameters)
                 {
                     i++;
@@ -116,7 +164,7 @@ namespace Compilator
                     }
                     if (!found)
                     {
-                        ret += ", undefined";
+                        ret += (ret != "" ? ", " : "") + "undefined";
                     }
                 }
             }

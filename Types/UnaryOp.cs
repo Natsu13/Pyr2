@@ -190,15 +190,15 @@ namespace Compilator
                         {
                             Import im = t.assingBlock.Interpret.GetImport(name.Value.Split('.').First());
                             if(im.As != null)
-                                rt = tbs + im.As + "." + _name + "." + f.Name + "(" + plist?.Compile();
+                                rt = tbs + im.As + "." + _name + "." + f.Name + "(" + plist?.Compile(0, f.ParameterList, plist);
                             else if(name.Value.Split('.').First() != name.Value)
-                                rt = tbs + name.Value.Split('.').First() + "." + _name + "." + f.Name + "(" + plist?.Compile();
+                                rt = tbs + name.Value.Split('.').First() + "." + _name + "." + f.Name + "(" + plist?.Compile(0, f.ParameterList, plist);
                             else
-                                rt = tbs + _name + "." + f.Name + "(" + plist?.Compile();
+                                rt = tbs + _name + "." + f.Name + "(" + plist?.Compile(0, f.ParameterList, plist);
                         }
                         else
-                            rt = tbs + _name + "." + f.Name + "(" + plist?.Compile();
-                        if (plist != null && plist.Parameters.Count > 0 && generic != "")
+                            rt = tbs + _name + "." + f.Name + "(" + plist?.Compile(0, f.ParameterList, plist);
+                        if (plist != null && (plist.Parameters.Count > 0 || f.ParameterList.Parameters.Count > 0) && generic != "")
                             rt += ", ";
                         rt += generic;
                         rt += ")";

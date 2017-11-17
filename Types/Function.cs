@@ -119,6 +119,14 @@ namespace Compilator
                 string tbs = DoTabs(tabs);
                 if (isExtending)
                 {
+                    if (assingBlock.SymbolTable.Find(extendingClass))
+                    {
+                        var ex = assingBlock.SymbolTable.Get(extendingClass, false, true);
+                        if(ex is Import)
+                        {
+                            extendingClass = ((Import)ex).GetName() + "." + extendingClass;
+                        }
+                    }
                     fromClass = extendingClass;
                     if (isStatic || isConstructor)
                     {

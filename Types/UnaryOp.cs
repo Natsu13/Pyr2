@@ -186,13 +186,13 @@ namespace Compilator
                     }
                     else
                     {
-                        if (t.assingBlock.Interpret.FindImport(name.Value.Split('.').First()))
+                        if (t.assingBlock.Interpret.FindImport(string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1))))
                         {
-                            Import im = t.assingBlock.Interpret.GetImport(name.Value.Split('.').First());
+                            Import im = t.assingBlock.Interpret.GetImport(string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1)));
                             if(im.As != null)
                                 rt = tbs + im.As + "." + _name + "." + f.Name + "(" + plist?.Compile(0, f.ParameterList, plist);
-                            else if(name.Value.Split('.').First() != name.Value)
-                                rt = tbs + name.Value.Split('.').First() + "." + _name + "." + f.Name + "(" + plist?.Compile(0, f.ParameterList, plist);
+                            else if(string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1)) != name.Value)
+                                rt = tbs + string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1)) + "." + _name + "." + f.Name + "(" + plist?.Compile(0, f.ParameterList, plist);
                             else
                                 rt = tbs + _name + "." + f.Name + "(" + plist?.Compile(0, f.ParameterList, plist);
                         }
@@ -289,7 +289,19 @@ namespace Compilator
                 {
                     if (_f.assignTo != "")
                     {
-                        Types q = block.SymbolTable.Get(_f.assignTo);
+                        Types q = null;
+
+                        if (name.Value.Split('.')[0] != "this")
+                        {
+                            if(block.SymbolTable.Get(name.Value.Split('.')[0]) is Assign){
+                                Token mytoken = ((UnaryOp)((Assign)(block.SymbolTable.Get(name.Value.Split('.')[0]))).Right).Name;
+                                q = block.SymbolTable.Get(mytoken.Value);
+                            }
+                        }
+
+                        if(q == null)
+                            q = block.SymbolTable.Get(_f.assignTo);
+
                         if (name.Value.Split('.')[0] != "this")
                         {
                             Types x = block.SymbolTable.Get(name.Value.Split('.')[0]);
@@ -414,6 +426,11 @@ namespace Compilator
                         {
                             Interpreter.semanticError.Add(new Error("#200 You must specify all generic types when creating instance of class '" + name.Value + "'", Interpreter.ErrorType.ERROR, name));
                         }
+                    }
+                    else if(t is Class && ((Class)t).GenericArguments.Count == 0)
+                    {
+                        if(genericArgments.Count > 0)
+                            Interpreter.semanticError.Add(new Error("#2xx Class '" + name.Value + "' is not Generic!", Interpreter.ErrorType.ERROR, name));
                     }
                     if (t is Class && ((Class)t).attributes.Where(qt => ((_Attribute)qt).GetName(true) == "Obsolete").Count() > 0)
                         Interpreter.semanticError.Add(new Error("#708 Class " + name.Value + " is Obsolete", Interpreter.ErrorType.ERROR, name));

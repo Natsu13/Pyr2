@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 
 namespace Compilator
 {
@@ -21,6 +22,7 @@ namespace Compilator
             compiled = compiled.Replace("\n", "\n  ");
             string outcom = "var module = function (_){\n  'use strict';\n";            
             outcom += "  "+ compiled.Substring(0, compiled.Length) + "\n";
+            List<string> importClass = new List<string>();
             foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
             {
                 if (t.Key == "int" || t.Key == "string" || t.Key == "null")
@@ -42,7 +44,22 @@ namespace Compilator
                     outcom += "  _." + t.Key + "$META = " + t.Key + "$META;\n";
                 }
                 else if (t.Value is Import im)
+                {
+                    if (t.Key.Contains("."))
+                    {
+                        var skl = "";
+                        foreach (string p in t.Key.Split('.').Take(t.Key.Split('.').Length - 1))
+                        {
+                            skl += (skl == "" ? "" : ".") + p;
+                            if (!importClass.Contains(skl))
+                            {
+                                importClass.Add(skl);
+                                outcom += "  _." + skl + " = {};\n";
+                            }
+                        }
+                    }
                     outcom += "  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                }
                 else
                     outcom += "  _." + t.Key + " = " + t.Key + ";\n";
             }

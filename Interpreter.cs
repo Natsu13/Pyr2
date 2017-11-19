@@ -1095,6 +1095,8 @@ namespace Compilator
             Token name = current_token;
             if (current_token.type == Token.Type.FUNCTION)
                 Eat(Token.Type.FUNCTION);
+            else if (current_token.type == Token.Type.CLASS)
+                Eat(Token.Type.CLASS);
             else
                 Eat(Token.Type.ID);
             if (brekall) return null;
@@ -1249,7 +1251,7 @@ namespace Compilator
             attributes.Clear();
             Eat(Token.Type.NEWCLASS);
             Token name = current_token;
-            Eat(Token.Type.ID);
+            Eat(current_token.type);
 
             List<string> garg = new List<string>();
             if (current_token.type == Token.Type.LESS)
@@ -1318,6 +1320,14 @@ namespace Compilator
                 c._dynamic = getModifer(Token.Type.DYNAMIC);
             }
 
+            if (current_block.SymbolTable.Find(name.Value))
+            {
+                var import = current_block.SymbolTable.Get(name.Value, false, true);
+                if(import is Import)
+                {
+                    ((Import)import).As = null;
+                }
+            }
             current_block.SymbolTable.Add(name.Value, c);
             Eat(Token.Type.END);
             return c;

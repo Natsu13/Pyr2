@@ -86,7 +86,18 @@ namespace Compilator
                 tableIsCopy[to] = true;
             }
         }
-        
+
+        public void Delete(string name)
+        {
+            if (Find(name))
+            {
+                SymbolTable sb = GetSymbolTable(name);
+                if(sb != null)
+                    sb.table.Remove(name);
+            }
+        }
+
+
         public void initialize()
         {
             //Function js
@@ -190,6 +201,8 @@ namespace Compilator
 
         public Dictionary<string, Types> Table { get { return table; } }
         public Dictionary<string, bool> TableIsCopy { get { return tableIsCopy; } }
+        public Dictionary<string, int> TableCounter { get { return tableCounter; } }
+
         public void Add(string name, Type type, List<Token> parent = null)
         {
             table.Add(name, (Types)Activator.CreateInstance(typeof(Class<>).MakeGenericType(type), this.interpret, this.assigment_block, name, parent));
@@ -347,6 +360,94 @@ namespace Compilator
             return r;
         }
 
+        public SymbolTable GetSymbolTable(string name, bool noConstrucotr = false, bool getImport = false)
+        {
+            if (name.Split('.')[0] == "this")
+                name = string.Join(".", name.Split('.').Skip(1));
+            if (name.Contains('.'))
+            {
+                string[] nams = name.Split('.');
+                if (Find(nams[0]))
+                {
+                    Types found = Get(nams[0], noConstrucotr, getImport);
+                    if (found is Assign)
+                    {
+                        Variable vr = (Variable)((Assign)found).Left;
+                        if (vr.Type != "auto")
+                        {
+                            return GetSymbolTable(vr.Type + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                        }
+                        if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                        {
+                            if (uop.Op == "new")
+                            {
+                                return GetSymbolTable(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                            }
+                        }
+                    }
+                    else if (found is Function)
+                        return ((Function)found).assingBlock.SymbolTable.GetSymbolTable(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                    else if (found is Class)
+                        return ((Class)found).assingBlock.SymbolTable.GetSymbolTable(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                    else if (found is Interface)
+                        return ((Interface)found).Block.SymbolTable.GetSymbolTable(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                    else if (found is Import)
+                    {
+                        if (getImport)
+                            return found.assingBlock.SymbolTable;
+                        Types ttt = ((Import)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                        if (ttt is Error)
+                        {
+                            if (((Import)found).Block.SymbolTable.Find(name))
+                            {
+                                return ((Import)found).Block.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
+                            }
+                        }
+                        return ttt.assingBlock.Parent?.SymbolTable;
+                    }
+                    return GetSymbolTable(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                }
+                else if (assigment_block.variables.ContainsKey(nams[0]))
+                {
+                    Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
+                    if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                    {
+                        if (uop.Op == "new")
+                        {
+                            return GetSymbolTable(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                        }
+                    }
+                    return vr.assingBlock.SymbolTable.GetSymbolTable(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                }
+            }
+            if (table.Where(t => t.Key == name).Count() > 0)
+            {
+                Types ttt = table.Where(t => t.Key == name).First().Value;
+                if (ttt is Import)
+                {
+                    if (getImport)
+                        return ttt.assingBlock.Parent?.SymbolTable;
+                    if (((Import)ttt).Block.SymbolTable.Find(name))
+                    {
+                        return ((Import)ttt).Block.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
+                    }
+                }
+                return table.Where(t => t.Key == name).First().Value.assingBlock.Parent?.SymbolTable;
+            }
+            else
+            {
+                if (assigment_block.variables.Where(t => t.Key.Split(' ')[0] == name).Count() > 0)
+                    return assigment_block.variables[name].assingBlock.Parent?.SymbolTable;
+                if (assigment_block.Parent != null)
+                    return assigment_block.Parent.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
+            }
+            if (interpret.FindImport(name))
+            {
+                return interpret.GetImport(name).Block.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
+            }
+            return null;
+        }
+
         public Types Get(string name, bool noConstrucotr = false, bool getImport = false)
         {
             if (name.Split('.')[0] == "this")
@@ -437,6 +538,7 @@ namespace Compilator
             }
             return new Error("#100 Internal error");
         }
+
         public Type GetType(string name)
         {
             if (tableType.ContainsKey(name))

@@ -13,12 +13,13 @@ namespace Compilator
         Token import;
         bool found = false;
         Interpreter interpret;
-        Block block;
+        Block block, __block;
         string _as = "";
         Types _ihaveit = null;
 
         public Import(Token whatimpot, Block _block, Interpreter inter, string _as = null)
         {
+            __block = _block;
             this._as = _as;
             string dir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             this.import = whatimpot;
@@ -39,7 +40,25 @@ namespace Compilator
                     block = (Block)interpret.Interpret();
                     block.import = this;
                     if (_as == null)
-                        _block.SymbolTable.Add(GetName(), this);
+                    {                        
+                        Block ___block = _block;
+                        foreach (var part in GetName().Split('.').Take(GetName().Split('.').Count() - 1))
+                        {
+                            if (___block.SymbolTable.Find(part))
+                            {
+                                ___block = ___block.SymbolTable.Get(part).assingBlock;
+                            }
+                            else
+                            {
+                                Block b = new Block(_block.Interpret);
+                                Class c = new Class(new Token(Token.Type.ID, part), b, null);
+                                ___block.SymbolTable.Add(part, c);
+                                ___block.children.Add(c);
+                                ___block = b;
+                            }
+                        }
+                        ___block.SymbolTable.Add(GetName().Split('.').Last(), this);
+                    }
                     else
                     {
                         _block.SymbolTable.Add(_as, this);
@@ -62,7 +81,22 @@ namespace Compilator
             }                
         }
 
-        public string As { get { return _as; } }
+        public string As { 
+            get { return _as; } 
+            set
+            {
+                if (value == null && _as != null)
+                {
+                    //__block.SymbolTable.Delete(import.Value.Split('.').Last());
+                    __block.SymbolTable.Table.Remove(import.Value.Split('.').Last());
+                    __block.SymbolTable.TableCounter.Remove(import.Value.Split('.').Last());
+                    __block.SymbolTable.Add(import.Value, this);
+                    _as = null;
+                }
+                else if (_as != null)
+                    throw new FieldAccessException("You can set only null value!");
+            }
+        }
         public Block Block { get { return block; } }
         public override Token getToken() { return import; }
         public string GetName() { return string.Join(".", import.Value.Split('.').Take(import.Value.Split('.').Length - 1)); }

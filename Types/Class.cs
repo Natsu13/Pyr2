@@ -27,6 +27,8 @@ namespace Compilator
             this.block.blockClassTo = name.Value;
             this.assingBlock = block;
             this.parents = parents;
+            if (this.parents == null)
+                this.parents = new List<Token>();
         }
 
         public void AddGenericArg(string name)

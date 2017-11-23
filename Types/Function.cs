@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,11 +26,13 @@ namespace Compilator
         public Token _constuctor;
         public bool returnAsArray = false;
         public List<_Attribute> attributes = new List<_Attribute>();
+        public List<string> returnGeneric = new List<string>();
+        List<string> genericArguments = new List<string>();
 
         bool parentNotDefined = false;
         bool parentIsNotClassOrInterface = false;        
 
-        public Function(Token name, Block _block, ParameterList paraml, Token returnt, Interpreter interpret)
+        public Function(Token name, Block _block, ParameterList paraml, Token returnt, Interpreter interpret, Block parent_block = null)
         {
             this.name = name;
             if (name.Value.Contains("."))
@@ -38,6 +41,11 @@ namespace Compilator
                 this.name = new Token(Token.Type.ID, _name.Last<string>(), name.Pos, name.File);
                 string _className = string.Join(".", _name.Take(_name.Length - 1));
                 extendingClass = _className;
+                if(_block == null)
+                {
+                    _block = new Block(interpret);
+                    _block.Parent = parent_block;
+                }
                 if (_block.SymbolTable.Find(_className))
                 {
                     isExtending = true;
@@ -80,6 +88,17 @@ namespace Compilator
                     block.isInConstructor = true;
             }
         }
+
+        public void AddGenericArg(string name)
+        {
+            genericArguments.Add(name);
+        }
+        public void SetGenericArgs(List<string> list)
+        {
+            genericArguments = list;
+        }
+        public List<string> GenericArguments { get { return genericArguments; } }
+
         public ParameterList ParameterList { get { return paraml; } }
         public override Token getToken() { return null; }
         public Token Returnt { get { return returnt; } }
@@ -92,7 +111,7 @@ namespace Compilator
             if (isOperator || isConstructor || assingBlock.SymbolTable.GetAll(name.Value)?.Count > 1)
             {
                 if (_hash == "")
-                    _hash = string.Format("{0:X8}", (name.Value + paraml.List() + block?.Compile()).GetHashCode());
+                    _hash = string.Format("{0:X8}", (name.Value + paraml.List() + block?.GetHashCode()).GetHashCode());
                 return _hash;
             }
             return "";
@@ -111,6 +130,15 @@ namespace Compilator
         {
             string functionOpname = "";
             string ret = "";
+
+            string addCode = "";
+            if (attributes?.Where(x => x.GetName(true) == "Debug").Count() > 0)
+            {
+                if(Interpreter._DEBUG)
+                    Debugger.Break();
+                addCode = "debugger;";
+            }
+
             if (!isExternal)
             {
                 Class c = null;
@@ -141,23 +169,43 @@ namespace Compilator
                 }
                 else if (assignTo == "")
                 {
-                    ret += tbs + "function " + Name + "(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                    ret += tbs + "function " + Name + "(" + paraml.Compile(0);
+                    if(genericArguments.Count > 0)
+                    {
+                        int q = 0;
+                        foreach (string generic in genericArguments)
+                        {
+                            if (q != 0) ret += ", ";
+                            else if (paraml.Parameters.Count > 0) { ret += ", "; }
+                            ret += "generic$" + generic;
+                            q++;
+                        }
+                    }
+                    ret += "){" + (block != null ? "\n" : "");
                     functionOpname = Name;
                 }
                 else
                 {
                     fromClass = assignTo;
+                    string hash_name = "";
+                    Types fg = assingBlock.assingToType;
+                    if (fg is Class fgc)
+                        hash_name = fgc.getName();
+                    if (fg is Interface fgi)
+                        hash_name = fgi.getName();
+
                     if (isStatic || isConstructor)
-                    {
-                        Types fg = (block == null ? assingBlock : block).SymbolTable.Get(assignTo, true);
+                    {                        
                         if (fg is Class)
                             c = (Class)fg;
                         if (fg is Interface)
                             i_ = (Interface)fg;
+
                         if (isConstructor && c.GenericArguments.Count > 0)
                         {
-                            ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0);
-                            functionOpname = assignTo + "." + Name;
+                            paraml.assingBlock = assingBlock;
+                            ret += tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0);
+                            functionOpname = hash_name + "." + Name;
                             bool f = true;
                             if (paraml.Parameters.Count > 0) f = false;
                             foreach (string generic in c.GenericArguments)
@@ -170,16 +218,50 @@ namespace Compilator
                         }
                         else
                         {
-                            ret += tbs + assignTo + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
-                            functionOpname = assignTo + "." + Name;
+                            ret += tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0);
+                            if(genericArguments.Count > 0)
+                            {
+                                int q = 0;
+                                foreach (string generic in genericArguments)
+                                {
+                                    if (q != 0) ret += ", ";
+                                    else if (paraml.Parameters.Count > 0) { ret += ", "; }
+                                    ret += "generic$" + generic;
+                                    q++;
+                                }
+                            }
+                            ret += "){" + (block != null ? "\n" : "");
+                            functionOpname = hash_name + "." + Name;
                         }
                     }
                     else
                     {
-                        ret += tbs + assignTo + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
-                        functionOpname = assignTo + ".prototype." + Name;
+                        ret += tbs + hash_name + ".prototype." + Name + " = function(" + paraml.Compile(0);
+                        if(genericArguments.Count > 0)
+                        {
+                            int q = 0;
+                            foreach (string generic in genericArguments)
+                            {
+                                if (q != 0) ret += ", ";
+                                else if (paraml.Parameters.Count > 0) { ret += ", "; }
+                                ret += "generic$" + generic;
+                                q++;
+                            }
+                        }
+                        ret += "){" + (block != null ? "\n" : "");
+                        functionOpname = hash_name + ".prototype." + Name;
                     }
-                }                
+                }
+
+                if(addCode != "")
+                    ret += tbs + "  " + addCode + "\n";
+
+                //if (genericArguments.Count != 0) ret += "\n";
+                foreach (string generic in genericArguments)
+                {
+                    block.SymbolTable.Add(generic, new Generic(this, block, generic) { assingBlock = block });
+                }
+
                 if(isConstructor)
                 {
                     if (block == null) ret += "\n";

@@ -36,7 +36,7 @@ namespace Compilator
         }
         
         public override Token getToken() { return token; }
-        public String Op { get { return Variable.GetOperatorStatic(op.type); } }
+        public string Op { get { return Variable.GetOperatorStatic(op.type); } }
         public Types  Expr { get { return expr; } }
         public Token Name { get { return name; } }
         public void MadeArray(int size) { isArray = true; arraySize = size; }
@@ -67,6 +67,20 @@ namespace Compilator
                     if(!isDynamic && !(q is Function))
                         return "";
                 }
+
+                string generic = "";
+                bool fir = true;
+                string gname = "";
+                foreach(string g in genericArgments)
+                {
+                    if (!fir) generic += ", ";
+                    fir = false;
+                    Types gf = block.SymbolTable.Get(g);
+                    if (gf is Class) gname = ((Class)gf).getName();
+                    if (gf is Interface) gname = ((Interface)gf).getName();
+                    generic += "'"+ gname + "'";
+                }
+
                 List<Types> allf = block.SymbolTable.GetAll(nwnam);
                 Types t = null;
                 if (allf != null && allf.Count > 1)
@@ -118,16 +132,16 @@ namespace Compilator
                     else
                         nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t)?.Name;
                     if (plist == null)
-                        return tbs + (inParen ? "(" : "") + nname + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
-                    return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile(0, usingFunction?.ParameterList) + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                        return tbs + (inParen ? "(" : "") + nname + "("+generic+")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
                 else
                 {
                     if(asArgument)
                         return tbs + (inParen ? "(" : "") + newname + (inParen ? ")" : "") + (endit ? ";" : "");
                     if (plist == null)
-                        return tbs + (inParen ? "(" : "") + newname + "()" + (inParen ? ")" : "") + (endit ? ";" : "");
-                    return tbs + (inParen ? "(" : "") + newname + "(" + plist.Compile(0, usingFunction?.ParameterList) + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                        return tbs + (inParen ? "(" : "") + newname + "(" + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + newname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
             }
             if (o == "new")
@@ -287,6 +301,7 @@ namespace Compilator
                 Dictionary<string, Types> genericArgsTypes = new Dictionary<string, Types>();                
                 if (usingFunction is Function _f)
                 {
+                    t = _f;
                     if (_f.assignTo != "")
                     {
                         Types q = null;
@@ -347,15 +362,24 @@ namespace Compilator
                 foreach(KeyValuePair<string, Types> kvp in genericArgsTypes)
                 {
                     if(kvp.Value is Class)
-                        possible = "\n\t" +kvp.Key + " as " + ((Class)kvp.Value).Name.Value;
+                        possible += "\n\t" +kvp.Key + " as " + ((Class)kvp.Value).Name.Value;
                 }
+                var plst = plist.GenericTUsage;
                 if (allf != null && allf.Count > 1)
                 {
                     foreach (Types q in allf)
                     {
+                        plist.GenericTUsage = plst;
                         ParameterList p = null;
                         if (q is Function)
                         {
+                            int i = 0;
+                            foreach (string g in genericArgments)
+                            {
+                                plist.GenericTUsage.Add(((Function)q).GenericArguments[i], block.SymbolTable.Get(g));
+                                i++;
+                            }
+
                             p = ((Function)q).ParameterList;
                             Function qf = ((Function)q);
                             possible += "\n\t" + qf.RealName + "(" + qf.ParameterList.List() + ")";
@@ -379,15 +403,27 @@ namespace Compilator
                 }
                 else
                 {
-                    t = block.SymbolTable.Get(name.Value);
+                    //plist.GenericTUsage;                    
                     if(t is Function tf)
-                    {
+                    {                        
+                        t = block.SymbolTable.Get(name.Value);
+                        if (t is Function)
+                        {
+                            int i = 0;
+                            foreach (string g in genericArgments)
+                            {
+                                plist.GenericTUsage.Add(((Function)t).GenericArguments[i], block.SymbolTable.Get(g));
+                                i++;
+                            }
+                        }
                         possible = "";
                         foreach (KeyValuePair<string, Types> kvp in genericArgsTypes)
                         {
                             if (kvp.Value is Class)
                                 possible = "\n\t" + kvp.Key + " as " + ((Class)kvp.Value).Name.Value;
                         }
+                        if (tf.ParameterList.assingBlock == null)
+                            tf.ParameterList.assingBlock = tf.Block;
                         if (!tf.ParameterList.Compare(plist))
                         {
                             ParameterList p = null;

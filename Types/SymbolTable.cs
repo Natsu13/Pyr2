@@ -47,7 +47,7 @@ namespace Compilator
 
                 Token TokenDebug = new Token(Token.Type.ID, "Debug");
                 Block BlockDebug = new Block(interpret) { Parent = assigment_block };
-                Class Debug = new Class(TokenDebug, BlockDebug, new List<Token> { TokenAttribute })
+                Class Debug = new Class(TokenDebug, BlockDebug, new List<Types> { new UnaryOp(new Token(Token.Type.NEW, "new"), TokenAttribute) })
                 {
                     isExternal = true
                 };
@@ -57,7 +57,7 @@ namespace Compilator
                 // Add("string",   typeof(TypeString), new List<Token> { TokenIIterable });
                 Token TokenString = new Token(Token.Type.ID, "string");
                 Block BlockString = new Block(interpret) { Parent = assigment_block };
-                Class String = new Class(TokenString, BlockString, new List<Token> { TokenIIterable })
+                Class String = new Class(TokenString, BlockString, new List<Types> { new UnaryOp(new Token(Token.Type.NEW, "new"), TokenIIterable) })
                 {
                     isExternal = true,
                     JSName = "String"
@@ -197,6 +197,11 @@ namespace Compilator
             Token FunctionIntOperatorIncrementName = new Token(Token.Type.ID, "operator inc");
             Function FunctionIntOperatorIncrement = new Function(FunctionIntOperatorIncrementName, null, new ParameterList(true), new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
             BlockInt.SymbolTable.Add("operator inc", FunctionIntOperatorIncrement);
+            Token FunctionIntOperatorGetName = new Token(Token.Type.ID, "operator get");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "key"), BlockInt, new Token(Token.Type.CLASS, "int")));
+            Function FunctionIntOperatorGet = new Function(FunctionIntOperatorGetName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true, isExternal = true };
+            BlockInt.SymbolTable.Add("operator get", FunctionIntOperatorGet);
         }
 
         public Dictionary<string, Types> Table { get { return table; } }
@@ -212,7 +217,18 @@ namespace Compilator
         public void Add(string name, Types type)
         {
             if (!tableCounter.ContainsKey(name))
-                tableCounter.Add(name, 1);
+            {
+                if (Find(name))
+                {
+                    if(Get(name).assingBlock.Interpret.UID != interpret.UID)
+                        tableCounter.Add(name, 1);
+                    else if(Get(name).assingBlock.Parent.SymbolTable.tableCounter.ContainsKey(name))
+                        tableCounter.Add(name, Get(name).assingBlock.Parent.SymbolTable.tableCounter[name] + 1);
+                    else
+                        tableCounter.Add(name, 1);
+                }else
+                    tableCounter.Add(name, 1);
+            }
             else
                 tableCounter[name] += 1;
             if (tableCounter[name] != 1)
@@ -448,8 +464,26 @@ namespace Compilator
             return null;
         }
 
-        public Types Get(string name, bool noConstrucotr = false, bool getImport = false)
-        {
+        public Types Get(string name, bool noConstrucotr = false, bool getImport = false, int genericArgs = -1)
+        {            
+            if(genericArgs > -1)
+            {
+                var tttt = GetAll(name);
+                foreach(var q in tttt)
+                {
+                    if(q is Interface qi)
+                    {
+                        if (qi.GenericArguments.Count == genericArgs)
+                            return qi;
+                    }else if(q is Class qc)
+                    {
+                        if (qc.GenericArguments.Count == genericArgs)
+                            return qc;
+                    }
+                }
+                if(tttt.Count > 0)
+                    return tttt[0];
+            }
             if (name.Split('.')[0] == "this")
                 name = string.Join(".", name.Split('.').Skip(1));
             if (name.Contains('.'))

@@ -82,8 +82,13 @@ namespace Compilator
 
         public override string Compile(int tabs = 0)
         {
-            if (attributes?.Where(x => x.GetName(true) == "Debug").Count() > 0)         
-                Debugger.Break();
+            string addCode = "";
+            if (attributes?.Where(x => x.GetName(true) == "Debug").Count() > 0)
+            {
+                if(Interpreter._DEBUG)
+                    Debugger.Break();
+                addCode = "debugger;";
+            }
             string addName = "";
             if (assingBlock.Parent != null && assingBlock.Parent.SymbolTable.Find(((Variable)left).Value))
                 isDeclare = false;
@@ -103,19 +108,19 @@ namespace Compilator
                 string[] varname = left.TryVariable().Value.Split('.');
                 if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
                     varname[0] = "$this";
-                return DoTabs(tabs) + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".set(" + right.Compile(0) + ");";
+                return DoTabs(tabs) + addCode + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".set(" + right.Compile(0) + ");";
             }
             else if (assingBlock.SymbolTable.Find(right.TryVariable().Value) && maybeIs2 is Properties)
             {
                 string[] varname = right.TryVariable().Value.Split('.');
                 if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
                     varname[0] = "$this";
-                return DoTabs(tabs) + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".get();";
+                return DoTabs(tabs) + addCode + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".get();";
             }
             else if (left is Variable)
             {                
                 string tbs = DoTabs(tabs);                
-                string ret = tbs + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + right.Compile(0) + ";";                
+                string ret = tbs + addCode + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + right.Compile(0) + ";";                
                 return ret;
             }
             else

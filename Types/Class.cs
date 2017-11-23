@@ -10,7 +10,7 @@ namespace Compilator
     {
         Token name;
         public Block block;
-        List<Token> parents;
+        List<Types> parents;
         public bool isExternal = false;
         public Token _external;
         public bool isDynamic = false;
@@ -19,16 +19,17 @@ namespace Compilator
         List<string> genericArguments = new List<string>();
         public List<_Attribute> attributes = new List<_Attribute>();
 
-        public Class(Token name, Block block, List<Token> parents)
+        public Class(Token name, Block block, List<Types> parents)
         {
             this.name = name;
             this.block = block;
+            this.block.assingToType = this;
             this.block.blockAssignTo = name.Value;
             this.block.blockClassTo = name.Value;
             this.assingBlock = block;
             this.parents = parents;
             if (this.parents == null)
-                this.parents = new List<Token>();
+                this.parents = new List<Types>();
         }
 
         public void AddGenericArg(string name)
@@ -42,20 +43,39 @@ namespace Compilator
         public List<string> GenericArguments { get { return genericArguments; } }
 
         public Token Name { get { return name; } }
-        public string getName() { if (JSName == null || JSName == "") return name.Value; else return JSName; }
+
+        string _hash = "";
+        public string getHash()
+        {
+            if (assingBlock == null) assingBlock = block;
+            if (_hash == "")
+                _hash = string.Format("{0:X8}", (name.Value + genericArguments.GetHashCode() + block?.GetHashCode()).GetHashCode());
+            return _hash;
+        }
+
+        public string getName() {
+            if (assingBlock.SymbolTable.GetAll(name.Value).Count > 1)
+                return name.Value + "_" + getHash();
+            if (JSName == null || JSName == "") return name.Value; else return JSName; 
+        }
         public override Token getToken() { return null; }
 
         public bool haveParent(string name)
         {
             if (parents == null) return false;
-            foreach (Token p in parents)
+            foreach (UnaryOp p in parents)
             {
-                if (p.Value == name) return true;
-                Types to = block.SymbolTable.Get(p.Value);
-                if (to is Class && ((Class)to).haveParent(name))
-                    return true;
-                else if (to is Interface && ((Interface)to).haveParent(name))
-                    return true;
+                var pp = assingBlock.SymbolTable.Get(p.Name.Value, genericArgs: p.genericArgments.Count);
+                if(pp is Class pc)
+                {
+                    if (pc.Name.Value == name) return true;
+                    if (pc.haveParent(name)) return true;
+                }
+                else if(pp is Interface pi)
+                {
+                    if (pi.Name.Value == name) return true;
+                    if (pi.haveParent(name)) return true;
+                }
             }
             return false;
         }        
@@ -65,16 +85,22 @@ namespace Compilator
             if (!isExternal)
             {                
                 string tbs = DoTabs(tabs);
-                string ret = tbs + "var " + name.Value + " = function(){";
-                if (block.variables.Count != 0 || parents.Count != 0) ret += "\n";
+                string ret = tbs + "var " + getName() + " = function(){";
+                if (block.variables.Count != 0 || parents.Count != 0 || genericArguments.Count != 0) ret += "\n";
                 foreach (string generic in genericArguments)
                 {
                     block.SymbolTable.Add(generic, new Generic(this, block, generic));
                     ret += tbs+"  this.generic$" + generic + " = null;\n";
                 }
-                foreach (Token parent in parents)
+                foreach (UnaryOp parent in parents)
                 {
-                    ret += tbs + "  " + parent.Value + ".call(this);\n";
+                    if (assingBlock.SymbolTable.Find(parent.Name.Value)) {
+                        Types inname = assingBlock.SymbolTable.Get(parent.Name.Value, genericArgs: parent.genericArgments.Count);
+                        if(inname is Interface)
+                            ret += tbs + "  " + ((Interface)inname).getName() + ".call(this);\n";
+                        else if(inname is Class)
+                            ret += tbs + "  " + ((Class)inname).getName() + ".call(this);\n";
+                    }
                 }
                 foreach (KeyValuePair<string, Assign> var in block.variables)
                 {
@@ -92,7 +118,7 @@ namespace Compilator
                 }
                 ret += tbs + "}\n";
                 
-                ret += tbs + "var " + name.Value + "$META = function(){\n";                    
+                ret += tbs + "var " + getName() + "$META = function(){\n";                    
                 ret += tbs + "  return {";
                 ret += "\n" + tbs + "    type: 'class'" + (attributes.Count > 0 ? ", " : "");
                 if (attributes.Count > 0)

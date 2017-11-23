@@ -14,7 +14,7 @@ namespace Compilator
         Function functionAss = null;
         string name = "";
         Block block;
-        TypeObject bt = new TypeObject();
+        TypeObject bt = new TypeObject();       
 
         public Generic(Class c, Block block, string name)
         {
@@ -27,7 +27,7 @@ namespace Compilator
             this.block = block;
             this.name = name;
             setFunction(f);
-        }
+        }        
 
         public string Name { get { return name; } }
 

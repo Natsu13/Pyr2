@@ -25,8 +25,9 @@ namespace Compilator
         public int arraySize = 0;
         public bool isDateType = false;
         bool getFoundButBadArgs = false;
+        List<string> generic = new List<string>();
 
-        public Variable(Token token, Types block, Token dateType = null)
+        public Variable(Token token, Types block, Token dateType = null, List<string> generic = null)
         {
             this.block = (Block)block;
             this.token = token;
@@ -34,6 +35,8 @@ namespace Compilator
             if (dateType == null)
                 dateType = new Token(Token.Type.AUTO, "auto");
             this.dateType = dateType;
+            if(generic != null)
+                this.generic = generic;
             
             if (this.dateType.Value != "auto" && this.block != null)
             {
@@ -76,6 +79,7 @@ namespace Compilator
         public bool   IsKey { get { return isKey; } }
         public Types  Key { get { return key; } }
         public void MadeArray(bool isArray) { isArray = true; }
+        public List<string> GenericList { get { return generic; } }
 
         public Token AsDateType
         {

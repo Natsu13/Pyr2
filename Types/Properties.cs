@@ -93,13 +93,13 @@ namespace Compilator
 
         public override void Semantic()
         {
-            if(assingBlock.Type != Block.BlockType.CLASS)
-                Interpreter.semanticError.Add(new Error("#602 Properties can be used only in Class!", Interpreter.ErrorType.ERROR, getToken()));
+            if(assingBlock.Type != Block.BlockType.CLASS && assingBlock.Type != Block.BlockType.INTERFACE)
+                Interpreter.semanticError.Add(new Error("#602 Properties can be used only in Class and Interface!", Interpreter.ErrorType.ERROR, getToken()));
             if(isOneNotDefined)
                 Interpreter.semanticError.Add(new Error("#604 Properties must define body!", Interpreter.ErrorType.ERROR, getToken()));
             variable.Semantic();
-            setter.Semantic();
-            getter.Semantic();
+            setter?.Semantic();
+            getter?.Semantic();
         }
 
         public override int Visit()

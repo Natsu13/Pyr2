@@ -13,6 +13,7 @@ namespace Compilator
         public bool cantdefault = false;
         public Token token;
         public bool allowMultipel = false;
+        public Token allowMultipelName = null;
         public bool cantDefaultThenNormal = false;
         Dictionary<string, Types> genericTusage = new Dictionary<string, Types>();
         public Dictionary<string, Types> defaultCustom = new Dictionary<string, Types>();
@@ -97,21 +98,31 @@ namespace Compilator
             Dictionary<string, bool> argDefined = new Dictionary<string, bool>();
             List<string> argNamed = plist?.ToList();
             int i = 0;
+            bool startne = false;
+            if(allowMultipel && plist == null && assingBlock != null && !assingBlock.variables.ContainsKey(allowMultipelName.Value))
+            {
+                new Assign(new Variable(new Token(Token.Type.ID, allowMultipelName.Value), assingBlock) { isArray = true }, new Token(Token.Type.ASIGN, '='), new Null());
+            }
             foreach (Types par in parameters)
             {
-                if(argNamed != null)
+                if(argNamed != null && i >= argNamed.Count && !startne)
+                {
+                    ret += "[";
+                    startne = true;
+                }
+                if(argNamed != null && argNamed.Count > i)
                     argDefined[argNamed[i]] = true;
 
                 par.endit = false;
-                if (par is Variable && assingBlock != null)
+                if (par is Variable && assingBlock != null && !assingBlock.variables.ContainsKey(((Variable)par).Value))
                 {
                     assingBlock.variables.Add(((Variable)par).Value, new Assign(((Variable)par), new Token(Token.Type.ASIGN, '='), new Null()));                    
                 }
-                else if(par is Assign && assingBlock != null)
+                else if(par is Assign && assingBlock != null && !assingBlock.variables.ContainsKey(((Assign)par).Left.TryVariable().Value))
                 {
                     assingBlock.variables.Add(((Assign)par).Left.TryVariable().Value, (Assign)par);
                 }
-                if (ret != "") ret += ", ";
+                if (ret != "" && ret != "[") ret += ", ";
                 if (declare)
                 {
                     if (par is Assign)
@@ -121,6 +132,10 @@ namespace Compilator
                 }
                 else ret += par.Compile(0);
                 i++;
+            }
+            if (startne)
+            {                
+                ret += "]";
             }
             if (myList != null)
             {
@@ -168,6 +183,10 @@ namespace Compilator
                     }
                 }
             }
+            if(allowMultipel && myList == null)
+            {
+                ret += (ret != "" ? ", " : "") + allowMultipelName.Value;
+            }
             assingBlock = null;
             return ret;
         }
@@ -188,6 +207,15 @@ namespace Compilator
                 {
                     dtype = ((Variable)t).Type;
                     if (((Variable)t).Block.SymbolTable.Get(dtype) is Generic)
+                    {
+                        isGeneric = true;
+                        if (p.genericTusage.ContainsKey(dtype) && p.genericTusage[dtype] is Class __c)
+                        {
+                            dtype = __c.Name.Value;
+                            isGeneric = false;
+                        }
+                    }
+                    else if (assingBlock?.SymbolTable.Get(dtype) is Generic)
                     {
                         isGeneric = true;
                         if (p.genericTusage.ContainsKey(dtype) && p.genericTusage[dtype] is Class __c)
@@ -307,7 +335,7 @@ namespace Compilator
                 }
             }
             if(cantDefaultThenNormal)
-                Interpreter.semanticError.Add(new Error("#1xx When you define default you can put normal", Interpreter.ErrorType.ERROR, token));
+                Interpreter.semanticError.Add(new Error("#1xx When you define default you can't put normal", Interpreter.ErrorType.ERROR, token));
             if (cantdefault)
                 Interpreter.semanticError.Add(new Error("#113 Optional parameters must follow all required parameters", Interpreter.ErrorType.ERROR, token));
             foreach (Types par in parameters)

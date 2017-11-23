@@ -51,6 +51,7 @@ namespace Compilator
                             else
                             {
                                 Block b = new Block(_block.Interpret);
+                                b.Parent = ___block;
                                 Class c = new Class(new Token(Token.Type.ID, part), b, null);
                                 ___block.SymbolTable.Add(part, c);
                                 ___block.children.Add(c);
@@ -97,7 +98,7 @@ namespace Compilator
                     throw new FieldAccessException("You can set only null value!");
             }
         }
-        public Block Block { get { return block; } }
+        public Block Block { get { return (block??__block); } }
         public override Token getToken() { return import; }
         public string GetName() { return string.Join(".", import.Value.Split('.').Take(import.Value.Split('.').Length - 1)); }
         public string GetModule() { return import.Value.Split('.').Last(); }

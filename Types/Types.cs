@@ -11,6 +11,7 @@ namespace Compilator
         //public abstract Token Token { get; }
         public abstract Token getToken();
         public string assignTo = "";
+        public Types assingToType = null;
         public bool endit = true;
         public bool inParen = false;
         public Block assingBlock;

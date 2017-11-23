@@ -34,6 +34,7 @@ namespace Compilator
         public static bool _REDECLARATION =     false;      //If you enable redeclaration
         public static bool _WAITFORPAGELOAD =   true;       //If you want call main in window.onload
         public static bool _WRITEDEBUG =        false;      //If you want with faul write the output to file
+        public static bool _DEBUG =             false;      //If you want stop at compiling when you use attribute debug
 
         /// Language settings
         public enum     LANGUAGES { JAVASCRIPT, CSHARP, PYTHON, PHP, CPP };
@@ -41,8 +42,16 @@ namespace Compilator
         public static bool isForExport = false;
         public Interpreter parent = null;
 
+        public static int counterId = 1;
+        public int _uid;
+
+        public int UID { get { return _uid; } }
+
         public Interpreter(string text, string filename = "", Interpreter parent = null)
         {
+            _uid = counterId;
+            counterId++;
+
             this.text = text;
             this.parent = parent;
             if(!fileList.ContainsKey(filename))
@@ -379,11 +388,33 @@ namespace Compilator
                     if (plist.allowMultipel)
                         Error("Multiple arguments can be only at end of the arguments list");
                     vtype = current_token;
-                    if (current_token.type == Token.Type.ID)
-                        Eat(Token.Type.ID);
+                    List<string> generic = new List<string>();
+                    if (current_token.type == Token.Type.ID || current_token.type == Token.Type.INTERFACE || current_token.type == Token.Type.CLASS)
+                    {
+                        Eat(current_token.type);
+                        if(current_token.type == Token.Type.LESS)
+                        {
+                            Eat(Token.Type.LESS);
+                            while(current_token.type != Token.Type.MORE)
+                            {
+                                if (current_token.type == Token.Type.COMMA)
+                                    Eat(Token.Type.COMMA);
+                                generic.Add(current_token.Value);
+                                Eat(current_token.type);
+                            }
+                            Eat(Token.Type.MORE);
+                            if (previous_token.type == Token.Type.LESS)
+                            {
+                                Error("You must specify the generic arguments!");
+                            }
+                        }
+                    }
                     else if (current_token.type == Token.Type.THREEDOT)
                     {
                         Eat(Token.Type.THREEDOT);
+                        Token multiple_name = current_token;
+                        Eat(Token.Type.ID);
+                        plist.allowMultipelName = multiple_name;
                         plist.allowMultipel = true;
                         continue;
                     }
@@ -405,13 +436,13 @@ namespace Compilator
                         Token assign = current_token;
                         Eat(Token.Type.ASIGN);
                         Types _default = Expr();
-                        plist.parameters.Add(new Assign(new Variable(vname, current_block, vtype), assign, _default, current_block));
+                        plist.parameters.Add(new Assign(new Variable(vname, current_block, vtype, generic), assign, _default, current_block));
                         defaultstart = true;
                     }
                     else
                     {
                         if (defaultstart) { plist.cantdefault = true; }
-                        plist.parameters.Add(new Variable(vname, current_block, vtype));
+                        plist.parameters.Add(new Variable(vname, current_block, vtype, generic));
                     }
                 }
                 else
@@ -1069,21 +1100,45 @@ namespace Compilator
                     Eat(Token.Type.FUNCTION);
                 else
                     Eat(Token.Type.LAMBDA);
-            }      
+            }     
+            
+            List<string> genericArgs = new List<string>();
+            if (current_token.type == Token.Type.LESS)
+            {
+                Eat(Token.Type.LESS);
+                while (current_token.type != Token.Type.MORE)
+                {
+                    if (current_token.type == Token.Type.COMMA)
+                    {
+                        genericArgs.Add(previous_token.Value);
+                        Eat(Token.Type.COMMA);
+                    }
+                    else Eat(current_token.type);
+                }
+                if (previous_token.type != Token.Type.LESS)
+                    genericArgs.Add(previous_token.Value);
+                else
+                    Error("You need specify generic arguments!");
+                Eat(Token.Type.MORE);
+            }
+
             if(current_token.type == Token.Type.RPAREN || current_token.type == Token.Type.COMMA)
             {
                 UnaryOp up = new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, null, current_block, false);
+                up.genericArgments = genericArgs;
                 up.asArgument = true;
                 return up;
             }
             else if (current_token.type == Token.Type.SEMI)
-            { 
-                return new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, null, current_block, true);
+            {
+                if (isLambda)
+                    return new Lambda(new Variable(fname, current_block), null, null) { isInArgumentList = true };
+                return new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, null, current_block, true) { genericArgments = genericArgs };
             }
             else
             {
                 ParameterList p = Parameters();
-                return new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, p, current_block, true);
+                return new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, p, current_block, true) { genericArgments = genericArgs };
             }
         }
 
@@ -1093,18 +1148,35 @@ namespace Compilator
             attributes.Clear();
             Eat(Token.Type.NEWFUNCTION);
             Token name = current_token;
-            if (current_token.type == Token.Type.FUNCTION)
-                Eat(Token.Type.FUNCTION);
-            else if (current_token.type == Token.Type.CLASS)
-                Eat(Token.Type.CLASS);
-            else
-                Eat(Token.Type.ID);
+            Eat(current_token.type);
             if (brekall) return null;
+
+            List<string> genericArgs = new List<string>();
+            if (current_token.type == Token.Type.LESS)
+            {
+                Eat(Token.Type.LESS);
+                while (current_token.type != Token.Type.MORE)
+                {
+                    if (current_token.type == Token.Type.COMMA)
+                    {
+                        genericArgs.Add(previous_token.Value);
+                        Eat(Token.Type.COMMA);
+                    }
+                    else Eat(current_token.type);
+                }
+                if (previous_token.type != Token.Type.LESS)
+                    genericArgs.Add(previous_token.Value);
+                else
+                    Error("You need specify generic arguments!");
+                Eat(Token.Type.MORE);
+            }
+
             Block sb = current_block;
             current_block = new Block(this);
             current_block.Parent = sb;
             ParameterList p = Parameters(true);
-            Token returnt = null;
+            Token returnt = null;            
+            List<string> garg = new List<string>();
             bool returnrArray = false;
             if(current_token.type == Token.Type.DEFINERETURN)
             {
@@ -1125,6 +1197,26 @@ namespace Compilator
                     returnrArray = true;
                     Eat(Token.Type.RSQUARE);
                 }
+                
+                if (current_token.type == Token.Type.LESS)
+                {
+                    Eat(Token.Type.LESS);
+                    while (current_token.type != Token.Type.MORE)
+                    {
+                        if (current_token.type == Token.Type.COMMA)
+                        {
+                            garg.Add(previous_token.Value);
+                            Eat(Token.Type.COMMA);
+                        }
+                        else Eat(current_token.type);
+                    }
+                    if (previous_token.type != Token.Type.LESS)
+                        garg.Add(previous_token.Value);
+                    else
+                        Error("You need specify generic arguments!");
+                    Eat(Token.Type.MORE);
+                }
+
             }
             Block sendb = current_block;
             current_block = sb;
@@ -1136,10 +1228,20 @@ namespace Compilator
                 name = new Token(Token.Type.ID, "operator_" + name.Value, name.Pos, name.File);
                 sname = "operator " + sname;
             }
-            Function func = new Function(name, _bloc, p, returnt, this);
+            List<Types> paramas = new List<Types>();
+            foreach(var q in p.parameters)
+            {
+                q.assingBlock = _bloc;
+                paramas.Add(q);
+            }
+            p.parameters = paramas;
+            Function func = new Function(name, _bloc, p, returnt, this, sendb);
             func.returnAsArray = returnrArray;
+            func.returnGeneric = garg;
+            func.SetGenericArgs(genericArgs);
             func.assingBlock = current_block;
             func.assignTo = current_block.assignTo;
+            func.assingToType = current_block.assingToType;
             func.attributes = att;
             if (isModifer(Token.Type.STATIC))
             {
@@ -1193,7 +1295,28 @@ namespace Compilator
             attributes.Clear();
             Eat(Token.Type.NEWINTERFACE);
             Token name = current_token;
-            Eat(Token.Type.ID);
+            Eat(current_token.type);
+
+            List<string> garg = new List<string>();
+            if (current_token.type == Token.Type.LESS)
+            {
+                Eat(Token.Type.LESS);
+                while (current_token.type != Token.Type.MORE)
+                {
+                    if (current_token.type == Token.Type.COMMA)
+                    {
+                        garg.Add(previous_token.Value);
+                        Eat(Token.Type.COMMA);
+                    }
+                    else Eat(current_token.type);
+                }
+                if (previous_token.type != Token.Type.LESS)
+                    garg.Add(previous_token.Value);
+                else
+                    Error("You need specify generic arguments!");
+                Eat(Token.Type.MORE);
+            }
+
             List<Token> parents = new List<Token>();
             if (current_token.type == Token.Type.COLON)
             {
@@ -1226,7 +1349,9 @@ namespace Compilator
             current_block_type = last_block_type;
 
             Interface c = new Interface(name, block, parents);
+            block.assingToType = c;
             c.assingBlock = block;
+            c.SetGenericArgs(garg);
             c.attributes = att;
 
             if (isModifer(Token.Type.EXTERNAL))
@@ -1264,7 +1389,7 @@ namespace Compilator
                         garg.Add(previous_token.Value);
                         Eat(Token.Type.COMMA);
                     }
-                    else Eat(Token.Type.ID);
+                    else Eat(current_token.type);
                 }
                 if (previous_token.type != Token.Type.LESS)
                     garg.Add(previous_token.Value);
@@ -1273,25 +1398,43 @@ namespace Compilator
                 Eat(Token.Type.MORE);
             }
 
-            List<Token> parents = new List<Token>();
+            List<Types> parents = new List<Types>();
             if(current_token.type == Token.Type.COLON)
             {
-                Eat(Token.Type.COLON);
-                Token parent = current_token;
-                parents.Add(parent);
-                if (current_token.type == Token.Type.CLASS)
-                    Eat(Token.Type.CLASS, "class or interface for inheritance not found");
-                else
-                    Eat(Token.Type.INTERFACE, "class or interface for inheritance not found");
-                while (current_token.type == Token.Type.COMMA)
+                while (current_token.type == Token.Type.COMMA || (current_token.type == Token.Type.COLON && parents.Count == 0))
                 {
-                    Eat(Token.Type.COMMA);
-                    parent = current_token;
-                    parents.Add(parent);
+                    if (current_token.type == Token.Type.COLON && parents.Count == 0)
+                        Eat(Token.Type.COLON);
+                    else
+                        Eat(Token.Type.COMMA);
+                    var parent_token = current_token;
                     if (current_token.type == Token.Type.CLASS)
                         Eat(Token.Type.CLASS, "class or interface for inheritance not found");
                     else
                         Eat(Token.Type.INTERFACE, "class or interface for inheritance not found");
+                    var un = new UnaryOp(new Token(Token.Type.NEW, "new"), parent_token, null, current_block);
+
+                    List<string> genericArgs = new List<string>();
+                    if (current_token.type == Token.Type.LESS)
+                    {
+                        Eat(Token.Type.LESS);
+                        while (current_token.type != Token.Type.MORE)
+                        {
+                            if (current_token.type == Token.Type.COMMA)
+                            {
+                                genericArgs.Add(previous_token.Value);
+                                Eat(Token.Type.COMMA);
+                            }
+                            else Eat(current_token.type);
+                        }
+                        if (previous_token.type != Token.Type.LESS)
+                            genericArgs.Add(previous_token.Value);
+                        else
+                            Error("You need specify generic arguments!");
+                        Eat(Token.Type.MORE);
+                    }
+                    un.genericArgments = genericArgs;
+                    parents.Add(un);                    
                 }
             }            
 
@@ -1305,6 +1448,7 @@ namespace Compilator
             current_block_type = last_block_type;
 
             Class c = new Class(name, block, parents);
+            block.assingToType = c;
             c.assingBlock = block;
             c.SetGenericArgs(garg);
             c.attributes = att;
@@ -1517,6 +1661,22 @@ namespace Compilator
                 exp.isCallInArgument = true;
                 return exp;
             }
+            if (current_token.type == Token.Type.LSQUARE)
+            {
+                Eat(Token.Type.LSQUARE);
+                if(current_token.type == Token.Type.RSQUARE)
+                {
+                    Eat(Token.Type.RSQUARE);
+                    if (current_token.type == Token.Type.ID)
+                    {
+                        ((Variable)node).isArray = true;
+                        ((Variable)node).isDateType = true;
+                        return node;
+                    }
+                }
+                ((Variable)node).setKey(Expr());
+                Eat(Token.Type.RSQUARE);
+            }
             if(current_token.type == Token.Type.AS)
             {
                 Eat(Token.Type.AS);
@@ -1541,23 +1701,7 @@ namespace Compilator
                 else
                     Eat(Token.Type.CLASS);
                 return new BinOp(node, tokis, t, current_block);
-            }
-            if (current_token.type == Token.Type.LSQUARE)
-            {
-                Eat(Token.Type.LSQUARE);
-                if(current_token.type == Token.Type.RSQUARE)
-                {
-                    Eat(Token.Type.RSQUARE);
-                    if (current_token.type == Token.Type.ID)
-                    {
-                        ((Variable)node).isArray = true;
-                        ((Variable)node).isDateType = true;
-                        return node;
-                    }
-                }
-                ((Variable)node).setKey(Expr());
-                Eat(Token.Type.RSQUARE);
-            }
+            }            
             if (current_token.type == Token.Type.INC)
             {
                 UnaryOp p = new UnaryOp(current_token, node);

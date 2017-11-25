@@ -389,7 +389,7 @@ namespace Compilator
                         Error("Multiple arguments can be only at end of the arguments list");
                     vtype = current_token;
                     List<string> generic = new List<string>();
-                    if (current_token.type == Token.Type.ID || current_token.type == Token.Type.INTERFACE || current_token.type == Token.Type.CLASS)
+                    if (current_token.type == Token.Type.ID || current_token.type == Token.Type.INTERFACE || current_token.type == Token.Type.CLASS || current_token.type == Token.Type.FUNCTION)
                     {
                         Eat(current_token.type);
                         if(current_token.type == Token.Type.LESS)
@@ -908,6 +908,15 @@ namespace Compilator
                 Error("The operator modifer can modify only function");
                 return null;
             }
+            else if (current_token.type == Token.Type.DELEGATE)
+            {
+                Token modifer = current_token;
+                current_modifer.Add(current_token);
+                Eat(Token.Type.DELEGATE);
+                Types type = DeclareFunction();
+                current_modifer.Remove(modifer);
+                return type;
+            }
             return new NoOp();
         }
 
@@ -1146,7 +1155,8 @@ namespace Compilator
         {
             List<_Attribute> att = new List<_Attribute>(attributes);
             attributes.Clear();
-            Eat(Token.Type.NEWFUNCTION);
+            if (!isModifer(Token.Type.DELEGATE))
+                Eat(Token.Type.NEWFUNCTION);
             Token name = current_token;
             Eat(current_token.type);
             if (brekall) return null;
@@ -1229,12 +1239,36 @@ namespace Compilator
                 sname = "operator " + sname;
             }
             List<Types> paramas = new List<Types>();
+
+            if (isModifer(Token.Type.DELEGATE))
+            {
+                Block block = new Block(this);
+                block.Parent = sb;
+                foreach(var q in p.parameters)
+                {
+                    q.assingBlock = block;
+                    paramas.Add(q);
+                }
+                p.parameters = paramas;
+
+                Delegate deleg = new Delegate(name, p, returnt, this, block);
+                deleg.returnAsArray = returnrArray;
+                deleg.returnGeneric = garg;
+                deleg.SetGenericArgs(genericArgs);
+                deleg.assingBlock = current_block;
+                deleg.assignTo = current_block.assignTo;
+                deleg.assingToType = current_block.assingToType;
+                deleg.attributes = att;
+                return deleg;
+            }
+
             foreach(var q in p.parameters)
             {
                 q.assingBlock = _bloc;
                 paramas.Add(q);
             }
             p.parameters = paramas;
+
             Function func = new Function(name, _bloc, p, returnt, this, sendb);
             func.returnAsArray = returnrArray;
             func.returnGeneric = garg;
@@ -1257,7 +1291,7 @@ namespace Compilator
             {
                 func.isDynamic = true;
                 func._dynamic = getModifer(Token.Type.DYNAMIC);
-            }
+            }            
             if (isModifer(Token.Type.OPERATOR))
             {
                 func.isOperator = true;

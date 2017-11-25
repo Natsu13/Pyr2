@@ -131,8 +131,23 @@ namespace Compilator
                     continue;
                 if (t.Value is Interface && ((Interface)t.Value).isExternal)
                     continue;
+                if (t.Value is Delegate)
+                    continue;
                 if (t.Value is Function tf)
-                    outcom += tbs + "  _." + tf.Name + " = " + tf.Name + ";\n";
+                {
+                    outcom += "  _." + tf.Name + " = " + tf.Name + ";\n";
+                    outcom += "  _." + tf.Name + "$META = " + tf.Name + "$META;\n";
+                }
+                else if (t.Value is Class tc)
+                {
+                    outcom += "  _." + tc.getName() + " = " + tc.getName() + ";\n";
+                    outcom += "  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n";
+                }
+                else if (t.Value is Interface ti)
+                {
+                    outcom += "  _." + ti.getName() + " = " + ti.getName() + ";\n";
+                    outcom += "  _." + ti.getName() + "$META = " + ti.getName() + "$META;\n";
+                }
                 else if (t.Value is Import im)
                 {
                     outcom += tbs + "  _." + t.Key + " = " + im.As + "." + im.GetModule() + ";\n";

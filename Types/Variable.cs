@@ -197,6 +197,8 @@ namespace Compilator
                     }                    
                 }
             }
+            if (this.dateType == null)
+                this.dateType = new Token(Token.Type.AUTO, "auto");
             if (this.dateType.Value != "auto")
             {
                 if (this.block.SymbolTable.FindInternal(dateType.Value))

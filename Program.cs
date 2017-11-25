@@ -33,6 +33,8 @@ namespace Compilator
                     continue;
                 if (t.Value is Interface && ((Interface)t.Value).isExternal)
                     continue;
+                if (t.Value is Delegate)
+                    continue;
                 if (t.Value is Function tf)
                 {
                     outcom += "  _." + tf.Name + " = " + tf.Name + ";\n";
@@ -64,6 +66,8 @@ namespace Compilator
                         }
                     }
                     outcom += "  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                    if(im.As != "")
+                        outcom += "  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
                 }
                 else
                     outcom += "  _." + t.Key + " = " + t.Key + ";\n";

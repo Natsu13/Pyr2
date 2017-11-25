@@ -52,6 +52,7 @@
     <Compile Include="Types\Assign.cs" />
     <Compile Include="Types\Block.cs" />
     <Compile Include="Types\Class.cs" />
+    <Compile Include="Types\Delegate.cs" />
     <Compile Include="Types\For.cs" />
     <Compile Include="Types\Function.cs" />
     <Compile Include="Types\Generic.cs" />

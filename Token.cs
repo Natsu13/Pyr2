@@ -22,7 +22,8 @@ namespace Compilator
             EQUAL, NOTEQUAL, AND, OR, MORE, LESS, 
             TRUE, FALSE,
             IN, GET,
-            IMPORT, SET
+            IMPORT, SET,
+            DELEGATE
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
@@ -50,7 +51,8 @@ namespace Compilator
             { "as",         new Token(Type.AS, "as") },
             { "dynamic",    new Token(Type.DYNAMIC, "dynamic") },
             { "declare",    new Token(Type.DECLARE, "declare") },
-            { "import",     new Token(Type.IMPORT, "import") }
+            { "import",     new Token(Type.IMPORT, "import") },
+            { "delegate",   new Token(Type.DELEGATE, "delegate") }
         };
 
         public Type type;

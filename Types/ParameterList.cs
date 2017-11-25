@@ -22,6 +22,13 @@ namespace Compilator
         {
             this.declare = declare;
         }
+        public ParameterList(ParameterList plist)
+        {
+            parameters = new List<Types>(plist.Parameters);
+            allowMultipel = plist.allowMultipel;
+            allowMultipelName = plist.allowMultipelName;
+            defaultCustom = plist.defaultCustom;
+        }
 
         public Dictionary<string, Types> GenericTUsage
         {
@@ -54,13 +61,28 @@ namespace Compilator
             foreach (Types par in parameters)
             {
                 if (ret != "") ret += ", ";
-                if (par is Variable)
-                    ret += ((Variable)par).Type + " " + ((Variable)par).Value;
+                if (par is Variable parv)
+                {
+                    ret += parv.Type + (parv.GenericList.Count > 0 ? "<" + string.Join(", ", parv.GenericList) + ">" : "") + " " + parv.Value;
+                }
                 else if (par is Assign ap)
                     ret += ap.GetType() + " " + ap.Left.TryVariable().Value + " = " + ap.Right.TryVariable().Value;
-                else {
+                else if (par is Function af)
+                    ret += af.RealName + (af.GenericArguments.Count > 0 ? "<" + string.Join(", ", af.GenericArguments) + ">" : "") + "(" + af.ParameterList.List() +") -> " + af.Return();
+                else if(par is UnaryOp au)
+                {
+                    if(au.Op == "call")
+                    {
+                        if(au.usingFunction != null)
+                        { 
+                            ret += au.usingFunction.RealName + (au.usingFunction.GenericArguments.Count > 0 ? "<" + string.Join(", ", au.usingFunction.GenericArguments) + ">" : "") + "(" + au.usingFunction.ParameterList.List() +") -> " + au.usingFunction.Return();
+                        }
+                    }
+                }
+                else
+                {
                     Variable v = par.TryVariable();
-                    ret += v.Type + " " + v.Value;
+                    ret += v.Type + (v.GenericList.Count > 0 ? "<" + string.Join(", ", v.GenericList) + ">" : "") + " " + v.Value;
                 }
             }
             return ret;
@@ -127,6 +149,8 @@ namespace Compilator
                 {
                     if (par is Assign)
                         ret += ((Assign)par).Left.Compile();
+                    else if(par is Variable && ((Variable)par).Block?.SymbolTable.Get(((Variable)par).Type) is Delegate)
+                        ret += "delegate$"+par.Compile(0);
                     else
                         ret += par.Compile(0);
                 }
@@ -202,11 +226,12 @@ namespace Compilator
             {
                 bool def = false;
                 bool isGeneric = false;
+                bool isDelegate = false;
                 string dtype = null;
                 if (t is Variable)
                 {
                     dtype = ((Variable)t).Type;
-                    if (((Variable)t).Block.SymbolTable.Get(dtype) is Generic)
+                    if (((Variable)t).Block.SymbolTable.Get(dtype) is Generic || ((Variable)t).assingBlock?.SymbolTable.Get(dtype) is Generic)
                     {
                         isGeneric = true;
                         if (p.genericTusage.ContainsKey(dtype) && p.genericTusage[dtype] is Class __c)
@@ -224,10 +249,22 @@ namespace Compilator
                             isGeneric = false;
                         }
                     }
+                    else if (assingBlock?.SymbolTable.Get(dtype, false, false, ((Variable)t).GenericList.Count) is Delegate delegat)
+                    {
+                        if(p.parameters[i] is UnaryOp)
+                        {
+                            if(((UnaryOp)p.parameters[i]).usingFunction != null)
+                            {
+                                isDelegate = true;
+                                if (delegat.CompareTo((Variable)t, ((UnaryOp)p.parameters[i]).usingFunction) != 0)
+                                    return false;
+                            }
+                        }
+                    }
                     if (i < p.parameters.Count && p.parameters[i] is Variable && ((Variable)p.parameters[i]).Block.SymbolTable.Get(p.parameters[i].TryVariable().Type) is Generic)
                         isGeneric = true;
                     if (i < p.parameters.Count && p.parameters[i] is Variable && p.parameters[i].TryVariable().Type == "object")
-                        isGeneric = true; // Actualy is a object xD
+                        isGeneric = true; //TODO Actualy is a object xD
                 }
                 if(t is Assign)
                 {
@@ -247,7 +284,7 @@ namespace Compilator
                 {
                     ((Variable)p.parameters[i]).Check();
                 }
-                if (!def && dtype != p.parameters[i].TryVariable().Type && !isGeneric)
+                if (!def && dtype != p.parameters[i].TryVariable().Type && !isGeneric && !isDelegate)
                     return false;                
                 else if (def)
                 {

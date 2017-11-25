@@ -43,7 +43,7 @@ namespace Compilator
         public void MadeArray(Token name) { isArray = true; arraySizeVariable = name; }
         public void MadeArray(Types name) { isArray = true; arraySizeVariableTypes = name; }
 
-        Function usingFunction = null;
+        public Function usingFunction = null;
 
         public override string Compile(int tabs = 0)
         {
@@ -118,6 +118,15 @@ namespace Compilator
                         return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + (inParen ? ")" : "") + (endit ? ";" : "");
                     return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + args + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
+                if (t is Assign && block?.SymbolTable.Get(((Variable)((Assign)t).Left).Type) is Delegate)
+                {
+                    string args = "()";
+                    if (plist != null)
+                        args = "(" + plist.Compile() + ")";
+                    if(asArgument)
+                        return tbs + (inParen ? "(" : "") + "delegate$" + name.Value + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + "delegate$" + name.Value + args + (inParen ? ")" : "") + (endit ? ";" : "");
+                }
                 if (name.Value == "js")
                 {
                     string pl = plist.Compile();
@@ -133,7 +142,7 @@ namespace Compilator
                         nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t)?.Name;
                     if (plist == null)
                         return tbs + (inParen ? "(" : "") + nname + "("+generic+")" + (inParen ? ")" : "") + (endit ? ";" : "");
-                    return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != ""?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
                 else
                 {
@@ -141,7 +150,7 @@ namespace Compilator
                         return tbs + (inParen ? "(" : "") + newname + (inParen ? ")" : "") + (endit ? ";" : "");
                     if (plist == null)
                         return tbs + (inParen ? "(" : "") + newname + "(" + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
-                    return tbs + (inParen ? "(" : "") + newname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + newname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != "" ?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
             }
             if (o == "new")
@@ -171,9 +180,10 @@ namespace Compilator
                         if (!fir) generic += ", ";
                         fir = false;
                         Types gf = block.SymbolTable.Get(g);
-                        if (gf is Class) gname = ((Class)gf).getName();
-                        if (gf is Interface) gname = ((Interface)gf).getName();
-                        generic += "'"+ gname + "'";
+                        if (gf is Class) gname = "'"+((Class)gf).getName()+"'";
+                        if (gf is Interface) gname = "'"+((Interface)gf).getName()+"'";
+                        if (gf is Generic) gname = "generic$"+g;
+                        generic += gname;
                     }
                     Function f = (Function)(((Class)t).assingBlock.SymbolTable.Get("constructor " + _name));
                     if (isArray)
@@ -398,12 +408,11 @@ namespace Compilator
                     }
                     if (tt == null)
                     {
-                        Interpreter.semanticError.Add(new Error("#705 Function with name " + name.Value + "("+plist.List()+") has been found but parameters is wrong. Here is possible solutions:" + possible, Interpreter.ErrorType.ERROR, name));
+                        Interpreter.semanticError.Add(new Error("#705 Function with name " + name.Value + "("+plist.List()+") has been found but parameters are wrong. Here is possible solutions:" + possible, Interpreter.ErrorType.ERROR, name));
                     }
                 }
                 else
-                {
-                    //plist.GenericTUsage;                    
+                {                
                     if(t is Function tf)
                     {                        
                         t = block.SymbolTable.Get(name.Value);
@@ -433,6 +442,27 @@ namespace Compilator
                                 p = ((Function)t).ParameterList;
                                 Function qf = ((Function)t);
                                 possible += "\n\t" + qf.RealName + "(" + qf.ParameterList.List() + ")";
+                                int i = 0;
+                                foreach(Types typs in tf.ParameterList.parameters)
+                                {
+                                    if (typs is Variable)
+                                    {
+                                        Types realtype = t.assingBlock.SymbolTable.Get(((Variable)typs).Type, false, false, ((Variable)typs).GenericList.Count);
+                                        if (realtype is Delegate)
+                                        {
+                                            Function usefun = null;
+                                            if (plist.parameters[i] is UnaryOp fuop)
+                                            {
+                                                if (fuop.usingFunction != null)
+                                                    usefun = fuop.usingFunction;
+                                            }
+                                            int state = ((Delegate)realtype).CompareTo((Variable)typs, usefun);
+                                            if (state > 0)
+                                                possible += "\n\t\t" + ((Delegate)realtype).GetError(state);
+                                        }
+                                    }
+                                    i++;
+                                }
                             }
                             if (t is Lambda)
                             {
@@ -440,7 +470,7 @@ namespace Compilator
                                 Lambda ql = (Lambda)t;
                                 possible += "\n\t" + ql.RealName + "(" + ql.ParameterList.List() + ")";
                             }
-                            Interpreter.semanticError.Add(new Error("#706 Function with name " + name.Value + "("+plist.List()+") has been found but parameters is wrong. Here is possible solution:" + possible, Interpreter.ErrorType.ERROR, name));
+                            Interpreter.semanticError.Add(new Error("#706 Function with name " + name.Value + "("+plist.List()+") has been found but parameters are wrong. Here is possible solution:" + possible, Interpreter.ErrorType.ERROR, name));
                         }
                     }
                 }

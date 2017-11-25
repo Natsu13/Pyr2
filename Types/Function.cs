@@ -116,7 +116,7 @@ namespace Compilator
             }
             return "";
         }
-        public String Name {
+        public string Name {
             get {
                 string hash = getHash();
                 if (isConstructor)
@@ -124,7 +124,14 @@ namespace Compilator
                 return name.Value + (hash != "" ? "_" + hash : "");
             }
         }
-        public String RealName { get { return name.Value; } }
+        public string RealName { get { return name.Value; } }
+
+        public string Return()
+        {
+            if (returnt == null)
+                return "auto";
+            return returnt?.Value + (returnGeneric.Count > 0 ? "<" + string.Join(", ", returnGeneric) + ">" : "") + (returnAsArray ? "[]" : "");
+        }
 
         public override string Compile(int tabs = 0)
         {
@@ -335,7 +342,7 @@ namespace Compilator
             ParameterList.Semantic();
             if (block == null && assingBlock.Type != Block.BlockType.INTERFACE && !isExternal)
             {
-                Interpreter.semanticError.Add(new Error("#703 The body of function " + assingBlock.assignTo + "." + name.Value + "(" + paraml.List() + ") must be defined", Interpreter.ErrorType.ERROR, name));
+                Interpreter.semanticError.Add(new Error("#703 The body of function " + (assingBlock.assignTo == "" ? "" : assingBlock.assignTo + ".") + name.Value + "(" + paraml.List() + ") must be defined", Interpreter.ErrorType.ERROR, name));
             }
             else if (!isExternal && block != null)
             {

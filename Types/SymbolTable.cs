@@ -53,8 +53,18 @@ namespace Compilator
                 };
                 Add("Debug", Debug);
 
+                /// Date type bool implicit
+                // Add("bool", typeof(TypeBool));
+                Token TokenBool = new Token(Token.Type.ID, "bool");
+                Block BlockBool = new Block(interpret) { Parent = assigment_block };
+                Class Bool = new Class(TokenBool, BlockBool, new List<Types> { })
+                {
+                    isExternal = true,
+                    JSName = "Boolean"
+                };
+                Add("bool", Bool);
                 /// Date type string implicit
-                // Add("string",   typeof(TypeString), new List<Token> { TokenIIterable });
+                // Add("string", typeof(TypeString), new List<Token> { TokenIIterable });
                 Token TokenString = new Token(Token.Type.ID, "string");
                 Block BlockString = new Block(interpret) { Parent = assigment_block };
                 Class String = new Class(TokenString, BlockString, new List<Types> { new UnaryOp(new Token(Token.Type.NEW, "new"), TokenIIterable) })
@@ -64,7 +74,7 @@ namespace Compilator
                 };
                 Add("string", String);
                 /// Date type int implicit
-                //Add("int",      typeof(TypeInt));
+                //Add("int", typeof(TypeInt));
                 Token TokenInt = new Token(Token.Type.ID, "int");
                 Block BlockInt = new Block(interpret) { Parent = assigment_block };
                 Class Int = new Class(TokenInt, BlockInt, null)
@@ -72,9 +82,7 @@ namespace Compilator
                     isExternal = true,
                     JSName = "Number"
                 };
-                Add("int", Int);
-
-                Add("bool",     typeof(TypeBool));                
+                Add("int", Int);                
             }
         }
 
@@ -140,6 +148,28 @@ namespace Compilator
             plist = new ParameterList(true);
             Function FunctionIIterableIterator = new Function(FunctionIIterableIteratorName, null, plist, new Token(Token.Type.CLASS, "Iterator"), interpret);
             BlockIIterable.SymbolTable.Add("iterator", FunctionIIterableIterator);
+
+
+            /// Initialize Bool Class
+            Block BlockBool = ((Class)Get("bool")).assingBlock;
+            //Operator Equal
+            Token FunctionBoolOperatorEqualName = new Token(Token.Type.ID, "operator equal");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockBool, new Token(Token.Type.CLASS, "bool")));
+            Function FunctionBoolOperatorEqual = new Function(FunctionBoolOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockBool.SymbolTable.Add("operator equal", FunctionBoolOperatorEqual);
+            //Operator And
+            Token FunctionBoolOperatorAndName = new Token(Token.Type.ID, "operator and");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockBool, new Token(Token.Type.CLASS, "bool")));
+            Function FunctionBoolOperatorAnd = new Function(FunctionBoolOperatorAndName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockBool.SymbolTable.Add("operator and", FunctionBoolOperatorAnd);
+            //Operator Or
+            Token FunctionBoolOperatorOrName = new Token(Token.Type.ID, "operator or");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockBool, new Token(Token.Type.CLASS, "bool")));
+            Function FunctionBoolOperatorOr = new Function(FunctionBoolOperatorOrName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockBool.SymbolTable.Add("operator or", FunctionBoolOperatorOr);
 
             /// Initialize String Class
             Block BlockString = ((Class)Get("string")).assingBlock;
@@ -475,10 +505,16 @@ namespace Compilator
                     {
                         if (qi.GenericArguments.Count == genericArgs)
                             return qi;
-                    }else if(q is Class qc)
+                    }
+                    else if(q is Class qc)
                     {
                         if (qc.GenericArguments.Count == genericArgs)
                             return qc;
+                    }
+                    else if(q is Delegate qd)
+                    {
+                        if (qd.GenericArguments.Count == genericArgs)
+                            return qd;
                     }
                 }
                 if(tttt.Count > 0)
@@ -570,7 +606,7 @@ namespace Compilator
             {
                 return interpret.GetImport(name).Block.SymbolTable.Get(name, noConstrucotr, getImport);
             }
-            return new Error("#100 Internal error");
+            return new Error("#100 Internal error what can't normaly occured ups...");
         }
 
         public Type GetType(string name)

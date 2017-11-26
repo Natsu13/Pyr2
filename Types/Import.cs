@@ -40,25 +40,37 @@ namespace Compilator
                     block = (Block)interpret.Interpret();
                     block.import = this;
                     if (_as == null)
-                    {                        
+                    {
+                        Block beforeblock = null;
                         Block ___block = _block;
-                        foreach (var part in GetName().Split('.').Take(GetName().Split('.').Count() - 1))
+                        foreach (var part in GetName().Split('.').Take(GetName().Split('.').Count()))
                         {
                             if (___block.SymbolTable.Find(part))
                             {
                                 ___block = ___block.SymbolTable.Get(part).assingBlock;
+                                beforeblock = ___block;
                             }
                             else
                             {
                                 Block b = new Block(_block.Interpret);
                                 b.Parent = ___block;
-                                Class c = new Class(new Token(Token.Type.ID, part), b, null);
-                                ___block.SymbolTable.Add(part, c);
-                                ___block.children.Add(c);
+                                Class c = new Class(new Token(Token.Type.ID, part), b, null) { isForImport = true };
+                                c.assignTo = part;
+                                c.block.SymbolTable.isForImport = true;
+                                if(beforeblock != null)
+                                {
+                                    beforeblock.SymbolTable.Add(part, c);
+                                }
+                                if (beforeblock != ___block)
+                                {                                    
+                                    ___block.SymbolTable.Add(part, c);
+                                    ___block.children.Add(c);
+                                }
+                                beforeblock = c.block;
                                 ___block = b;
                             }
                         }
-                        ___block.SymbolTable.Add(GetName().Split('.').Last(), this);
+                        ___block.SymbolTable.Add(GetModule(), this, true);
                     }
                     else
                     {

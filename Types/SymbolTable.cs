@@ -13,7 +13,8 @@ namespace Compilator
         Dictionary<string, int> tableCounter = new Dictionary<string, int>();
         Dictionary<string, Type> tableType = new Dictionary<string, Type>();
         Interpreter interpret;
-        public Block assigment_block;        
+        public Block assigment_block;
+        public bool isForImport = false;
 
         public SymbolTable(Interpreter interpret, Block assigment_block, bool first = false)
         {
@@ -115,13 +116,14 @@ namespace Compilator
             plist_js.parameters.Add(new Variable(new Token(Token.Type.ID, "code"), Block_js, new Token(Token.Type.CLASS, "string")));
             Function js = new Function(Function_js, Block_js, plist_js, new Token(Token.Type.VOID, "void"), interpret) { isExternal = true, isConstructor = false, isOperator = false, isStatic = false };
             Add("js", js);
+            /*
             //Function _default
             Token Function__default = new Token(Token.Type.ID, "_default");
             ParameterList plist_default = new ParameterList(true);
             Block Block__default = new Block(interpret) { Parent = assigment_block };
             plist_default.parameters.Add(new Variable(new Token(Token.Type.ID, "type"), Block_js, new Token(Token.Type.CLASS, "Type")));
             Function _default = new Function(Function__default, Block__default, plist_default, new Token(Token.Type.CLASS, "object"), interpret) { isExternal = true, isConstructor = false, isOperator = false, isStatic = false };
-            Add("_default", _default);
+            Add("_default", _default);*/
             //Function alert
             Token Function_alert = new Token(Token.Type.ID, "alert");
             ParameterList plist_alert = new ParameterList(true);
@@ -244,12 +246,14 @@ namespace Compilator
             tableType.Add(name, type);
         }
 
-        public void Add(string name, Types type)
+        public void Add(string name, Types type, bool isForImport = false)
         {
             if (!tableCounter.ContainsKey(name))
             {
                 if (Find(name))
                 {
+                    if(isForImport)
+                        return;
                     if(Get(name).assingBlock.Interpret.UID != interpret.UID)
                         tableCounter.Add(name, 1);
                     else if(Get(name).assingBlock.Parent.SymbolTable.tableCounter.ContainsKey(name))
@@ -269,25 +273,25 @@ namespace Compilator
                 table.Add(name, type);
         }
 
-        public List<Types> GetAll(string name)
+        public List<Types> GetAll(string name, bool getImport = false)
         {
             List<Types> types = new List<Types>();
             int index = 2;
             if (!Find(name))
                 return null;
-            Types rt = Get(name);
+            Types rt = Get(name, getImport: getImport);
             types.Add(rt);
 
             while (Find(name + " " + index))
             {
-                types.Add(Get(name + " " + index));
+                types.Add(Get(name + " " + index, getImport: getImport));
                 index++;
             }
 
             return types;
         }
 
-        public bool Find(string name)
+        public bool Find(string name, List<string> prevClass = null)
         {
             if (name.Contains('.'))
             {
@@ -340,10 +344,33 @@ namespace Compilator
             {
                 if (assigment_block.variables.ContainsKey(name))
                     return true;
-                if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.Find(name);
+                if (assigment_block.Parent != null && (!isForImport || assigment_block.Parent.Parent != null))
+                {
+                    bool ret = assigment_block.Parent.SymbolTable.Find(name, prevClass);
+                    if(ret)
+                        return true;
+                }
                 if (interpret.FindImport(name))
-                    return interpret.GetImport(name).Block.SymbolTable.Find(name);
+                    return interpret.GetImport(name).Block.SymbolTable.Find(name.Split('.').Last());
+
+                foreach(KeyValuePair<string, Types> type in table)
+                {
+                    if(type.Value is Import)
+                    {
+                        bool t = ((Import)type.Value).Block.SymbolTable.Find(name);
+                        if (t)
+                            return true;
+                    }
+                    else if(type.Value is Class && ((Class)type.Value).isForImport && ((prevClass != null && !prevClass.Contains(type.Key)) || prevClass == null))
+                    {
+                        if (prevClass == null) prevClass = new List<string>();
+                        prevClass.Add(type.Key);
+                        bool t = ((Class)type.Value).Block.SymbolTable.Find(name, prevClass);
+                        if (t)
+                            return true;
+                    }
+                }
+
                 return false;
             }
         }
@@ -544,26 +571,26 @@ namespace Compilator
                         }
                     }
                     else if (found is Function)
-                        return ((Function)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                        return ((Function)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs);
                     else if (found is Class)
-                        return ((Class)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                        return ((Class)found).assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs);
                     else if (found is Interface)
-                        return ((Interface)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                        return ((Interface)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs);
                     else if (found is Import)
                     {
                         if (getImport)
                             return found;
-                        Types ttt = ((Import)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                        Types ttt = ((Import)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs);
                         if(ttt is Error)
                         {
                             if (((Import)found).Block.SymbolTable.Find(name))
                             {
-                                return ((Import)found).Block.SymbolTable.Get(name, noConstrucotr, getImport);
+                                return ((Import)found).Block.SymbolTable.Get(name, noConstrucotr, getImport, genericArgs);
                             }
                         }
                         return ttt;
                     }
-                    return Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                    return Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs);
                 }
                 else if (assigment_block.variables.ContainsKey(nams[0]))
                 {
@@ -572,10 +599,10 @@ namespace Compilator
                     {
                         if (uop.Op == "new")
                         {
-                            return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                            return Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs);
                         }
                     }
-                    return vr.assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
+                    return vr.assingBlock.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs);
                 }
             }
             /*if (table.Where(t => t.Key.Replace("constructor ", "") == name).Count() > 0 && !noConstrucotr)
@@ -590,7 +617,7 @@ namespace Compilator
                         return ttt;
                     if (((Import)ttt).Block.SymbolTable.Find(name))
                     {
-                        return ((Import)ttt).Block.SymbolTable.Get(name, noConstrucotr, getImport);
+                        return ((Import)ttt).Block.SymbolTable.Get(name, noConstrucotr, getImport, genericArgs);
                     }
                 }
                 return table.Where(t => t.Key == name).First().Value;
@@ -599,12 +626,33 @@ namespace Compilator
             {
                 if (assigment_block.variables.Where(t => t.Key.Split(' ')[0] == name).Count() > 0)
                     return assigment_block.variables[name];
-                if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.Get(name, noConstrucotr, getImport);
+                if (assigment_block.Parent != null && !isForImport)
+                {
+                    Types ret = assigment_block.Parent.SymbolTable.Get(name, noConstrucotr, getImport, genericArgs);
+                    if(!(ret is Error))
+                    {
+                        return ret;
+                    }                    
+                }
             }
             if (interpret.FindImport(name))
             {
-                return interpret.GetImport(name).Block.SymbolTable.Get(name, noConstrucotr, getImport);
+                return interpret.GetImport(name).Block.SymbolTable.Get(name.Split('.').Last(), noConstrucotr, getImport, genericArgs);
+            }
+            foreach(KeyValuePair<string, Types> type in table)
+            {
+                if(type.Value is Import)
+                {
+                    Types t = ((Import)type.Value).Block.SymbolTable.Get(name, noConstrucotr, getImport, genericArgs);
+                    if (!(t is Error))
+                        return t;
+                }
+                else if(type.Value is Class && ((Class)type.Value).isForImport)
+                {
+                    Types t = ((Class)type.Value).Block.SymbolTable.Get(name, noConstrucotr, getImport, genericArgs);
+                    if (!(t is Error))
+                        return t;
+                }
             }
             return new Error("#100 Internal error what can't normaly occured ups...");
         }

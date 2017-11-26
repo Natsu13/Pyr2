@@ -18,6 +18,7 @@ namespace Compilator
         public string JSName = "";
         List<string> genericArguments = new List<string>();
         public List<_Attribute> attributes = new List<_Attribute>();
+        public bool isForImport = false;
 
         public Class(Token name, Block block, List<Types> parents)
         {
@@ -54,11 +55,13 @@ namespace Compilator
         }
 
         public string getName() {
-            if (assingBlock.SymbolTable.GetAll(name.Value).Count > 1)
+            if (assingBlock.SymbolTable.GetAll(name.Value, true).Count > 1)
                 return name.Value + "_" + getHash();
             if (JSName == null || JSName == "") return name.Value; else return JSName; 
         }
         public override Token getToken() { return null; }
+
+        public Block Block { get { return block; } }
 
         public bool haveParent(string name)
         {

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -69,7 +70,7 @@ namespace Compilator
         {
             if (imports.ContainsKey(name))
                 return true;
-            else if (parent != null)
+            else if (parent != null && !isForExport)
                 return parent.FindImport(name);
             return false;
         }
@@ -85,6 +86,8 @@ namespace Compilator
 
         public void Error(string error = "Error parsing input")
         {
+            if(_DEBUG)
+                Debugger.Break();
             if (brekall) return;
             string rerr = error;
             string[] splt = text.Split('\n');
@@ -979,7 +982,7 @@ namespace Compilator
             Eat(Token.Type.IMPORT);
             Token result = current_token;
             string _as = "";
-            Eat(Token.Type.ID);
+            Eat(current_token.type);
             if(current_token.type == Token.Type.AS)
             {
                 Eat(Token.Type.AS);
@@ -997,7 +1000,7 @@ namespace Compilator
             else
             {
                 i = new Import(im, current_block, this);
-                imports.Add(i.GetName(), i);
+                imports.Add(i.GetName()+"."+i.GetModule(), i);
             }            
 
             return i;

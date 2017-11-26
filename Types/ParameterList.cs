@@ -79,6 +79,10 @@ namespace Compilator
                         }
                     }
                 }
+                else if(par is Lambda al)
+                {
+                    ret += "lambda ("+ al.ParameterList.List()+")";
+                }
                 else
                 {
                     Variable v = par.TryVariable();
@@ -249,7 +253,7 @@ namespace Compilator
                             isGeneric = false;
                         }
                     }
-                    else if (assingBlock?.SymbolTable.Get(dtype, false, false, ((Variable)t).GenericList.Count) is Delegate delegat)
+                    else if (assingBlock?.SymbolTable.Get(dtype, genericArgs: ((Variable)t).GenericList.Count) is Delegate delegat)
                     {
                         if(p.parameters[i] is UnaryOp)
                         {

@@ -179,9 +179,9 @@ namespace Compilator
             else if (errorCode == 4)
                 return "Predicate return as Array";
             else if (errorCode == 5)
-                return "Number of arguments is not same";
+                return "Number of arguments are not same";
             else if (errorCode == 6)
-                return "Parameters type is not same";
+                return "Parameters types are not same";
             return "UNKOWN errorCode";
         }
 

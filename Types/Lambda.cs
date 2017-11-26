@@ -54,7 +54,7 @@ namespace Compilator
                     ret +=  tbs + "  }";
                 }
                 else
-                    ret += "{ " + expresion.Compile() + " }";
+                    ret += "{ return " + expresion.Compile() + "; }";
                 return ret;
             }
             else

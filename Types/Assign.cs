@@ -97,7 +97,15 @@ namespace Compilator
                 isDeclare = false;
 
             Types maybeIs = assingBlock.SymbolTable.Get(left.TryVariable().Value);
-            Types maybeIs2 = assingBlock.SymbolTable.Get(right.TryVariable().Value);
+            Types maybeIs2 = null;
+            string rightCompiled = "";
+            if (right is Lambda)
+            {
+                rightCompiled = ((Lambda)right).Compile(0);
+                addName = "lambda$";
+            }
+            else
+                maybeIs2 = assingBlock.SymbolTable.Get(right.TryVariable().Value);
 
             right.assingBlock = ((Variable)left).Block;
             if (right is UnaryOp)
@@ -108,9 +116,9 @@ namespace Compilator
                 string[] varname = left.TryVariable().Value.Split('.');
                 if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
                     varname[0] = "$this";
-                return DoTabs(tabs) + addCode + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".set(" + right.Compile(0) + ");";
+                return DoTabs(tabs) + addCode + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".set(" + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ");";
             }
-            else if (assingBlock.SymbolTable.Find(right.TryVariable().Value) && maybeIs2 is Properties)
+            else if (maybeIs2 != null && assingBlock.SymbolTable.Find(right.TryVariable().Value) && maybeIs2 is Properties)
             {
                 string[] varname = right.TryVariable().Value.Split('.');
                 if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
@@ -120,11 +128,11 @@ namespace Compilator
             else if (left is Variable)
             {                
                 string tbs = DoTabs(tabs);                
-                string ret = tbs + addCode + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + right.Compile(0) + ";";                
+                string ret = tbs + addCode + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled)  + ";";                
                 return ret;
             }
             else
-                return DoTabs(tabs) + addName + left.Compile(0) + " = " + right.Compile(0) + ";";
+                return DoTabs(tabs) + addName + left.Compile(0) + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled)  + ";";
         }
 
         public override void Semantic()
@@ -134,7 +142,7 @@ namespace Compilator
                 if(ps.Setter == null)
                     Interpreter.semanticError.Add(new Error("#800 Propertie " + ((Properties)left).variable.TryVariable().Value + " don't define setter!", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
             }
-            if (assingBlock?.SymbolTable.Get(right.TryVariable().Value) is Properties pg)
+            if (!(right is Lambda) && assingBlock?.SymbolTable.Get(right.TryVariable().Value) is Properties pg)
             {
                 if(pg.Getter == null)
                     Interpreter.semanticError.Add(new Error("#801 Propertie " + ((Properties)left).variable.TryVariable().Value + " don't define getter!", Interpreter.ErrorType.ERROR, right.TryVariable().getToken()));

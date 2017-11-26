@@ -8,6 +8,70 @@ namespace Compilator
 {
     class Program
     {        
+        static string DrawClassInside(Class c, string add)
+        {
+            string outcom = "";
+            foreach (KeyValuePair<string, Types> t in c.block.SymbolTable.Table)
+            {
+                if (t.Key == "int" || t.Key == "string" || t.Key == "null")
+                    continue;
+                if (t.Value is Function && (((Function)t.Value).isExternal || ((Function)t.Value).isExtending))
+                    continue;
+                if (t.Value is Class && ((Class)t.Value).isExternal)
+                    continue;
+                if (t.Value is Interface && ((Interface)t.Value).isExternal)
+                    continue;
+                if (t.Value is Delegate)
+                    continue;
+                if (t.Value is Function tf)
+                {
+                    outcom += "  _." + tf.Name + " = " + tf.Name + ";\n";
+                    outcom += "  _." + tf.Name + "$META = " + tf.Name + "$META;\n";
+                }
+                else if (t.Value is Class tc)
+                {
+                    if (!tc.isForImport)
+                    {
+                        outcom += "  _." + tc.getName() + " = " + tc.getName() + ";\n";
+                        outcom += "  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n";
+                    }
+                    outcom += "  var " + t.Key + " = " + add + "." + tc.Name.Value + ";\n";
+                    if (tc.isForImport)
+                    {
+                        outcom += DrawClassInside(tc, add + "." + tc.Name.Value);
+                    }
+                }
+                else if (t.Value is Interface ti)
+                {
+                    outcom += "  _." + ti.getName() + " = " + ti.getName() + ";\n";
+                    outcom += "  _." + ti.getName() + "$META = " + ti.getName() + "$META;\n";
+                }
+                else if (t.Value is Import im)
+                {
+                    if (t.Key.Contains("."))
+                    {
+                        var skl = "";
+                        foreach (string p in t.Key.Split('.').Take(t.Key.Split('.').Length - 1))
+                        {
+                            skl += (skl == "" ? "" : ".") + p;
+                            if (!importClass.Contains(skl))
+                            {
+                                importClass.Add(skl);
+                                outcom += "  _." + skl + " = {};\n";
+                            }
+                        }
+                    }
+                    outcom += "  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                    if(im.As != "")
+                        outcom += "  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                }
+                else
+                    outcom += "  _." + t.Key + " = " + t.Key + ";\n";
+            }
+            return outcom;
+        }
+
+        public static List<string> importClass = new List<string>();
         static void Main(string[] args)
         {
             var stopwatch = new Stopwatch();
@@ -22,7 +86,7 @@ namespace Compilator
             compiled = compiled.Replace("\n", "\n  ");
             string outcom = "var module = function (_){\n  'use strict';\n";            
             outcom += "  "+ compiled.Substring(0, compiled.Length) + "\n";
-            List<string> importClass = new List<string>();
+            importClass = new List<string>();
             foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
             {
                 if (t.Key == "int" || t.Key == "string" || t.Key == "null")
@@ -42,8 +106,15 @@ namespace Compilator
                 }
                 else if (t.Value is Class tc)
                 {
-                    outcom += "  _." + tc.getName() + " = " + tc.getName() + ";\n";
-                    outcom += "  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n";
+                    if (!tc.isForImport)
+                    {
+                        outcom += "  _." + tc.getName() + " = " + tc.getName() + ";\n";
+                        outcom += "  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n";
+                    }
+                    if (tc.isForImport)
+                    {
+                        outcom += DrawClassInside(tc, tc.getName());
+                    }
                 }
                 else if (t.Value is Interface ti)
                 {

@@ -57,51 +57,114 @@ namespace Compilator
         /// </summary>
         /// <param name="func">Function to compare with Predicate</param>
         /// <returns>Error state as int</returns>
-        public int CompareTo(Variable t, Function func)
-        {
-            Block b = new Block(block.Interpret);
-            ParameterList plist = new ParameterList(func.ParameterList);
-            plist.assingBlock = b;
-            int i = 0;
-            foreach(string g in t.GenericList)
-            {
-                if(genericArguments.Count > i)
-                    plist.GenericTUsage.Add(genericArguments[i], assingBlock.SymbolTable.Get(g));
-                i++;
-            }
-            if (func.ParameterList.Parameters.Count != paraml.Parameters.Count)
-                return 5;
-            if (func.Returnt != null)
-            {
-                bool isGenericReturnOkay = false;
-                if (func.Returnt != returnt)
+        public int CompareTo(Variable t, Function func, ParameterList p)
+        {            
+            if (p.parameters[0] is Lambda lambda)
+            {                                
+                if (lambda.ParameterList.Parameters.Count != paraml.Parameters.Count)
+                    return 5;
+                if (lambda.ParameterList.declare)
                 {
-                    if (GenericArguments.Contains(returnt.Value))
+                    Block b = new Block(block.Interpret);
+                    ParameterList plist = new ParameterList(lambda.ParameterList);
+                    plist.assingBlock = b;
+                    int i = 0;
+                    foreach (string g in t.GenericList)
                     {
-                        if (plist.GenericTUsage.ContainsKey(returnt.Value))
+                        if (genericArguments.Count > i)
                         {
-                            if (plist.GenericTUsage[returnt.Value] is Class)
+                            Types qqq = assingBlock.SymbolTable.Get(g);
+                            if (!(qqq is Error))
+                                plist.GenericTUsage.Add(genericArguments[i], assingBlock.SymbolTable.Get(g));
+                            else
+                                plist.GenericTUsage.Add(genericArguments[i], p.GenericTUsage[genericArguments[i]]);
+                        }
+                        i++;
+                    }
+
+                    if (!paraml.Compare(plist))
+                        return 6;
+                }
+            }
+            else if (func == null)
+            {
+                if (p.Parameters.Count != paraml.Parameters.Count)
+                    return 5;
+                if (p.declare)
+                {
+                    Block b = new Block(block.Interpret);
+                    ParameterList plist = new ParameterList(p);
+                    plist.assingBlock = b;
+                    int i = 0;
+                    foreach (string g in t.GenericList)
+                    {
+                        if (genericArguments.Count > i)
+                        {
+                            Types qqq = assingBlock.SymbolTable.Get(g);
+                            if (!(qqq is Error))
+                                plist.GenericTUsage.Add(genericArguments[i], assingBlock.SymbolTable.Get(g));
+                            else
+                                plist.GenericTUsage.Add(genericArguments[i], p.GenericTUsage[genericArguments[i]]);
+                        }
+                        i++;
+                    }
+
+                    if (!paraml.Compare(plist))
+                        return 6;
+                }
+            }
+            else
+            {
+                Block b = new Block(block.Interpret);
+                ParameterList plist = new ParameterList(func.ParameterList);
+                plist.assingBlock = b;
+                int i = 0;
+                foreach (string g in t.GenericList)
+                {
+                    if (genericArguments.Count > i)
+                    {
+                        Types qqq = assingBlock.SymbolTable.Get(g);
+                        if (!(qqq is Error))
+                            plist.GenericTUsage.Add(genericArguments[i], assingBlock.SymbolTable.Get(g));
+                        else
+                            plist.GenericTUsage.Add(genericArguments[i], p.GenericTUsage[genericArguments[i]]);
+                    }
+                    i++;
+                }
+                if (func.ParameterList.Parameters.Count != paraml.Parameters.Count)
+                    return 5;
+                if (func.Returnt != null)
+                {
+                    bool isGenericReturnOkay = false;
+                    if (func.Returnt.Value != returnt.Value)
+                    {
+                        if (GenericArguments.Contains(returnt.Value))
+                        {
+                            if (plist.GenericTUsage.ContainsKey(returnt.Value))
                             {
-                                if (func.Returnt.Value == ((Class)plist.GenericTUsage[returnt.Value]).Name.Value)
-                                    isGenericReturnOkay = true;
+                                if (plist.GenericTUsage[returnt.Value] is Class)
+                                {
+                                    if (func.Returnt.Value == ((Class)plist.GenericTUsage[returnt.Value]).Name.Value)
+                                        isGenericReturnOkay = true;
+                                }
                             }
                         }
+                        if (!isGenericReturnOkay)
+                            return 1;
                     }
-                    if(!isGenericReturnOkay)
-                        return 1;
+                    if (func.returnGeneric != null)
+                    {
+                        int x = 0;
+                        foreach (string g in func.returnGeneric) { if (g != returnGeneric[x]) { return 2; } x++; }
+                    }
+                    if (func.returnAsArray && !returnAsArray)
+                        return 3;
+                    if (!func.returnAsArray && returnAsArray)
+                        return 4;
                 }
-                if (func.returnGeneric != null)
-                {
-                    int x = 0;
-                    foreach(string g in func.returnGeneric) { if (g != returnGeneric[x]) { return 2; } x++; }
-                }
-                if (func.returnAsArray && !returnAsArray)
-                    return 3;
-                if (!func.returnAsArray && returnAsArray)
-                    return 4;
-            }            
-            if (!paraml.Compare(plist))
-                return 6;
+                if (!paraml.Compare(plist))
+                    return 6;
+            }
             return 0;
         }
 

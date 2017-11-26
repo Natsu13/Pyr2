@@ -456,7 +456,7 @@ namespace Compilator
                                                 if (fuop.usingFunction != null)
                                                     usefun = fuop.usingFunction;
                                             }
-                                            int state = ((Delegate)realtype).CompareTo((Variable)typs, usefun);
+                                            int state = ((Delegate)realtype).CompareTo((Variable)typs, usefun, plist);
                                             if (state > 0)
                                                 possible += "\n\t\t" + ((Delegate)realtype).GetError(state);
                                         }

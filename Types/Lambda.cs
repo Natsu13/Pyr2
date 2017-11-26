@@ -13,6 +13,7 @@ namespace Compilator
         ParameterList plist;
         public bool isInArgumentList = false;
         public bool isCallInArgument = false;
+        public bool isNormalLambda = false;
         //bool isDeclare = false;
 
         public Lambda(Variable name, Types expresion, ParameterList plist)
@@ -30,17 +31,42 @@ namespace Compilator
             }
         }
 
+        public Lambda(ParameterList plist, Types block)
+        {
+            this.plist = plist;
+            this.expresion = block;
+            isNormalLambda = true;
+        }
+
         public ParameterList ParameterList { get { return plist; } }
 
         public override string Compile(int tabs = 0)
-        {            
-            if(isInArgumentList)
-                return "lambda$" + name.Value;
-            if (isCallInArgument)
+        {
+            if (isNormalLambda)
             {
-                return "function("+plist.Compile()+"){ return "+ expresion.Compile() + "; }";
+                string tbs = DoTabs(tabs);
+                string ret = "";
+                ret += "function(" + plist.Compile() + ")";
+                if (expresion is Block)
+                {
+                    ret += "{";
+                    ret += "\n" + expresion.Compile(tabs + 2);
+                    ret +=  tbs + "  }";
+                }
+                else
+                    ret += "{ " + expresion.Compile() + " }";
+                return ret;
             }
-            return DoTabs(tabs) + "var lambda$" + name.Value + " = function("+plist.Compile()+"){ return " + expresion.Compile() + "; };";
+            else
+            {
+                if (isInArgumentList)
+                    return "lambda$" + name.Value;
+                if (isCallInArgument)
+                {
+                    return "function(" + plist.Compile() + "){ return " + expresion.Compile() + "; }";
+                }
+                return DoTabs(tabs) + "var lambda$" + name.Value + " = function(" + plist.Compile() + "){ return " + expresion.Compile() + "; };";
+            }
         }
 
         public string RealName { get { return getToken()?.Value; } }

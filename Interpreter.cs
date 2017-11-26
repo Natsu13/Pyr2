@@ -592,10 +592,63 @@ namespace Compilator
             }
             else if(token.type == Token.Type.LPAREN)
             {
+                bool isLambda = false;
+                bool isDeclared = false;
+                SaveTokenState();
                 Eat(Token.Type.LPAREN);
-                Types result = Expr();
-                result.inParen = true;
-                Eat(Token.Type.RPAREN);
+                if(current_token.type == Token.Type.ID || current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE)
+                {
+                    if(current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE)
+                    {
+                        isDeclared = true;
+                        Eat(current_token.type);
+                    }
+                    Eat(Token.Type.ID);
+                    if(current_token.type == Token.Type.ID)
+                    {
+                        Eat(Token.Type.ID);
+                        isDeclared = true;
+                    }
+                    if(current_token.type == Token.Type.COMMA)
+                    {
+                        isLambda = true;                        
+                    }
+                    else
+                    {
+                        if(current_token.type == Token.Type.RPAREN)
+                        {
+                            Eat(Token.Type.RPAREN);
+                            if (current_token.type == Token.Type.SET)
+                            {
+                                isLambda = true;                                
+                            }
+                        }
+                    }
+                }
+                LoadTokenState();
+                Types result = null;
+                if (!isLambda)
+                {
+                    Eat(Token.Type.LPAREN);
+                    result = Expr();
+                    result.inParen = true;
+                    Eat(Token.Type.RPAREN);
+                }
+                else
+                {
+                    ParameterList plist = Parameters(isDeclared);
+                    Eat(Token.Type.SET);
+                    Types block = null;
+                    if (current_token.type == Token.Type.BEGIN)
+                    {
+                        block = CatchBlock(Block.BlockType.LAMBDA, true, current_block);
+                    }
+                    else
+                    {
+                        block = Expr();
+                    }
+                    result = new Lambda(plist, block);
+                }
                 return result;
             }
             else if (token.type == Token.Type.FUNCTION)
@@ -827,7 +880,7 @@ namespace Compilator
             }
             else if (current_token.type == Token.Type.RETURN)
             {
-                if (main_block_type != Block.BlockType.FUNCTION)
+                if (main_block_type != Block.BlockType.FUNCTION && main_block_type != Block.BlockType.LAMBDA)
                 {
                     Error("return can be used only inside function block");
                     return null;
@@ -1751,6 +1804,6 @@ namespace Compilator
                 return p;
             }
             return node;
-        }        
+        }      
     }
 }

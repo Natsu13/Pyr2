@@ -9,7 +9,7 @@ namespace Compilator
     public class ParameterList : Types
     {
         public List<Types> parameters = new List<Types>();
-        bool declare = false;
+        public bool declare = false;
         public bool cantdefault = false;
         public Token token;
         public bool allowMultipel = false;
@@ -256,9 +256,15 @@ namespace Compilator
                             if(((UnaryOp)p.parameters[i]).usingFunction != null)
                             {
                                 isDelegate = true;
-                                if (delegat.CompareTo((Variable)t, ((UnaryOp)p.parameters[i]).usingFunction) != 0)
+                                if (delegat.CompareTo((Variable)t, ((UnaryOp)p.parameters[i]).usingFunction, p) != 0)
                                     return false;
                             }
+                        }
+                        else if(p.parameters[i] is Lambda lambda)
+                        {
+                            isDelegate = true;
+                            if (delegat.CompareTo((Variable)t, null, lambda.ParameterList) != 0)
+                                return false;
                         }
                     }
                     if (i < p.parameters.Count && p.parameters[i] is Variable && ((Variable)p.parameters[i]).Block.SymbolTable.Get(p.parameters[i].TryVariable().Type) is Generic)

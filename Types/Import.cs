@@ -23,6 +23,8 @@ namespace Compilator
             this._as = _as;
             string dir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             this.import = whatimpot;
+
+            assingBlock = _block;
             
             if (_block.SymbolTable.Find(GetModule()))
             {
@@ -70,7 +72,11 @@ namespace Compilator
                                 ___block = b;
                             }
                         }
-                        ___block.SymbolTable.Add(GetModule(), this, true);
+                        if (!___block.SymbolTable.Find(GetModule()))
+                        {
+                            ___block.SymbolTable.Add(GetModule(), this, true);
+                            //block.SymbolTable.Copy(whatimpot.Value.Split('.').Last(), _as);
+                        }
                     }
                     else
                     {
@@ -82,7 +88,10 @@ namespace Compilator
                 else
                 {
                     if (_as == null)
-                        _block.SymbolTable.Add(GetName(), _ihaveit.assingBlock.Parent.import);
+                    {
+                        if(!_block.SymbolTable.Find(GetName()))
+                            _block.SymbolTable.Add(GetName(), _ihaveit.assingBlock?.Parent.import);
+                    }
                     else
                     {
                         _block.SymbolTable.Add(_as, _ihaveit.assingBlock.Parent.import);
@@ -152,8 +161,15 @@ namespace Compilator
                 }
                 else if (t.Value is Class tc)
                 {
-                    outcom += "  _." + tc.getName() + " = " + tc.getName() + ";\n";
-                    outcom += "  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n";
+                    if (!tc.isForImport)
+                    {
+                        outcom += "  _." + tc.getName() + " = " + tc.getName() + ";\n";
+                        outcom += "  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n";
+                    }
+                    if (tc.isForImport)
+                    {
+                        outcom += Program.DrawClassInside(tc, tc.getName());
+                    }
                 }
                 else if (t.Value is Interface ti)
                 {
@@ -162,8 +178,22 @@ namespace Compilator
                 }
                 else if (t.Value is Import im)
                 {
-                    outcom += tbs + "  _." + t.Key + " = " + im.As + "." + im.GetModule() + ";\n";
-                    outcom += tbs + "  var " + t.Key + " = " + im.As + "." + im.GetModule() + ";\n";
+                    if (t.Key.Contains("."))
+                    {
+                        var skl = "";
+                        foreach (string p in t.Key.Split('.').Take(t.Key.Split('.').Length - 1))
+                        {
+                            skl += (skl == "" ? "" : ".") + p;
+                            if (!Program.importClass.Contains(skl))
+                            {
+                                Program.importClass.Add(skl);
+                                outcom += "  _." + skl + " = {};\n";
+                            }
+                        }
+                    }
+                    outcom += "  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                    if(im.As != "")
+                        outcom += "  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
                 }
                 else
                     outcom += tbs + "  _." + t.Key + " = " + t.Key + ";\n";

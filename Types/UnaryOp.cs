@@ -362,6 +362,8 @@ namespace Compilator
                     }
                     if(t is Error)
                         Interpreter.semanticError.Add(new Error("#707 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                    else if(!block.assingBlock.SymbolTable.Find(name.Value) && t is Assign)
+                        Interpreter.semanticError.Add(new Error("#707 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
                 }
 
                 plist.GenericTUsage = genericArgsTypes;

@@ -8,7 +8,7 @@ namespace Compilator
 {
     class Program
     {        
-        static string DrawClassInside(Class c, string add)
+        public static string DrawClassInside(Class c, string add)
         {
             string outcom = "";
             foreach (KeyValuePair<string, Types> t in c.block.SymbolTable.Table)
@@ -89,6 +89,7 @@ namespace Compilator
             importClass = new List<string>();
             foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
             {
+                if (t.Value == null) continue;
                 if (t.Key == "int" || t.Key == "string" || t.Key == "null")
                     continue;
                 if (t.Value is Function && (((Function)t.Value).isExternal || ((Function)t.Value).isExtending))

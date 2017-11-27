@@ -87,6 +87,13 @@ namespace Compilator
             }
         }
 
+        public override string ToString()
+        {
+            if (table.Count == 0)
+                return "[Empty]";
+            return "("+table.Count+")["+string.Join(", ", table.Keys.ToList())+"]";
+        }
+
         public void Copy(string from, string to)
         {
             if (table.ContainsKey(from) && from != to)

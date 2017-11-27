@@ -307,6 +307,8 @@ namespace Compilator
                     return new Token(Token.Type.FUNCTION, result, current_token_pos, current_file);
                 if(tp is Interface)
                     return new Token(Token.Type.INTERFACE, result, current_token_pos, current_file);
+                if (tp is Properties)
+                    return new Token(Token.Type.PROPERTIES, result, current_token_pos, current_file);
                 return new Token(Token.Type.CLASS, result, current_token_pos, current_file);
             }
             else
@@ -847,6 +849,8 @@ namespace Compilator
             }
             else if (current_token.type == Token.Type.IMPORT)
                 return Import();
+            else if (current_token.type == Token.Type.PROPERTIES)
+                return CatchProperties();
             else if (current_token.type == Token.Type.IF)
                 return ConditionCatch();
             else if (current_token.type == Token.Type.ID)
@@ -974,6 +978,19 @@ namespace Compilator
                 return type;
             }
             return new NoOp();
+        }
+
+        public Types CatchProperties()
+        {
+            List<_Attribute> att = new List<_Attribute>(attributes);
+            attributes.Clear();
+            Token token = current_token;
+            Eat(Token.Type.PROPERTIES);
+            Eat(Token.Type.ASIGN);
+            Types right = Expr();
+            Types node = new Assign(new Variable(token, current_block), token, right, current_block) { attributes = att };               
+            node.assingBlock = current_block;
+            return node;
         }
 
         public Types Import()

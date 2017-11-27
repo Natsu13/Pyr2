@@ -51,6 +51,8 @@ namespace Compilator
                 return new Variable(new Token(Token.Type.CLASS, ((Class)this).getName()), this.assingBlock, new Token(Token.Type.CLASS, ((Class)this).getName()));
             if (this is Null)
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, new Token(Token.Type.NULL, "null"));
+            if (this is Properties prop)
+                return (Variable)prop.variable;
             return (Variable)this;
         }
     }

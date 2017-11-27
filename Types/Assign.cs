@@ -200,7 +200,7 @@ namespace Compilator
                         }
                         else
                         {
-                            ((Variable)left).setType(((Variable)((Assign)t).Left).getType());
+                            ((Variable)left).setType(Left.TryVariable().getType());
                         }
                     }
                     else if (right is Variable && (((Variable)right).getToken().type == Token.Type.TRUE || ((Variable)right).getToken().type == Token.Type.FALSE))

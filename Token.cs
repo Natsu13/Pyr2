@@ -23,7 +23,8 @@ namespace Compilator
             TRUE, FALSE,
             IN, GET,
             IMPORT, SET,
-            DELEGATE
+            DELEGATE,
+            PROPERTIES
         };
         public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {

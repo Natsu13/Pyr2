@@ -33,7 +33,8 @@ namespace Compilator
 
         /// Interpret settings
         public static bool _REDECLARATION =     false;      //If you enable redeclaration
-        public static bool _WAITFORPAGELOAD =   true;       //If you want call main in window.onload
+        [Obsolete("Please use attribute [OnPageLoad]")] 
+        public static bool _WAITFORPAGELOAD =   false;       //If you want call main in window.onload
         public static bool _WRITEDEBUG =        false;      //If you want with faul write the output to file
         public static bool _DEBUG =             false;      //If you want stop at compiling when you use attribute debug
 
@@ -925,6 +926,7 @@ namespace Compilator
                     current_token.type == Token.Type.NEWFUNCTION ||
                     current_token.type == Token.Type.OPERATOR ||
                     current_token.type == Token.Type.DYNAMIC ||
+                    current_token.type == Token.Type.CLASS ||
                     current_token.type == Token.Type.ID)
                 {
                     Types type = Statement();
@@ -1204,24 +1206,64 @@ namespace Compilator
                 Eat(Token.Type.MORE);
             }
 
+            Types uopr = null;
+
             if(current_token.type == Token.Type.RPAREN || current_token.type == Token.Type.COMMA)
             {
                 UnaryOp up = new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, null, current_block, false);
                 up.genericArgments = genericArgs;
                 up.asArgument = true;
-                return up;
+                uopr = up;
             }
             else if (current_token.type == Token.Type.SEMI)
             {
                 if (isLambda)
                     return new Lambda(new Variable(fname, current_block), null, null) { isInArgumentList = true };
-                return new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, null, current_block, true) { genericArgments = genericArgs };
+                uopr = new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, null, current_block, true) { genericArgments = genericArgs };
             }
             else
             {
                 ParameterList p = Parameters();
-                return new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, p, current_block, true) { genericArgments = genericArgs };
+                uopr = new UnaryOp(new Token(Token.Type.CALL, "call", current_token_pos, current_file), fname, p, current_block, true) { genericArgments = genericArgs };
             }
+
+            if(current_token.type == Token.Type.DOT)
+            {
+                Types t = CatchOutside();
+                uopr = new BinOp(uopr, new Token(Token.Type.DOT, "dot"), t, current_block);
+
+                if(current_token.type == Token.Type.ASIGN)
+                {
+                    return AssignmentStatement(uopr);
+                }
+            }
+
+            return uopr;
+        }
+
+        public Types CatchOutside()
+        {
+            Types t = null;
+            while(current_token.type == Token.Type.DOT)
+            {
+                Eat(Token.Type.DOT);
+                Types temp = null;
+                if (current_token.type == Token.Type.ID)
+                    temp = Variable();
+                else if (current_token.type == Token.Type.PROPERTIES)
+                    temp = CatchProperties();
+                else
+                    temp = FunctionCatch();
+                if(t == null)
+                {
+                    t = temp;
+                }
+                else
+                {
+                    t = new BinOp(t, new Token(Token.Type.DOT, "."), temp, current_block);
+                }
+            }
+            return t;
         }
 
         public Types DeclareFunction()
@@ -1690,13 +1732,23 @@ namespace Compilator
                 Token token = current_token;
                 Eat(Token.Type.ASIGN);
                 Types right = Expr();
-                Types node = new Assign(left, token, right, current_block) { attributes = att };               
+                Types node = new Assign(left, token, right, current_block) { attributes = att };
+                if (isModifer(Token.Type.STATIC))
+                {
+                    ((Assign)node).isStatic = true;
+                    ((Assign)node)._static = getModifer(Token.Type.STATIC);
+                }
                 node.assingBlock = current_block;
                 return node;
             }
             else if (current_token.type == Token.Type.SEMI)
             {
                 Types node = new Assign(left, new Token(Token.Type.ASIGN, "="), new Null(), current_block) { attributes = att };
+                if (isModifer(Token.Type.STATIC))
+                {
+                    ((Assign)node).isStatic = true;
+                    ((Assign)node)._static = getModifer(Token.Type.STATIC);
+                }
                 node.assingBlock = current_block;
                 return node;
             }
@@ -1706,35 +1758,38 @@ namespace Compilator
             }
         }
 
-        public Types AssignmentStatement()
+        public Types AssignmentStatement(Types left = null)
         {
-            Token saveToken = current_token;
-            Types left = Variable();
-            if (left is UnaryOp)
-                return left;
-            if(current_token.type == Token.Type.ID)
+            if (left == null)
             {
-                return DeclareVariable(saveToken, left);
+                Token saveToken = current_token;
+                left = Variable();
+                if (left is UnaryOp)
+                    return left;
+                if (current_token.type == Token.Type.ID)
+                {
+                    return DeclareVariable(saveToken, left);
+                }                
+                if (current_token.type == Token.Type.LPAREN)
+                {
+                    return FunctionCatch(((Variable)left).getToken());
+                }
+                if (current_token.type == Token.Type.INC)
+                {
+                    UnaryOp p = new UnaryOp(current_token, left);
+                    p.post = true;
+                    Eat(Token.Type.INC);
+                    return p;
+                }
+                else if (current_token.type == Token.Type.DEC)
+                {
+                    UnaryOp p = new UnaryOp(current_token, left);
+                    p.post = true;
+                    Eat(Token.Type.DEC);
+                    return p;
+                }
             }
             Token token = current_token;
-            if (current_token.type == Token.Type.LPAREN)
-            {
-                return FunctionCatch(((Variable)left).getToken());
-            }
-            if (current_token.type == Token.Type.INC)
-            {                
-                UnaryOp p = new UnaryOp(current_token, left);
-                p.post = true;
-                Eat(Token.Type.INC);
-                return p;
-            }
-            else if (current_token.type == Token.Type.DEC)
-            {                
-                UnaryOp p = new UnaryOp(current_token, left);
-                p.post = true;
-                Eat(Token.Type.DEC);
-                return p;
-            }
             Eat(Token.Type.ASIGN); 
             Types right = Expr();
             Types node = new Assign(left, token, right, current_block);

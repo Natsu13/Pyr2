@@ -107,6 +107,7 @@ namespace Compilator
                 }
                 foreach (KeyValuePair<string, Assign> var in block.variables)
                 {
+                    if (var.Value.isStatic) continue;
                     if (var.Value.Right.getToken().type == Token.Type.NULL)
                         ret += tbs + "  this." + var.Key + " = null;\n";
                     else
@@ -120,7 +121,18 @@ namespace Compilator
                     }
                 }
                 ret += tbs + "}\n";
-                
+
+
+                foreach (KeyValuePair<string, Assign> var in block.variables)
+                {
+                    if (!var.Value.isStatic) continue;
+                    if (var.Value.Right.getToken().type == Token.Type.NULL)
+                        ret += tbs + "" + getName() + "." + var.Key + " = null;\n";
+                    else
+                        ret += tbs + "" + getName() + "." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                }
+                 ret += tbs + "\n";
+
                 ret += tbs + "var " + getName() + "$META = function(){\n";                    
                 ret += tbs + "  return {";
                 ret += "\n" + tbs + "    type: 'class'" + (attributes.Count > 0 ? ", " : "");
@@ -163,6 +175,8 @@ namespace Compilator
 
         public Token OutputType(string op, object a, object b)
         {
+            if (op == "dot" || op == ".")
+                return Name;
             if(block.SymbolTable.Find("operator " + op))
             {
                 Types t = block.SymbolTable.Get("operator " + op);
@@ -175,6 +189,8 @@ namespace Compilator
         }
         public bool SupportOp(string op)
         {
+            if (op == "dot" || op == ".")
+                return true;
             if (block.SymbolTable.Find("operator " + op))
             {
                 Types t = block.SymbolTable.Get("operator " + op);
@@ -187,6 +203,8 @@ namespace Compilator
         }
         public bool SupportSecond(string op, object second, object secondAsVariable)
         {
+            if (op == "dot" || op == ".")
+                return true;
             if (block.SymbolTable.Find("operator " + op))
             {
                 Types t = block.SymbolTable.Get("operator " + op);

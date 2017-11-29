@@ -295,7 +295,20 @@ namespace Compilator
                     ((Variable)p.parameters[i]).Check();
                 }
                 if (!def && dtype != p.parameters[i].TryVariable().Type && !isGeneric && !isDelegate)
-                    return false;                
+                {
+                    bool bad = true;
+                    if (assingBlock != null && assingBlock.SymbolTable.Find(p.parameters[i].TryVariable().Type))
+                    {
+                        Types qq = assingBlock.SymbolTable.Get(p.parameters[i].TryVariable().Type);
+                        if(qq is Class qqc)
+                        {
+                            if (qqc.haveParent(dtype))
+                                bad = false;
+                        }
+                    }
+                    if(bad)
+                        return false;
+                }
                 else if (def)
                 {
                     haveDefault = true;

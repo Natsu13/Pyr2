@@ -39,7 +39,7 @@ namespace Compilator
             {
                 if(((UnaryOp)this).Name.type == Token.Type.LAMBDA)
                     return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, new Token(Token.Type.LAMBDA, "lambda"));
-                return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((UnaryOp)this).Name);
+                return new Variable(new Token(Token.Type.NULL, ""), ((UnaryOp)this).Block, ((UnaryOp)this).OutputType);
             }
             if (this is UnaryOp && (((UnaryOp)this).Op == "-" || ((UnaryOp)this).Op == "++"))
                 return new Variable(new Token(Token.Type.ID, (((UnaryOp)this).Expr).TryVariable().Value), this.assingBlock, new Token(Token.Type.CLASS, "int"));
@@ -53,6 +53,8 @@ namespace Compilator
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, new Token(Token.Type.NULL, "null"));
             if (this is Properties prop)
                 return (Variable)prop.variable;
+            if (this is Error)
+                return new Variable(new Token(Token.Type.ID, ""), this.assingBlock);
             return (Variable)this;
         }
     }

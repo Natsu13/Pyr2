@@ -68,6 +68,15 @@ namespace Compilator
                     Type type = this.block.SymbolTable.GetType(dateType.Value);
                     _class = (TypeObject)Activator.CreateInstance(type);
                 }
+                else if (this.block.SymbolTable.Find(dateType.Value))
+                {
+                    _class = null;
+                    Types fic = this.block.SymbolTable.Get(dateType.Value);
+                    if (fic is Class)
+                        class_ = (Class)fic;
+                    else if (fic is Interface)
+                        inter_ = (Interface)fic;
+                }
             }
         }
         public Token  getType() { return dateType; }
@@ -91,9 +100,15 @@ namespace Compilator
                     _class = null;
                     Types fic = this.block.SymbolTable.Get(dateType.Value);
                     if (fic is Class)
+                    {
                         class_ = (Class)fic;
+                        dateType = class_.Name;
+                    }
                     else if (fic is Interface)
+                    {
                         inter_ = (Interface)fic;
+                        dateType = inter_.Name;
+                    }
                 }
                 asDateType = value;
             }
@@ -319,6 +334,8 @@ namespace Compilator
             if (op == Token.Type.DEC)       o = "--";
             if (op == Token.Type.DIV)       o = "/";
             if (op == Token.Type.MUL)       o = "*";
+
+            if (op == Token.Type.DOT)       o = ".";
             if (op == Token.Type.NEW)       o = "new";
             if (op == Token.Type.RETURN)    o = "return";
             if (op == Token.Type.CALL)      o = "call";
@@ -344,6 +361,7 @@ namespace Compilator
             if (op == Token.Type.MORE)      o = "compareTo";
             if (op == Token.Type.LESS)      o = "compareTo";
 
+            if (op == Token.Type.DOT)       o = "dot";
             if (op == Token.Type.PLUS)      o = "plus";
             if (op == Token.Type.INC)       o = "inc";            
             if (op == Token.Type.MINUS)     o = "minus";

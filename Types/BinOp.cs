@@ -84,6 +84,42 @@ namespace Compilator
                     v.Check();
                 outputType = ((Variable)left).OutputType(op.type, left, right);
             }
+            else if(left is UnaryOp leuo)
+            {
+                if(leuo.Op == "call")
+                {
+                    if (leuo.usingFunction == null)
+                        leuo.Compile();
+                    if (leuo.usingFunction != null)
+                    {
+                        Function f = leuo.usingFunction;
+                        outputType = f.Returnt;
+                    }
+                }
+                if(op.Value == "dot" && right is Variable riva)
+                {                    
+                    if(assingBlock.SymbolTable.Find(leuo.OutputType.Value))
+                    {
+                        Types t = ((Class)assingBlock.SymbolTable.Get(leuo.OutputType.Value)).Block.SymbolTable.Get(riva.Value);
+                        if(t is Assign ta)
+                        {
+                            if (ta.Left is Variable tav)
+                                riva.setType(tav.getDateType());
+                        }
+                        else if(t is Variable tv)
+                        {
+                            riva.setType(tv.getDateType());
+                        }
+                        outputType = riva.getDateType();
+                    }
+                }
+                v = left.TryVariable();
+            }
+            else if(left is BinOp)
+            {
+                left.Compile();
+                v = left.TryVariable();
+            }
             else
             {
                 left.Compile();
@@ -95,9 +131,13 @@ namespace Compilator
             }
             else if(v.class_ != null)
             {                
+                if(op.Value == "dot")
+                {
+                    return (inParen ? "(" : "") + left.Compile(0) + "." + right.Compile(0) + (inParen ? ")" : "");
+                }
                 Types oppq = v.class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(op.type));
-                if (oppq is Error)
-                    return "";
+                if (oppq is Error)                                    
+                    return "";                
                 Function opp = (Function)oppq;
                 if (op.type == Token.Type.NOTEQUAL)
                     return (inParen ? "(" : "") + "!(" + left.Compile(0) + "." + opp.Name + "(" + right.Compile(0) + "))" + (inParen ? ")" : "");
@@ -115,14 +155,52 @@ namespace Compilator
         }
 
         public override void Semantic()
-        {
+        {            
             left.Semantic();
+            if(op.type == Token.Type.DOT)
+            {
+                if(left is UnaryOp && ((UnaryOp)left).Op == "call" && right is Variable)
+                {
+                    if(((UnaryOp)left).usingFunction != null)
+                    {
+                        Function f = ((UnaryOp)left).usingFunction;
+                        ((Variable)right).setType(f.Returnt);
+                    }
+                }
+            }
             right.Semantic();
 
             Variable v = left.TryVariable();
             Variable r = right.TryVariable();
 
-            this.outputType = v.OutputType(op.type, v, r);
+            if(left is BinOp bi)
+            {
+                if(bi.op.Value == "dot")
+                {
+                    
+                }
+            }
+            if(op.Value == "dot" && left is UnaryOp leuop && right is Variable riva)
+            {
+                if(assingBlock.SymbolTable.Find(leuop.OutputType.Value))
+                {
+                    Types t = ((Class)assingBlock.SymbolTable.Get(leuop.OutputType.Value)).Block.SymbolTable.Get(riva.Value);
+                    if(t is Assign ta)
+                    {
+                        if (ta.Left is Variable tav)
+                            riva.setType(tav.getDateType());
+                    }
+                    else if(t is Variable tv)
+                    {
+                        riva.setType(tv.getDateType());
+                    }
+                }
+            }
+
+            if (op.Value == "dot")
+                this.outputType = right.TryVariable().getDateType();
+            else
+                this.outputType = v.OutputType(op.type, v, r);
 
             if (!v.SupportOp(op.type))
             {
@@ -135,7 +213,49 @@ namespace Compilator
         }        
 
         public Token OutputType {
-            get {                
+            get {
+                if (outputType != null && outputType.Value != "auto" && outputType.Value != "object")
+                    return outputType;
+
+                if(op.Value == "dot" && left is UnaryOp leuop && right is Variable riva)
+                {
+                    if(assingBlock != null && assingBlock.SymbolTable.Find(leuop.OutputType.Value))
+                    {
+                        Types t = ((Class)assingBlock.SymbolTable.Get(leuop.OutputType.Value)).Block.SymbolTable.Get(riva.Value);
+                        if(t is Assign ta)
+                        {
+                            if (ta.Left is Variable tav)
+                                riva.setType(tav.getDateType());
+                        }
+                        else if(t is Variable tv)
+                        {
+                            riva.setType(tv.getDateType());
+                        }
+                        this.outputType = right.TryVariable().getDateType();
+                        return this.outputType;
+                    }
+                }
+
+                if(left is UnaryOp leuo)
+                {
+                    if(leuo.OutputType.Value == "object")
+                    {
+                        if (leuo.Op == "call")
+                        { 
+                            if (leuo.usingFunction == null)
+                                leuo.Compile();
+                            if(leuo.usingFunction != null)
+                            {
+                                leuo.OutputType = leuo.usingFunction.Returnt;
+                            }
+                        }
+                    }
+                }
+                if(op.Value == "dot")
+                {
+                    if (right is Variable && ((Variable)right).Type == "auto")
+                        ((Variable)right).setType(((UnaryOp)left).OutputType);
+                }
                 Variable v = left.TryVariable();
                 Variable r = right.TryVariable();
 

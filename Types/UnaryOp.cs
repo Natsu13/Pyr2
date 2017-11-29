@@ -42,6 +42,7 @@ namespace Compilator
         public void MadeArray(int size) { isArray = true; arraySize = size; }
         public void MadeArray(Token name) { isArray = true; arraySizeVariable = name; }
         public void MadeArray(Types name) { isArray = true; arraySizeVariableTypes = name; }
+        public Block Block { get { return block; } }
 
         public Function usingFunction = null;
 
@@ -284,16 +285,21 @@ namespace Compilator
                 return tbs + (inParen ? "(" : "") + Variable.GetOperatorStatic(op.type) + expr.Compile() + (inParen ? ")" : "") + (endit ? ";" : "");
         }
 
+        Token _outputtype = null;
         public Token OutputType
         {
             get
-            {
+            {                
                 string o = Variable.GetOperatorStatic(op.type);
                 if (o == "new")
                 {
                     return name;
                 }
-                return new Token(Token.Type.CLASS, "object");
+                return _outputtype ?? new Token(Token.Type.CLASS, "object");
+            }
+            set
+            {
+                _outputtype = value;
             }
         }
 
@@ -318,9 +324,17 @@ namespace Compilator
 
                         if (name.Value.Split('.')[0] != "this")
                         {
-                            if(block.SymbolTable.Get(name.Value.Split('.')[0]) is Assign){
-                                Token mytoken = ((UnaryOp)((Assign)(block.SymbolTable.Get(name.Value.Split('.')[0]))).Right).Name;
-                                q = block.SymbolTable.Get(mytoken.Value);
+                            if (block.SymbolTable.Get(name.Value.Split('.')[0]) is Assign asign)
+                            {
+                                if (asign.Right is UnaryOp)
+                                {
+                                    Token mytoken = ((UnaryOp)(asign.Right)).Name;
+                                    q = block.SymbolTable.Get(mytoken.Value);
+                                }
+                                else if(asign.Right is Null)
+                                {
+                                    q = block.SymbolTable.Get(asign.Left.TryVariable().Type);
+                                }
                             }
                         }
 
@@ -337,6 +351,15 @@ namespace Compilator
                                 {
                                     Types xp = block.SymbolTable.Get(((Variable)__a.Left).genericArgs[i]);
                                     genericArgsTypes[__c.GenericArguments[i]] = xp;
+                                }
+                            }
+                            if(q is Interface __i && x is Assign)
+                            {
+                                Assign __a = (Assign)x;
+                                for (int i = 0; i < __i.GenericArguments.Count; i++)
+                                {
+                                    Types xp = block.SymbolTable.Get(((Variable)__a.Left).genericArgs[i]);
+                                    genericArgsTypes[__i.GenericArguments[i]] = xp;
                                 }
                             }
                         }

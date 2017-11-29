@@ -31,12 +31,12 @@ namespace Compilator
                 _ihaveit = _block.SymbolTable.Get(GetModule());   
             }
             string path = whatimpot.Value.Replace('.', '\\');
-            if (File.Exists(dir + @"\" + path + ".p"))
+            if (File.Exists(dir + "\\" + Program.projectFolder + @"\" + path + ".p"))
             {
                 found = true;
                 if (_ihaveit == null)
                 {
-                    string code = File.ReadAllText(dir + @"\" + path + ".p");
+                    string code = File.ReadAllText(dir + "\\" + Program.projectFolder + @"\" + path + ".p");
                     interpret = new Interpreter(code, "" + path + ".p", inter);
                     interpret.isConsole = inter.isConsole;
                     block = (Block)interpret.Interpret();
@@ -47,6 +47,7 @@ namespace Compilator
                         Block ___block = _block;
                         foreach (var part in GetName().Split('.').Take(GetName().Split('.').Count()))
                         {
+                            if (part == "") continue;
                             if (___block.SymbolTable.Find(part))
                             {
                                 ___block = ___block.SymbolTable.Get(part).assingBlock;
@@ -134,73 +135,105 @@ namespace Compilator
             string n = GetName();
             string tbs = DoTabs(tabs);
 
-            string outcom = "\n"+tbs + "//Imported "+import.Value+"\n";
-            if(n.Where(c => c == '.').Count() > 0)
-                outcom += tbs + n + " = function (_, __){\n  'use strict';\n";
-            else
-                outcom += tbs + "var " +n+" = function (_, __){\n  'use strict';\n";
-            outcom += "  " + compiled.Substring(0, compiled.Length) + "\n";
-            foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
+            string outcom = "";
+            if (n == "")
             {
-                if (block.SymbolTable.TableIsCopy.ContainsKey(t.Key) && block.SymbolTable.TableIsCopy[t.Key])
-                    continue;
-                if (t.Key == "int" || t.Key == "string" || t.Key == "null")
-                    continue;
-                if (t.Value is Function && (((Function)t.Value).isExternal || ((Function)t.Value).isExtending))
-                    continue;
-                if (t.Value is Class && ((Class)t.Value).isExternal)
-                    continue;
-                if (t.Value is Interface && ((Interface)t.Value).isExternal)
-                    continue;
-                if (t.Value is Delegate)
-                    continue;
-                if (t.Value is Function tf)
+                outcom = "\n" + tbs + "//Imported " + GetModule() + "\n";
+                outcom += "  " + compiled.Substring(0, compiled.Length) + "\n";
+            }
+            else
+            {
+                outcom = "\n" + tbs + "//Imported " + import.Value + "\n";
+                if (n.Where(c => c == '.').Count() > 0)
+                    outcom += tbs + n + " = function (_, __){\n  'use strict';\n";
+                else
+                    outcom += tbs + "var " + n + " = function (_, __){\n  'use strict';\n";
+                outcom += "  " + compiled.Substring(0, compiled.Length) + "\n";
+                List<string> exposed = new List<string>();
+                foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
                 {
-                    outcom += "  _." + tf.Name + " = " + tf.Name + ";\n";
-                    outcom += "  _." + tf.Name + "$META = " + tf.Name + "$META;\n";
-                }
-                else if (t.Value is Class tc)
-                {
-                    if (!tc.isForImport)
+                    if (t.Value == null || t.Key.Trim() == "") continue;
+                    if (block.SymbolTable.TableIsCopy.ContainsKey(t.Key) && block.SymbolTable.TableIsCopy[t.Key])
+                        continue;
+                    if (t.Key == "int" || t.Key == "string" || t.Key == "null")
+                        continue;
+                    if (t.Value is Function && (((Function)t.Value).isExternal || ((Function)t.Value).isExtending))
+                        continue;
+                    if (t.Value is Class && ((Class)t.Value).isExternal)
+                        continue;
+                    if (t.Value is Interface && ((Interface)t.Value).isExternal)
+                        continue;
+                    if (t.Value is Delegate)
+                        continue;
+                    if (t.Value is Function tf)
                     {
-                        outcom += "  _." + tc.getName() + " = " + tc.getName() + ";\n";
-                        outcom += "  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n";
+                        outcom += "  _." + tf.Name + " = " + tf.Name + ";\n";
+                        outcom += "  _." + tf.Name + "$META = " + tf.Name + "$META;\n";
                     }
-                    if (tc.isForImport)
+                    else if (t.Value is Class tc)
                     {
-                        outcom += Program.DrawClassInside(tc, tc.getName());
-                    }
-                }
-                else if (t.Value is Interface ti)
-                {
-                    outcom += "  _." + ti.getName() + " = " + ti.getName() + ";\n";
-                    outcom += "  _." + ti.getName() + "$META = " + ti.getName() + "$META;\n";
-                }
-                else if (t.Value is Import im)
-                {
-                    if (t.Key.Contains("."))
-                    {
-                        var skl = "";
-                        foreach (string p in t.Key.Split('.').Take(t.Key.Split('.').Length - 1))
+                        if (!tc.isForImport)
                         {
-                            skl += (skl == "" ? "" : ".") + p;
-                            if (!Program.importClass.Contains(skl))
+                            outcom += "  _." + tc.getName() + " = " + tc.getName() + ";\n";
+                            outcom += "  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n";
+                        }
+                        if (tc.isForImport)
+                        {
+                            outcom += Program.DrawClassInside(tc, tc.getName(), exposed);
+                        }
+                    }
+                    else if (t.Value is Interface ti)
+                    {
+                        outcom += "  _." + ti.getName() + " = " + ti.getName() + ";\n";
+                        outcom += "  _." + ti.getName() + "$META = " + ti.getName() + "$META;\n";
+                    }
+                    else if (t.Value is Import im)
+                    {
+                        if (t.Key.Contains("."))
+                        {
+                            var skl = "";
+                            foreach (string p in t.Key.Split('.').Take(t.Key.Split('.').Length - 1))
                             {
-                                Program.importClass.Add(skl);
-                                outcom += "  _." + skl + " = {};\n";
+                                skl += (skl == "" ? "" : ".") + p;
+                                if (!Program.importClass.Contains(skl))
+                                {
+                                    Program.importClass.Add(skl);
+                                    outcom += "  _." + skl + " = {};\n";
+                                }
+                            }
+                        }
+                        if (im.GetName() == "")
+                        {
+                            outcom += "  _." + t.Key + " = " + im.GetModule() + ";\n";
+                            if (im.As != "")
+                                outcom += "  var " + t.Key + " = " + im.GetModule() + ";\n";
+                        }
+                        else
+                        {
+                            outcom += "  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                            if (im.As != "")
+                                outcom += "  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                        }
+                        if(!exposed.Contains(t.Key))
+                            exposed.Add(t.Key);
+                        foreach (KeyValuePair<string, Types> qq in im.Block.SymbolTable.Table)
+                        {
+                            if (qq.Value is Class && !exposed.Contains(qq.Key) && !((Class)qq.Value).isExternal)
+                            {
+                                if (im.GetName() != "")
+                                {
+                                    outcom += "  var " + qq.Key + " = " + im.GetName() + "." + ((Class)qq.Value).getName() + ";\n";
+                                    exposed.Add(qq.Key);
+                                }
                             }
                         }
                     }
-                    outcom += "  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
-                    if(im.As != "")
-                        outcom += "  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                    else
+                        outcom += tbs + "  _." + t.Key + " = " + t.Key + ";\n";
                 }
-                else
-                    outcom += tbs + "  _." + t.Key + " = " + t.Key + ";\n";
+                outcom += tbs + "\n  return _;\n";
+                outcom += tbs + "}(typeof " + n + " === 'undefined' ? {} : " + n + ", this);\n";
             }
-            outcom += tbs + "\n  return _;\n";
-            outcom += tbs + "}(typeof " + n + " === 'undefined' ? {} : " + n + ", this);\n";
-
             return outcom;
         }
 

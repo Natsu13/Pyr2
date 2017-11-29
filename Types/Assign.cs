@@ -17,6 +17,9 @@ namespace Compilator
         string originlDateType = "";
         public List<_Attribute> attributes;
 
+        public bool isStatic = false;
+        public Token _static = null;
+
         public Assign(Types left, Token op, Types right, Block current_block = null)
         {
             this.left = left;
@@ -81,7 +84,7 @@ namespace Compilator
         }
 
         public override string Compile(int tabs = 0)
-        {
+        {            
             string addCode = "";
             if (attributes?.Where(x => x.GetName(true) == "Debug").Count() > 0)
             {
@@ -89,13 +92,16 @@ namespace Compilator
                     Debugger.Break();
                 addCode = "debugger;";
             }
+            if (isStatic) return "";
             string addName = "";
-            if (assingBlock.Parent != null && assingBlock.Parent.SymbolTable.Find(((Variable)left).Value))
-                isDeclare = false;
+            if (left is Variable)
+            {
+                if (assingBlock.Parent != null && assingBlock.Parent.SymbolTable.Find(((Variable)left).Value))
+                    isDeclare = false;
 
-            if ((((Variable)left).Block.Type == Block.BlockType.CONDITION && ((Variable)left).Block.Parent.variables.ContainsKey(((Variable)left).Value)))            
-                isDeclare = false;
-
+                if ((((Variable)left).Block.Type == Block.BlockType.CONDITION && ((Variable)left).Block.Parent.variables.ContainsKey(((Variable)left).Value)))
+                    isDeclare = false;
+            }
             Types maybeIs = assingBlock.SymbolTable.Get(left.TryVariable().Value);
             Types maybeIs2 = null;
             string rightCompiled = "";
@@ -106,8 +112,9 @@ namespace Compilator
             }
             else
                 maybeIs2 = assingBlock.SymbolTable.Get(right.TryVariable().Value);
-
-            right.assingBlock = ((Variable)left).Block;
+            
+            if(left is Variable)
+                right.assingBlock = ((Variable)left).Block;
             if (right is UnaryOp)
                 ((UnaryOp)right).endit = false;
 

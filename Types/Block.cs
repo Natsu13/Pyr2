@@ -17,10 +17,20 @@ namespace Compilator
         SymbolTable symbolTable;        
         public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR, WHILE, PROPERTIES, LAMBDA };
         BlockType type = BlockType.NONE;
-        public bool isInConstructor = false;
+        public bool _isInConstructor = false;
         public Import import = null;
         List<_Attribute> attributes = new List<_Attribute>();
         Token token = null;
+
+        public bool isInConstructor
+        {
+            get {
+                if (parent != null && !_isInConstructor)
+                    return parent.isInConstructor;
+                return _isInConstructor;
+            }
+            set { _isInConstructor = value; }
+        }
 
         public Block(Interpreter interpret, bool first = false, Token token = null)
         {

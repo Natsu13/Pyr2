@@ -133,9 +133,24 @@ namespace Compilator
                 return DoTabs(tabs) + addCode + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".get();";
             }
             else if (left is Variable)
-            {                
-                string tbs = DoTabs(tabs);                
-                string ret = tbs + addCode + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled)  + ";";                
+            {
+                string tbs = DoTabs(tabs);
+                string ret = "";
+                if(addName == "lambda$")
+                {
+                    string var = left.Compile(0);
+                    if (var.Contains("delegate$"))
+                    {
+                        ret = tbs + addCode + (isDeclare ? "var " : "") + var + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ";";
+                    }
+                    else
+                    {
+                        string[] spli = var.Split('.');
+                        ret = tbs + addCode + (isDeclare ? "var " : "") + string.Join(".", spli.Take(spli.Length - 1)) + ".delegate$" + spli.Skip(spli.Length - 1).First() + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ";";
+                    }
+                }
+                else                    
+                    ret = tbs + addCode + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled)  + ";";                
                 return ret;
             }
             else

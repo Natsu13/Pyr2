@@ -124,8 +124,11 @@ namespace Compilator
                     if (genericArguments.Count > i)
                     {
                         Types qqq = assingBlock.SymbolTable.Get(g);
+                        Types sss = func.Block.SymbolTable.Get(g);
                         if (!(qqq is Error))
-                            plist.GenericTUsage.Add(genericArguments[i], assingBlock.SymbolTable.Get(g));
+                            plist.GenericTUsage.Add(genericArguments[i], qqq);
+                        else if(!(sss is Error))
+                            plist.GenericTUsage.Add(genericArguments[i], sss);
                         else
                             plist.GenericTUsage.Add(genericArguments[i], p.GenericTUsage[genericArguments[i]]);
                     }

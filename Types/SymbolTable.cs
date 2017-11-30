@@ -259,11 +259,12 @@ namespace Compilator
             {
                 if (Find(name))
                 {
+                    Types t = Get(name);
                     if(isForImport)
                         return;
-                    if(Get(name).assingBlock.Interpret.UID != interpret.UID)
+                    if(t.assingBlock?.Interpret.UID != interpret.UID)
                         tableCounter.Add(name, 1);
-                    else if(Get(name).assingBlock.Parent.SymbolTable.tableCounter.ContainsKey(name))
+                    else if(t.assingBlock != null && t.assingBlock.Parent.SymbolTable.tableCounter.ContainsKey(name))
                         tableCounter.Add(name, Get(name).assingBlock.Parent.SymbolTable.tableCounter[name] + 1);
                     else
                         tableCounter.Add(name, 1);

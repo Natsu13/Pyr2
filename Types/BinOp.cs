@@ -76,6 +76,8 @@ namespace Compilator
             {
                 v = new Variable(((CString)left).getToken(), block, new Token(Token.Type.CLASS, "string"));
                 outputType = v.OutputType(op.type, left, right);
+                if (right is UnaryOp ruop)
+                    ruop.isInString = true;
             }
             else if(left is Variable)
             {
@@ -96,7 +98,11 @@ namespace Compilator
                         outputType = f.Returnt;
                     }
                 }
-                if(op.Value == "dot" && right is Variable riva)
+                if(op.Value == "dot" && right is UnaryOp riuo)
+                {
+                    riuo.Block = assingBlock.SymbolTable.Get(outputType.Value).assingBlock;
+                }
+                else if(op.Value == "dot" && right is Variable riva)
                 {                    
                     if(assingBlock.SymbolTable.Find(leuo.OutputType.Value))
                     {
@@ -127,7 +133,10 @@ namespace Compilator
             }
             if ((v._class != null && v.class_ == null) || (v.class_ != null && v.class_.JSName != ""))
             {
-                return (inParen ? "(" : "") + left.Compile(0) + " " + Variable.GetOperatorStatic(op.type) + " " + right.Compile(0) + (inParen ? ")" : "");
+                if (op.Value == "dot")
+                    return (inParen ? "(" : "") + left.Compile(0) + Variable.GetOperatorStatic(op.type) + right.Compile(0) + (inParen ? ")" : "");
+                else
+                    return (inParen ? "(" : "") + left.Compile(0) + " " + Variable.GetOperatorStatic(op.type) + " " + right.Compile(0) + (inParen ? ")" : "");
             }
             else if(v.class_ != null)
             {                

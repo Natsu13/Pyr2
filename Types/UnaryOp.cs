@@ -19,6 +19,7 @@ namespace Compilator
         public bool asArgument = false;
         Token arraySizeVariable = null;
         Types arraySizeVariableTypes = null;
+        public bool isInString = false;
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {
@@ -42,7 +43,7 @@ namespace Compilator
         public void MadeArray(int size) { isArray = true; arraySize = size; }
         public void MadeArray(Token name) { isArray = true; arraySizeVariable = name; }
         public void MadeArray(Types name) { isArray = true; arraySizeVariableTypes = name; }
-        public Block Block { get { return block; } }
+        public Block Block { get { return block; } set { block = value; } }
 
         public Function usingFunction = null;
 
@@ -65,7 +66,7 @@ namespace Compilator
 
                     if (q is Class && ((Class)q).isDynamic) { isDynamic = true; }
                     if (q is Interface && ((Interface)q).isDynamic) { isDynamic = true; }
-                    if(!isDynamic && !(q is Function))
+                    if(!isDynamic && (!(q is Function) && !(q is Assign)))
                         return "";
                 }
 
@@ -102,7 +103,12 @@ namespace Compilator
 
                 }else
                     t = block.SymbolTable.Get(nwnam);
-                
+
+                string before = "";
+                if(name.Value.Split('.')[0] == "this")
+                {
+                    before = "this.";
+                }
                 string newname = nwnam;
                 if (t is Function _f)
                 {
@@ -126,7 +132,9 @@ namespace Compilator
                         args = "(" + plist.Compile() + ")";
                     if(asArgument)
                         return tbs + (inParen ? "(" : "") + "delegate$" + name.Value + (inParen ? ")" : "") + (endit ? ";" : "");
-                    return tbs + (inParen ? "(" : "") + "delegate$" + name.Value + args + (inParen ? ")" : "") + (endit ? ";" : "");
+                    if(isInString)
+                        return tbs + (inParen ? "(" : "") + "function(){ delegate$" + name.Value + args + "; }" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + before + "delegate$" + newname + args + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
                 if (name.Value == "js")
                 {
@@ -383,10 +391,15 @@ namespace Compilator
                         if (t is Class && ((Class)t).isDynamic) { return; }
                         if (t is Interface && ((Interface)t).isDynamic) { return; }
                     }
-                    if(t is Error)
-                        Interpreter.semanticError.Add(new Error("#707 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
-                    else if(!block.assingBlock.SymbolTable.Find(name.Value) && t is Assign)
-                        Interpreter.semanticError.Add(new Error("#707 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                    if (t is Error)
+                        Interpreter.semanticError.Add(new Error("#707-1 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                    else if (!block.assingBlock.SymbolTable.Find(name.Value) && t is Assign)
+                    {
+                        if(name.Value.Contains(".") && !block.assingBlock.SymbolTable.Find(string.Join(".", name.Value.Split('.').Skip(1))))
+                            Interpreter.semanticError.Add(new Error("#707-2 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                        else if(!name.Value.Contains("."))
+                            Interpreter.semanticError.Add(new Error("#707-3 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                    }
                 }
 
                 plist.GenericTUsage = genericArgsTypes;
@@ -458,6 +471,8 @@ namespace Compilator
                         }
                         if (tf.ParameterList.assingBlock == null)
                             tf.ParameterList.assingBlock = tf.Block;
+                        if (tf.ParameterList.assingBlock == null)
+                            tf.ParameterList.assingBlock = assingBlock;
                         if (!tf.ParameterList.Compare(plist))
                         {
                             ParameterList p = null;
@@ -481,9 +496,14 @@ namespace Compilator
                                                 if (fuop.usingFunction != null)
                                                     usefun = fuop.usingFunction;
                                             }
+                                            else if(plist.parameters[i] is Variable fuva)
+                                            {
+                                                if (assingBlock.SymbolTable.Get(fuva.Value) is Function fuvafu)
+                                                    usefun = fuvafu;
+                                            }
                                             int state = ((Delegate)realtype).CompareTo((Variable)typs, usefun, plist);
                                             if (state > 0)
-                                                possible += "\n\t\t" + ((Delegate)realtype).GetError(state);
+                                                possible += "\n\t\tDelegate problems: " + ((Delegate)realtype).GetError(state);
                                         }
                                     }
                                     i++;

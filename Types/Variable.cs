@@ -160,19 +160,24 @@ namespace Compilator
                 Types fvar = this.block.FindVariable(newname);
                 if (this.block.SymbolTable.Find(newname))
                 {
-                    if(this.block.SymbolTable.Get(newname) is Generic)
+                    Types t = this.block.SymbolTable.Get(newname);
+                    if(t is Generic)
                     {
                         this.dateType = new Token(Token.Type.CLASS, "object");
                     }
-                    else if (this.block.SymbolTable.Get(newname) is Properties prop)
+                    else if (t is Properties prop)
                     {
                         this.dateType = prop.variable.TryVariable().dateType;
                     }
-                    else if (((Assign)this.block.SymbolTable.Get(newname)).Right is UnaryOp)
+                    else if (t is Function tf)
                     {
-                        if (((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Op == "call")
+                        this.dateType = tf.Returnt;
+                    }
+                    else if (t is Assign && ((Assign)t).Right is UnaryOp)
+                    {
+                        if (((UnaryOp)((Assign)t).Right).Op == "call")
                         {
-                            Token fname = ((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Name;
+                            Token fname = ((UnaryOp)((Assign)t).Right).Name;
                             Types sd = this.block.SymbolTable.Get(fname.Value);
                             if (!(sd is Error))
                             {
@@ -180,10 +185,10 @@ namespace Compilator
                                 this.dateType = f.Returnt;
                             }
                         }else
-                            this.dateType = ((Variable)(((Assign)this.block.SymbolTable.Get(newname)).Left)).dateType;
+                            this.dateType = ((Variable)(((Assign)t).Left)).dateType;
                     }
                     else
-                        this.dateType = ((Variable)(((Assign)this.block.SymbolTable.Get(newname)).Left)).dateType;
+                        this.dateType = ((Variable)(((Assign)t).Left)).dateType;
                 }
                 else if (fvar != null)
                 {
@@ -252,8 +257,15 @@ namespace Compilator
             var t__ = "this" + (Value == "this"?"":".");
             if (assingBlock != null && assingBlock.isType(Block.BlockType.PROPERTIES))
                 t__ = "this.$self" + (Value == "this"?"":".");
+            if (value.Split('.')[0] != "this")
+                t__ = "";
+            if (value.Contains("."))
+                t__ = value.Split('.')[0]+".";
 
             var not = Value;
+            var withouthis = Value;
+            if(value.Contains("."))
+                withouthis = string.Join(".", value.Split('.').Skip(1));
 
             if (Value.Split('.')[0] == "this")
             {
@@ -274,9 +286,22 @@ namespace Compilator
                 }
             }
 
-            if (block.SymbolTable.Get(this.value) is Generic)
-                vname = t__ + "generic$" + Value + (isKey ? "[" + key.Compile() + "]" : "");
-            else if (block.SymbolTable.Get(this.value) is Properties)
+            Types t = block.SymbolTable.Get(this.value);
+            if (t is Generic)
+                vname = t__ + "generic$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+            else if (t is Assign ta && ta.Left is Variable tav && tav.Type != "object") 
+            {                  
+                Types tavt = block.SymbolTable.Get(tav.Type, genericArgs: tav.genericArgs.Count);
+                if(tavt is Delegate)
+                {
+                    vname = t__ + "delegate$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+                }
+                else
+                {
+                    vname = not + (isKey ? "[" + key.Compile() + "]" : "");
+                }
+            }
+            else if (t is Properties)
             {              
                 if (value.Split('.')[0] == "this")
                 {                    

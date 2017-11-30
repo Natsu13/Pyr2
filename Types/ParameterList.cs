@@ -153,8 +153,14 @@ namespace Compilator
                 {
                     if (par is Assign)
                         ret += ((Assign)par).Left.Compile();
-                    else if(par is Variable && ((Variable)par).Block?.SymbolTable.Get(((Variable)par).Type) is Delegate)
-                        ret += "delegate$"+par.Compile(0);
+                    else if (par is Variable && ((Variable)par).Block?.SymbolTable.Get(((Variable)par).Type) is Delegate)
+                    {
+                        string rrr = par.Compile(0);
+                        if (rrr.Split('$')[0] != "delegate")
+                            ret += "delegate$" + rrr;
+                        else
+                            ret += rrr;
+                    }
                     else
                         ret += par.Compile(0);
                 }
@@ -269,6 +275,16 @@ namespace Compilator
                             isDelegate = true;
                             if (delegat.CompareTo((Variable)t, null, lambda.ParameterList) != 0)
                                 return false;
+                        }
+                        else if(p.parameters[i] is Variable variab)
+                        {
+                            Types q = assingBlock.SymbolTable.Get(variab.Value);
+                            if(q is Function func)
+                            {
+                                isDelegate = true;
+                                if (delegat.CompareTo((Variable)t, func, func.ParameterList) != 0)
+                                    return false;
+                            }
                         }
                     }
                     if (i < p.parameters.Count && p.parameters[i] is Variable && ((Variable)p.parameters[i]).Block.SymbolTable.Get(p.parameters[i].TryVariable().Type) is Generic)

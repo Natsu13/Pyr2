@@ -109,9 +109,29 @@ namespace Compilator
                 {
                     if (var.Value.isStatic) continue;
                     if (var.Value.Right.getToken().type == Token.Type.NULL)
-                        ret += tbs + "  this." + var.Key + " = null;\n";
+                    {
+                        if (var.Value.Left is Variable vari)
+                        {
+                            if(block.SymbolTable.Get(vari.Type) is Delegate)
+                                ret += tbs + "  this.delegate$" + var.Key + " = null;\n";
+                            else
+                                ret += tbs + "  this." + var.Key + " = null;\n";
+                        }
+                        else
+                            ret += tbs + "  this." + var.Key + " = null;\n";
+                    }
                     else
-                        ret += tbs + "  this." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                    {
+                        if (var.Value.Left is Variable vari)
+                        {
+                            if (block.SymbolTable.Get(vari.Type) is Delegate)
+                                ret += tbs + "  this.delegate$" + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                            else
+                                ret += tbs + "  this." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                        }  
+                        else
+                            ret += tbs + "  this." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                    }
                 }
                 foreach (Types type in block.children)
                 {

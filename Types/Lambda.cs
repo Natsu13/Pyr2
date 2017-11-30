@@ -65,6 +65,8 @@ namespace Compilator
                 {
                     return "function(" + plist.Compile() + "){ return " + expresion.Compile() + "; }";
                 }
+                if (name.Value.Contains("."))
+                    return DoTabs(tabs) + "var " + string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1)) + ".lambda$" + name.Value.Split('.').Skip(name.Value.Split('.').Length - 1) + " = function(" + plist.Compile() + "){ return " + expresion.Compile() + "; };";
                 return DoTabs(tabs) + "var lambda$" + name.Value + " = function(" + plist.Compile() + "){ return " + expresion.Compile() + "; };";
             }
         }

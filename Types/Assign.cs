@@ -94,7 +94,6 @@ namespace Compilator
             }
             if (isStatic) return "";
             string addName = "";
-<<<<<<< HEAD
             if (left is Variable variable)
             {
                 if (assingBlock.Parent != null && assingBlock.Parent.SymbolTable.Find(variable.Value))
@@ -105,16 +104,7 @@ namespace Compilator
             }
 
             right.assingToType = left;
-=======
-            if (left is Variable)
-            {
-                if (assingBlock.Parent != null && assingBlock.Parent.SymbolTable.Find(((Variable)left).Value))
-                    isDeclare = false;
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
 
-                if ((((Variable)left).Block.Type == Block.BlockType.CONDITION && ((Variable)left).Block.Parent.variables.ContainsKey(((Variable)left).Value)))
-                    isDeclare = false;
-            }
             Types maybeIs = assingBlock.SymbolTable.Get(left.TryVariable().Value);
             Types maybeIs2 = null;
             string rightCompiled = "";
@@ -133,7 +123,6 @@ namespace Compilator
 
             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
             {
-<<<<<<< HEAD
                 if (assingBlock.SymbolTable.Find(left.TryVariable().Value) && maybeIs is Properties)
                 {
                     string[] varname = left.TryVariable().Value.Split('.');
@@ -213,43 +202,6 @@ namespace Compilator
                     return DoTabs(tabs) + addName + left.Compile(0) + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ";";
             }
             return "";
-=======
-                string[] varname = left.TryVariable().Value.Split('.');
-                if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
-                    varname[0] = "$this";
-                return DoTabs(tabs) + addCode + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".set(" + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ");";
-            }
-            else if (maybeIs2 != null && assingBlock.SymbolTable.Find(right.TryVariable().Value) && maybeIs2 is Properties)
-            {
-                string[] varname = right.TryVariable().Value.Split('.');
-                if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
-                    varname[0] = "$this";
-                return DoTabs(tabs) + addCode + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".get();";
-            }
-            else if (left is Variable)
-            {
-                string tbs = DoTabs(tabs);
-                string ret = "";
-                if(addName == "lambda$")
-                {
-                    string var = left.Compile(0);
-                    if (var.Contains("delegate$"))
-                    {
-                        ret = tbs + addCode + (isDeclare ? "var " : "") + var + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ";";
-                    }
-                    else
-                    {
-                        string[] spli = var.Split('.');
-                        ret = tbs + addCode + (isDeclare ? "var " : "") + string.Join(".", spli.Take(spli.Length - 1)) + ".delegate$" + spli.Skip(spli.Length - 1).First() + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ";";
-                    }
-                }
-                else                    
-                    ret = tbs + addCode + (isDeclare?"var ":"") + addName + left.Compile(0) + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled)  + ";";                
-                return ret;
-            }
-            else
-                return DoTabs(tabs) + addName + left.Compile(0) + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled)  + ";";
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
         }
 
         public override void Semantic()

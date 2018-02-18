@@ -12,10 +12,7 @@ namespace Compilator
         public abstract Token getToken();
         public string assignTo = "";
         public Types assingToType = null;
-<<<<<<< HEAD
         public Token assingToToken = null;
-=======
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
         public bool endit = true;
         public bool inParen = false;
         public Block assingBlock;

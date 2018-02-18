@@ -86,59 +86,8 @@ namespace Compilator
         public override string Compile(int tabs = 0)
         {
             if (!isExternal)
-<<<<<<< HEAD
             {
                 if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-=======
-            {                
-                string tbs = DoTabs(tabs);
-                string ret = tbs + "var " + getName() + " = function(){";
-                if (block.variables.Count != 0 || parents.Count != 0 || genericArguments.Count != 0) ret += "\n";
-                foreach (string generic in genericArguments)
-                {
-                    block.SymbolTable.Add(generic, new Generic(this, block, generic));
-                    ret += tbs+"  this.generic$" + generic + " = null;\n";
-                }
-                foreach (UnaryOp parent in parents)
-                {
-                    if (assingBlock.SymbolTable.Find(parent.Name.Value)) {
-                        Types inname = assingBlock.SymbolTable.Get(parent.Name.Value, genericArgs: parent.genericArgments.Count);
-                        if(inname is Interface)
-                            ret += tbs + "  " + ((Interface)inname).getName() + ".call(this);\n";
-                        else if(inname is Class)
-                            ret += tbs + "  " + ((Class)inname).getName() + ".call(this);\n";
-                    }
-                }
-                foreach (KeyValuePair<string, Assign> var in block.variables)
-                {
-                    if (var.Value.isStatic) continue;
-                    if (var.Value.Right.getToken().type == Token.Type.NULL)
-                    {
-                        if (var.Value.Left is Variable vari)
-                        {
-                            if(block.SymbolTable.Get(vari.Type) is Delegate)
-                                ret += tbs + "  this.delegate$" + var.Key + " = null;\n";
-                            else
-                                ret += tbs + "  this." + var.Key + " = null;\n";
-                        }
-                        else
-                            ret += tbs + "  this." + var.Key + " = null;\n";
-                    }
-                    else
-                    {
-                        if (var.Value.Left is Variable vari)
-                        {
-                            if (block.SymbolTable.Get(vari.Type) is Delegate)
-                                ret += tbs + "  this.delegate$" + var.Key + " = " + var.Value.Right.Compile() + ";\n";
-                            else
-                                ret += tbs + "  this." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
-                        }  
-                        else
-                            ret += tbs + "  this." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
-                    }
-                }
-                foreach (Types type in block.children)
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 {
                     string tbs = DoTabs(tabs);
                     string ret = tbs + "var " + getName() + " = function(){";
@@ -226,27 +175,7 @@ namespace Compilator
                     ret += block.Compile(tabs, true);
                     return ret;
                 }
-<<<<<<< HEAD
                 else if(Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-=======
-                ret += tbs + "}\n";
-
-
-                foreach (KeyValuePair<string, Assign> var in block.variables)
-                {
-                    if (!var.Value.isStatic) continue;
-                    if (var.Value.Right.getToken().type == Token.Type.NULL)
-                        ret += tbs + "" + getName() + "." + var.Key + " = null;\n";
-                    else
-                        ret += tbs + "" + getName() + "." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
-                }
-                 ret += tbs + "\n";
-
-                ret += tbs + "var " + getName() + "$META = function(){\n";                    
-                ret += tbs + "  return {";
-                ret += "\n" + tbs + "    type: 'class'" + (attributes.Count > 0 ? ", " : "");
-                if (attributes.Count > 0)
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 {
                     string tbs = DoTabs(tabs-1);
                     string ret = tbs + "class " + getName();

@@ -14,11 +14,7 @@ namespace Compilator
         public Types predicate = null;
         public bool isInArgumentList = false;
         public bool isCallInArgument = false;
-<<<<<<< HEAD
         public bool isNormalLambda = false;        
-=======
-        public bool isNormalLambda = false;
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
         //bool isDeclare = false;
 
         public Lambda(Variable name, Types expresion, ParameterList plist)
@@ -51,7 +47,6 @@ namespace Compilator
             {
                 string tbs = DoTabs(tabs);
                 string ret = "";
-<<<<<<< HEAD
                 if (plist.assingToType == null)
                     plist.assingToType = predicate;
                 if (plist.assingBlock == null)
@@ -72,14 +67,6 @@ namespace Compilator
                     ret += "{";
                     ret += "\n" + expresion.Compile(tabs + 2);
                     ret +=  tbs + "}";
-=======
-                ret += "function(" + plist.Compile() + ")";
-                if (expresion is Block)
-                {
-                    ret += "{";
-                    ret += "\n" + expresion.Compile(tabs + 2);
-                    ret +=  tbs + "  }";
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 }
                 else
                     ret += "{ return " + expresion.Compile() + "; }";

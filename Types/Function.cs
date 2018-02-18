@@ -111,11 +111,7 @@ namespace Compilator
             if (isOperator || isConstructor || assingBlock.SymbolTable.GetAll(name.Value)?.Count > 1)
             {
                 if (_hash == "")
-<<<<<<< HEAD
                     _hash = $"{(name.Value + paraml.List() + block?.GetHashCode()).GetHashCode():X8}";
-=======
-                    _hash = string.Format("{0:X8}", (name.Value + paraml.List() + block?.GetHashCode()).GetHashCode());
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 return _hash;
             }
             return "";
@@ -169,18 +165,6 @@ namespace Compilator
                 if (isExtending)
                 {
                     if (assingBlock.SymbolTable.Find(extendingClass))
-<<<<<<< HEAD
-=======
-                    {
-                        var ex = assingBlock.SymbolTable.Get(extendingClass, false, true);
-                        if(ex is Import)
-                        {
-                            extendingClass = ((Import)ex).GetName() + "." + extendingClass;
-                        }
-                    }
-                    fromClass = extendingClass;
-                    if (isStatic || isConstructor)
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                     {
                         var ex = assingBlock.SymbolTable.Get(extendingClass, false, true);
                         if(ex is Import)
@@ -211,15 +195,11 @@ namespace Compilator
                 }
                 else if (assignTo == "")
                 {
-<<<<<<< HEAD
                     if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                         ret = tbs + "def " + Name + "(" + paraml.Compile(0);
                     else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                         ret += tbs + "function " + Name + "(" + paraml.Compile(0);
 
-=======
-                    ret += tbs + "function " + Name + "(" + paraml.Compile(0);
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                     if(genericArguments.Count > 0)
                     {
                         int q = 0;
@@ -227,7 +207,6 @@ namespace Compilator
                         {
                             if (q != 0) ret += ", ";
                             else if (paraml.Parameters.Count > 0) { ret += ", "; }
-<<<<<<< HEAD
                             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                                 ret += "generic__" + generic;
                             else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
@@ -240,13 +219,6 @@ namespace Compilator
                         ret += "):" + (block != null ? "\n" : "");
                     else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                         ret += "){" + (block != null ? "\n" : "");                    
-=======
-                            ret += "generic$" + generic;
-                            q++;
-                        }
-                    }
-                    ret += "){" + (block != null ? "\n" : "");
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                     functionOpname = Name;
                 }
                 else
@@ -269,7 +241,6 @@ namespace Compilator
                         if (isConstructor && c.GenericArguments.Count > 0)
                         {
                             paraml.assingBlock = assingBlock;
-<<<<<<< HEAD
 
                             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                             {
@@ -279,9 +250,6 @@ namespace Compilator
                             else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                                 ret += tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0);
                             
-=======
-                            ret += tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0);
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                             functionOpname = hash_name + "." + Name;
                             bool f = true;
                             if (paraml.Parameters.Count > 0) f = false;
@@ -301,7 +269,6 @@ namespace Compilator
                         }
                         else
                         {
-<<<<<<< HEAD
                             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                             {
                                 python_fun = hash_name + "." + Name + " = extending_function__" + tmpc + ";\n";
@@ -310,9 +277,6 @@ namespace Compilator
                             else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                                 ret += tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0);
                             
-=======
-                            ret += tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0);
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                             if(genericArguments.Count > 0)
                             {
                                 int q = 0;
@@ -320,7 +284,6 @@ namespace Compilator
                                 {
                                     if (q != 0) ret += ", ";
                                     else if (paraml.Parameters.Count > 0) { ret += ", "; }
-<<<<<<< HEAD
                                     if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                                         ret += "generic__" + generic;
                                     else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
@@ -333,19 +296,11 @@ namespace Compilator
                             else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                                 ret += "){" + (block != null ? "\n" : "");
 
-=======
-                                    ret += "generic$" + generic;
-                                    q++;
-                                }
-                            }
-                            ret += "){" + (block != null ? "\n" : "");
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                             functionOpname = hash_name + "." + Name;
                         }
                     }
                     else
                     {
-<<<<<<< HEAD
                         if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                         {
                             python_fun = hash_name + "." + Name + " = extending_function__" + tmpc + ";\n";
@@ -354,9 +309,6 @@ namespace Compilator
                         else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                             ret += tbs + hash_name + ".prototype." + Name + " = function(" + paraml.Compile(0);
 
-=======
-                        ret += tbs + hash_name + ".prototype." + Name + " = function(" + paraml.Compile(0);
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                         if(genericArguments.Count > 0)
                         {
                             int q = 0;
@@ -364,7 +316,6 @@ namespace Compilator
                             {
                                 if (q != 0) ret += ", ";
                                 else if (paraml.Parameters.Count > 0) { ret += ", "; }
-<<<<<<< HEAD
                                 if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                                     ret += "generic__" + generic;
                                 else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
@@ -376,13 +327,6 @@ namespace Compilator
                             ret += "):" + (block != null ? "\n" : "");
                         else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                             ret += "){" + (block != null ? "\n" : "");
-=======
-                                ret += "generic$" + generic;
-                                q++;
-                            }
-                        }
-                        ret += "){" + (block != null ? "\n" : "");
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                         functionOpname = hash_name + ".prototype." + Name;
                     }
                 }

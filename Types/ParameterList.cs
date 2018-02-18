@@ -126,7 +126,6 @@ namespace Compilator
             int i = 0;
             bool startne = false;
             if(allowMultipel && plist == null && assingBlock != null && !assingBlock.variables.ContainsKey(allowMultipelName.Value))
-<<<<<<< HEAD
             {
                 new Assign(new Variable(new Token(Token.Type.ID, allowMultipelName.Value), assingBlock) { isArray = true }, new Token(Token.Type.ASIGN, '='), new Null());
             }
@@ -135,16 +134,6 @@ namespace Compilator
                 if(argNamed != null && i >= argNamed.Count && !startne)
                 {
                     ret += (ret == ""?"":", ")+"[";
-=======
-            {
-                new Assign(new Variable(new Token(Token.Type.ID, allowMultipelName.Value), assingBlock) { isArray = true }, new Token(Token.Type.ASIGN, '='), new Null());
-            }
-            foreach (Types par in parameters)
-            {
-                if(argNamed != null && i >= argNamed.Count && !startne)
-                {
-                    ret += "[";
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                     startne = true;
                 }
                 if(argNamed != null && argNamed.Count > i)
@@ -159,11 +148,7 @@ namespace Compilator
                 {
                     assingBlock.variables.Add(((Assign)par).Left.TryVariable().Value, (Assign)par);
                 }
-<<<<<<< HEAD
                 if (ret != "" && ret[ret.Length-1] != '[') ret += ", ";
-=======
-                if (ret != "" && ret != "[") ret += ", ";
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 if (declare)
                 {
                     if (par is Assign)
@@ -179,7 +164,6 @@ namespace Compilator
                     else
                         ret += par.Compile(0);
                 }
-<<<<<<< HEAD
                 else
                 {
                     if (plist != null && i < plist.parameters.Count && plist.parameters[i].TryVariable().Type == "Predicate" && par is Lambda lambda)
@@ -223,9 +207,6 @@ namespace Compilator
                     else
                         ret += par.Compile(0);
                 }
-=======
-                else ret += par.Compile(0);
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 i++;
             }
             if (startne)
@@ -278,14 +259,11 @@ namespace Compilator
                     }
                 }
             }
-<<<<<<< HEAD
 
             if (plist != null && plist.allowMultipel && parameters.Count == argNamed.Count)
             {
                 ret += (ret != "" ? ", " : "") + "undefined";
             }
-=======
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
             if(allowMultipel && myList == null)
             {
                 ret += (ret != "" ? ", " : "") + allowMultipelName.Value;

@@ -75,11 +75,7 @@ namespace Compilator
                         {
                             Types qqq = assingBlock.SymbolTable.Get(g);
                             if (!(qqq is Error))
-<<<<<<< HEAD
                                 plist.GenericTUsage.Add(genericArguments[i], qqq);
-=======
-                                plist.GenericTUsage.Add(genericArguments[i], assingBlock.SymbolTable.Get(g));
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                             else
                                 plist.GenericTUsage.Add(genericArguments[i], p.GenericTUsage[genericArguments[i]]);
                         }
@@ -106,11 +102,7 @@ namespace Compilator
                         {
                             Types qqq = assingBlock.SymbolTable.Get(g);
                             if (!(qqq is Error))
-<<<<<<< HEAD
                                 plist.GenericTUsage.Add(genericArguments[i], qqq);
-=======
-                                plist.GenericTUsage.Add(genericArguments[i], assingBlock.SymbolTable.Get(g));
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                             else
                                 plist.GenericTUsage.Add(genericArguments[i], p.GenericTUsage[genericArguments[i]]);
                         }
@@ -232,11 +224,8 @@ namespace Compilator
                 block.SymbolTable.Add(generic, new Generic(this, block, generic) { assingBlock = block });
             }
 
-<<<<<<< HEAD
             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                 return "#Delegate " + RealName + (gener != "" ? "<" + gener + ">" : "") + "(" + paraml.List() + ") -> " + Returnt.Value;            
-=======
->>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
             return "//Delegate " + RealName + (gener != "" ? "<" + gener + ">" : "") + "(" + paraml.List() + ") -> " + Returnt.Value;
         }
         

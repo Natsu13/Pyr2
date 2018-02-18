@@ -20,7 +20,10 @@ namespace Compilator
         Token arraySizeVariable = null;
         Types arraySizeVariableTypes = null;
         public bool isInString = false;
+<<<<<<< HEAD
         bool founded = false;
+=======
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {
@@ -65,8 +68,13 @@ namespace Compilator
                         nwnam = string.Join(".", name.Value.Split('.').Skip(1));
                     Types q = block.SymbolTable.Get(nwnam);
 
+<<<<<<< HEAD
                     if (q is Class @class && @class.isDynamic) { isDynamic = true; }
                     if (q is Interface @interface && @interface.isDynamic) { isDynamic = true; }
+=======
+                    if (q is Class && ((Class)q).isDynamic) { isDynamic = true; }
+                    if (q is Interface && ((Interface)q).isDynamic) { isDynamic = true; }
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                     if(!isDynamic && (!(q is Function) && !(q is Assign)))
                         return "";
                 }
@@ -74,6 +82,7 @@ namespace Compilator
                 string generic = "";
                 bool fir = true;
                 string gname = "";
+<<<<<<< HEAD
                 if(genericArgments.Count == 0)
                 {
                     var funcs = block.SymbolTable.GetAll(name.Value);
@@ -107,6 +116,8 @@ namespace Compilator
                         }
                     }
                 }
+=======
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 foreach(string g in genericArgments)
                 {
                     if (!fir) generic += ", ";
@@ -117,11 +128,14 @@ namespace Compilator
                     generic += "'"+ gname + "'";
                 }
 
+<<<<<<< HEAD
                 if (plist != null && plist.assingToType == null)
                 {
                     plist.assingToToken = Name;
                 }
 
+=======
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 List<Types> allf = block.SymbolTable.GetAll(nwnam);
                 Types t = null;
                 if (allf != null && allf.Count > 1)
@@ -141,15 +155,23 @@ namespace Compilator
                     }
 
                 }else
+<<<<<<< HEAD
                     t = block.SymbolTable.Get(nwnam);                
+=======
+                    t = block.SymbolTable.Get(nwnam);
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
 
                 string before = "";
                 if(name.Value.Split('.')[0] == "this")
                 {
+<<<<<<< HEAD
                     if (block != null && block.isInConstructor)
                         before = "$this.";
                     else
                         before = "this.";
+=======
+                    before = "this.";
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 }
                 string newname = nwnam;
                 if (t is Function _f)
@@ -201,18 +223,28 @@ namespace Compilator
                     if (nname.Split('.')[0] == "this")
                         nname = string.Join(".", nname.Split('.').Skip(1));
                     if (plist == null)
+<<<<<<< HEAD
                         return tbs + (inParen ? "(" : "") + before + nname + "("+generic+")" + (inParen ? ")" : "") + (endit ? ";" : "");
                     if (plist.assingBlock == null)
                         plist.assingBlock = block;
                     return tbs + (inParen ? "(" : "") + before + nname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != ""?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+=======
+                        return tbs + (inParen ? "(" : "") + nname + "("+generic+")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + nname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != ""?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 }
                 else
                 {
                     if(asArgument)
                         return tbs + (inParen ? "(" : "") + before + newname + (inParen ? ")" : "") + (endit ? ";" : "");
                     if (plist == null)
+<<<<<<< HEAD
                         return tbs + (inParen ? "(" : "") + before + newname + "(" + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                     return tbs + (inParen ? "(" : "") + before + newname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != "" ?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+=======
+                        return tbs + (inParen ? "(" : "") + newname + "(" + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    return tbs + (inParen ? "(" : "") + newname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != "" ?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 }
             }
             if (o == "new")

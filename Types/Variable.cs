@@ -170,11 +170,19 @@ namespace Compilator
                         this.dateType = prop.variable.TryVariable().dateType;
                     }
                     else if (t is Function tf)
+<<<<<<< HEAD
                     {
                         this.dateType = tf.Returnt;
                     }
                     else if (t is Assign && ((Assign)t).Right is UnaryOp)
                     {
+=======
+                    {
+                        this.dateType = tf.Returnt;
+                    }
+                    else if (t is Assign && ((Assign)t).Right is UnaryOp)
+                    {
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                         if (((UnaryOp)((Assign)t).Right).Op == "call")
                         {
                             Token fname = ((UnaryOp)((Assign)t).Right).Name;
@@ -186,10 +194,13 @@ namespace Compilator
                             }
                         }else
                             this.dateType = ((Variable)(((Assign)t).Left)).dateType;
+<<<<<<< HEAD
                     }
                     else if (t is Variable)
                     {
                         this.dateType = ((Variable) t).dateType;
+=======
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                     }
                     else
                         this.dateType = ((Variable)(((Assign)t).Left)).dateType;
@@ -263,7 +274,24 @@ namespace Compilator
             else if (_class != null)
                 nameclass = _class.Name;
 
+<<<<<<< HEAD
             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
+=======
+            var t__ = "this" + (Value == "this"?"":".");
+            if (assingBlock != null && assingBlock.isType(Block.BlockType.PROPERTIES))
+                t__ = "this.$self" + (Value == "this"?"":".");
+            if (value.Split('.')[0] != "this")
+                t__ = "";
+            if (value.Contains("."))
+                t__ = value.Split('.')[0]+".";
+
+            var not = Value;
+            var withouthis = Value;
+            if(value.Contains("."))
+                withouthis = string.Join(".", value.Split('.').Skip(1));
+
+            if (Value.Split('.')[0] == "this")
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
             {
                 var t__ = "this" + (Value == "this" ? "" : ".");
                 if (assingBlock != null && assingBlock.isType(Block.BlockType.PROPERTIES))
@@ -297,6 +325,7 @@ namespace Compilator
                     }
                 }
 
+<<<<<<< HEAD
                 Types t = ti ?? block.SymbolTable.Get(value, Type);
                 if (t is Generic)
                     vname = t__ + "generic$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
@@ -322,6 +351,28 @@ namespace Compilator
                     }
                     else
                         vname = t__ + ".Property$" + Value + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
+=======
+            Types t = block.SymbolTable.Get(this.value);
+            if (t is Generic)
+                vname = t__ + "generic$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+            else if (t is Assign ta && ta.Left is Variable tav && tav.Type != "object") 
+            {                  
+                Types tavt = block.SymbolTable.Get(tav.Type, genericArgs: tav.genericArgs.Count);
+                if(tavt is Delegate)
+                {
+                    vname = t__ + "delegate$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+                }
+                else
+                {
+                    vname = not + (isKey ? "[" + key.Compile() + "]" : "");
+                }
+            }
+            else if (t is Properties)
+            {              
+                if (value.Split('.')[0] == "this")
+                {                    
+                    vname = t__ + ".Property$" + string.Join(".", value.Split('.').Skip(1)) + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
                 }
                 else
                 {

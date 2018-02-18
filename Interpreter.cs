@@ -34,7 +34,11 @@ namespace Compilator
         /// Interpret settings
         public static bool _REDECLARATION =     false;      //If you enable redeclaration
         [Obsolete("Please use attribute [OnPageLoad]")] 
+<<<<<<< HEAD
         public static bool _WAITFORPAGELOAD =   false;      //If you want call main in window.onload
+=======
+        public static bool _WAITFORPAGELOAD =   false;       //If you want call main in window.onload
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
         public static bool _WRITEDEBUG =        false;      //If you want with faul write the output to file
         public static bool _DEBUG =             false;      //If you want stop at compiling when you use attribute debug
 
@@ -49,7 +53,11 @@ namespace Compilator
 
         public int UID { get { return _uid; } }
 
+<<<<<<< HEAD
         public Interpreter(string text, string filename = "", Interpreter parent = null, string projectFolder = "")
+=======
+        public Interpreter(string text, string filename = "", Interpreter parent = null)
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
         {
             _uid = counterId;
             counterId++;
@@ -313,10 +321,17 @@ namespace Compilator
                 if(tp is Function)
                     return new Token(Token.Type.FUNCTION, _result, current_token_pos, current_file);
                 if(tp is Interface)
+<<<<<<< HEAD
                     return new Token(Token.Type.INTERFACE, _result, current_token_pos, current_file);
                 if (tp is Properties)
                     return new Token(Token.Type.PROPERTIES, _result, current_token_pos, current_file);
                 return new Token(Token.Type.CLASS, _result, current_token_pos, current_file);
+=======
+                    return new Token(Token.Type.INTERFACE, result, current_token_pos, current_file);
+                if (tp is Properties)
+                    return new Token(Token.Type.PROPERTIES, result, current_token_pos, current_file);
+                return new Token(Token.Type.CLASS, result, current_token_pos, current_file);
+>>>>>>> 0c640203808d4ca5c25cb372dd6d91da202c18f8
             }
             else
                 return new Token(Token.Type.ID, _result, current_token_pos, current_file);

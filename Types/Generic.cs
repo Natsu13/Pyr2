@@ -10,11 +10,13 @@ namespace Compilator
     {
         bool isClassed = false;
         bool isFunctio = false;
+        bool isDelegat = false;
         Class classAss = null;
         Function functionAss = null;
+        Delegate delegateAss = null;
         string name = "";
         Block block;
-        TypeObject bt = new TypeObject();
+        TypeObject bt = new TypeObject();       
 
         public Generic(Class c, Block block, string name)
         {
@@ -27,7 +29,13 @@ namespace Compilator
             this.block = block;
             this.name = name;
             setFunction(f);
-        }
+        }     
+        public Generic(Delegate p, Block block, string name)
+        {
+            this.block = block;
+            this.name = name;
+            setDelegate(p);
+        }  
 
         public string Name { get { return name; } }
 
@@ -36,12 +44,21 @@ namespace Compilator
             classAss = classs;
             isClassed = true;
             isFunctio = false;
+            isDelegat = false;
         }
         public void setFunction(Function functi)
         {
             functionAss = functi;
             isClassed = false;
             isFunctio = true;
+            isDelegat = false;
+        }
+        public void setDelegate(Delegate delagat)
+        {
+            delegateAss = delagat;
+            isClassed = false;
+            isFunctio = false;
+            isDelegat = true;
         }
 
         public override string Compile(int tabs = 0)

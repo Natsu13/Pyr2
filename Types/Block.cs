@@ -15,12 +15,22 @@ namespace Compilator
         public string blockClassTo = "";
         Block parent = null;
         SymbolTable symbolTable;        
-        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR, WHILE, PROPERTIES };
+        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR, WHILE, PROPERTIES, LAMBDA };
         BlockType type = BlockType.NONE;
-        public bool isInConstructor = false;
+        public bool _isInConstructor = false;
         public Import import = null;
         List<_Attribute> attributes = new List<_Attribute>();
         Token token = null;
+
+        public bool isInConstructor
+        {
+            get {
+                if (parent != null && !_isInConstructor)
+                    return parent.isInConstructor;
+                return _isInConstructor;
+            }
+            set { _isInConstructor = value; }
+        }
 
         public Block(Interpreter interpret, bool first = false, Token token = null)
         {
@@ -148,8 +158,20 @@ namespace Compilator
                 if(!(child is Class))
                     child.assingBlock = this;
                 string p = child.Compile((tabs > 0?tabs-2:tabs));
-                if(p != "")
-                    ret += tbs + p + "\n";
+                if (tabs != 0)
+                {
+                    if (p != "" && p.Substring(p.Length - 2, 1) != "\n")
+                        ret += tbs + "" + p.Replace("\n", "\n  ") + "\n";
+                    else if(p != "")
+                        ret += "" + p.Replace("\n", "\n  ") + "\n";
+                }
+                else
+                {
+                    if (p != "" && p.Substring(p.Length - 2, 1) != "\n")
+                        ret += tbs + p + "\n";
+                    else
+                        ret += p + "\n";
+                }
             }
             return ret;
         }

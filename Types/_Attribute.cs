@@ -48,11 +48,11 @@ namespace Compilator
 
         public override void Semantic()
         {
-            if (_class == null)
-                Interpreter.semanticError.Add(new Error("#600 Class "+ nclass.Value+" not found!", Interpreter.ErrorType.ERROR, nclass));
+            if (_class == null || _class is Error)
+                Interpreter.semanticError.Add(new Error("#600 Attribute "+ nclass.Value+" not found!", Interpreter.ErrorType.ERROR, nclass));
             else if (!((Class)_class).haveParent("Attribute"))
                 Interpreter.semanticError.Add(new Error("#601 Class " + nclass.Value + " must be Attribute!", Interpreter.ErrorType.ERROR, nclass));
-            uop.Semantic();
+            uop?.Semantic();
             plist?.Semantic();
         }
 

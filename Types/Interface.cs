@@ -17,6 +17,7 @@ namespace Compilator
         public Token _dynamic;
         public string JSName = "";
         public List<_Attribute> attributes;
+        List<string> genericArguments = new List<string>();
 
         public Interface(Token name, Block block, List<Token> parents)
         {
@@ -26,33 +27,63 @@ namespace Compilator
             {
                 this.block.blockAssignTo = name.Value;
                 this.block.blockClassTo = name.Value;
+                this.block.assingToType = this;
             }
             this.assingBlock = block;
             this.parents = parents;
         }
+
+        public void AddGenericArg(string name)
+        {
+            genericArguments.Add(name);
+        }
+        public void SetGenericArgs(List<string> list)
+        {
+            genericArguments = list;
+        }
+        public List<string> GenericArguments { get { return genericArguments; } }
+
         public Block Block { get { return block; } }
         public override string Compile(int tabs = 0)
         {
             if (!isExternal)
             {
                 string tbs = DoTabs(tabs);
-                string ret = tbs + "var " + name.Value + " = function(){";
+                string ret = tbs + "var " + getName() + " = function(){";
                 if (block.variables.Count != 0 || parents.Count != 0) ret += "\n";
                 foreach (Token parent in parents)
                 {
-                    ret += tbs + "\t" + parent.Value + ".call(this);\n";
+                    ret += tbs + "  " + parent.Value + ".call(this);\n";
                 }
                 foreach (KeyValuePair<string, Assign> var in block.variables)
                 {
                     //var.Key + " => ["+var.Value.GetType()+"] " + var.Value.GetVal()
                     if(var.Value.Right is Null)
-                        ret += tbs + "\tthis." + var.Key + " = '';\n";
+                        ret += tbs + "  this." + var.Key + " = '';\n";
                     else if (var.Value.GetType() == "string")
-                        ret += tbs + "\tthis." + var.Key + " = " + var.Value.Compile() + ";\n";
+                        ret += tbs + "  this." + var.Key + " = " + var.Value.Compile() + ";\n";
                     else
-                        ret += tbs + "\tthis." + var.Key + " = " + var.Value.GetVal() + ";\n";
+                        ret += tbs + "  this." + var.Key + " = " + var.Value.GetVal() + ";\n";
                 }
                 ret += tbs + "}\n";
+
+                ret += tbs + "var " + getName() + "$META = function(){\n";
+                ret += tbs + "  return {";
+                ret += "\n" + tbs + "    type: 'interface'" + (attributes.Count > 0 ? ", " : "");
+                if (attributes.Count > 0)
+                {
+                    ret += "\n" + tbs + "    attributes: {";
+                    int i = 0;
+                    foreach (_Attribute a in attributes)
+                    {
+                        ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
+                        i++;
+                    }
+                    ret += "\n" + tbs + "    },";
+                }
+                ret += "\n" + tbs + "  };\n";
+                ret += tbs + "};\n";
+
                 ret += block.Compile(tabs);
                 return ret;
             }
@@ -60,7 +91,20 @@ namespace Compilator
         }
 
         public Token Name { get { return name; } }
-        public string getName() { if (JSName == null) return name.Value; else return JSName; }
+        string _hash = "";
+        public string getHash()
+        {
+            if (assingBlock == null) assingBlock = block;
+            if (_hash == "")
+                _hash = string.Format("{0:X8}", (name.Value + genericArguments.GetHashCode() + block?.GetHashCode()).GetHashCode());
+            return _hash;
+        }
+
+        public string getName() {
+            if (assingBlock.SymbolTable.GetAll(name.Value).Count > 1)
+                return name.Value + "_" + getHash();
+            if (JSName == null || JSName == "") return name.Value; else return JSName; 
+        }        
         public override Token getToken() { return null; }
 
         public bool haveParent(string name)

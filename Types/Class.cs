@@ -10,7 +10,7 @@ namespace Compilator
     {
         Token name;
         public Block block;
-        List<Token> parents;
+        List<Types> parents;
         public bool isExternal = false;
         public Token _external;
         public bool isDynamic = false;
@@ -18,15 +18,19 @@ namespace Compilator
         public string JSName = "";
         List<string> genericArguments = new List<string>();
         public List<_Attribute> attributes = new List<_Attribute>();
+        public bool isForImport = false;
 
-        public Class(Token name, Block block, List<Token> parents)
+        public Class(Token name, Block block, List<Types> parents)
         {
             this.name = name;
             this.block = block;
+            this.block.assingToType = this;
             this.block.blockAssignTo = name.Value;
             this.block.blockClassTo = name.Value;
             this.assingBlock = block;
             this.parents = parents;
+            if (this.parents == null)
+                this.parents = new List<Types>();
         }
 
         public void AddGenericArg(string name)
@@ -40,20 +44,41 @@ namespace Compilator
         public List<string> GenericArguments { get { return genericArguments; } }
 
         public Token Name { get { return name; } }
-        public string getName() { if (JSName == null || JSName == "") return name.Value; else return JSName; }
+
+        string _hash = "";
+        public string getHash()
+        {
+            if (assingBlock == null) assingBlock = block;
+            if (_hash == "")
+                _hash = string.Format("{0:X8}", (name.Value + genericArguments.GetHashCode() + block?.GetHashCode()).GetHashCode());
+            return _hash;
+        }
+
+        public string getName() {
+            if (assingBlock.SymbolTable.GetAll(name.Value, true).Count > 1)
+                return name.Value + "_" + getHash();
+            if (JSName == null || JSName == "") return name.Value; else return JSName; 
+        }
         public override Token getToken() { return null; }
+
+        public Block Block { get { return block; } }
 
         public bool haveParent(string name)
         {
             if (parents == null) return false;
-            foreach (Token p in parents)
+            foreach (UnaryOp p in parents)
             {
-                if (p.Value == name) return true;
-                Types to = block.SymbolTable.Get(p.Value);
-                if (to is Class && ((Class)to).haveParent(name))
-                    return true;
-                else if (to is Interface && ((Interface)to).haveParent(name))
-                    return true;
+                var pp = assingBlock.SymbolTable.Get(p.Name.Value, genericArgs: p.genericArgments.Count);
+                if(pp is Class pc)
+                {
+                    if (pc.Name.Value == name) return true;
+                    if (pc.haveParent(name)) return true;
+                }
+                else if(pp is Interface pi)
+                {
+                    if (pi.Name.Value == name) return true;
+                    if (pi.haveParent(name)) return true;
+                }
             }
             return false;
         }        
@@ -61,53 +86,176 @@ namespace Compilator
         public override string Compile(int tabs = 0)
         {
             if (!isExternal)
-            {                
-                string tbs = DoTabs(tabs);
-                string ret = tbs + "var " + name.Value + " = function(){";
-                if (block.variables.Count != 0 || parents.Count != 0) ret += "\n";
-                foreach (string generic in genericArguments)
+            {
+                if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                 {
-                    block.SymbolTable.Add(generic, new Generic(this, block, generic));
-                    ret += tbs+"  this.generic$" + generic + " = null;\n";
-                }
-                foreach (Token parent in parents)
-                {
-                    ret += tbs + "  " + parent.Value + ".call(this);\n";
-                }
-                foreach (KeyValuePair<string, Assign> var in block.variables)
-                {
-                    if (var.Value.Right.getToken().type == Token.Type.NULL)
-                        ret += tbs + "  this." + var.Key + " = null;\n";
-                    else
-                        ret += tbs + "  this." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
-                }
-                foreach (Types type in block.children)
-                {
-                    if(type is Properties prop)
+                    string tbs = DoTabs(tabs);
+                    string ret = tbs + "var " + getName() + " = function(){";
+                    if (block.variables.Count != 0 || parents.Count != 0 || genericArguments.Count != 0) ret += "\n";
+                    foreach (string generic in genericArguments)
                     {
-                        ret += tbs + "  this.Property$" + prop.variable.TryVariable().Value + ".$self = this;\n";
+                        block.SymbolTable.Add(generic, new Generic(this, block, generic));
+                        ret += tbs + "  this.generic$" + generic + " = null;\n";
                     }
-                }
-                ret += tbs + "}\n";
-                
-                ret += tbs + "var " + name.Value + "$META = function(){\n";                    
-                ret += tbs + "  return {";
-                ret += "\n" + tbs + "    type: 'class'" + (attributes.Count > 0 ? ", " : "");
-                if (attributes.Count > 0)
-                {
-                    ret += "\n" + tbs + "    attributes: {";
-                    int i = 0;
-                    foreach (_Attribute a in attributes)
+                    foreach (UnaryOp parent in parents)
                     {
-                        ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
-                        i++;
+                        if (assingBlock.SymbolTable.Find(parent.Name.Value))
+                        {
+                            Types inname = assingBlock.SymbolTable.Get(parent.Name.Value, genericArgs: parent.genericArgments.Count);
+                            if (inname is Interface)
+                                ret += tbs + "  " + ((Interface)inname).getName() + ".call(this);\n";
+                            else if (inname is Class)
+                                ret += tbs + "  " + ((Class)inname).getName() + ".call(this);\n";
+                        }
                     }
-                    ret += "\n" + tbs + "    },";
+                    foreach (KeyValuePair<string, Assign> var in block.variables)
+                    {
+                        if (var.Value.isStatic) continue;
+                        if (var.Value.Right.getToken().type == Token.Type.NULL)
+                        {
+                            if (var.Value.Left is Variable vari)
+                            {
+                                if (block.SymbolTable.Get(vari.Type) is Delegate)
+                                    ret += tbs + "  this.delegate$" + var.Key + " = null;\n";
+                                else
+                                    ret += tbs + "  this." + var.Key + " = null;\n";
+                            }
+                            else
+                                ret += tbs + "  this." + var.Key + " = null;\n";
+                        }
+                        else
+                        {
+                            if (var.Value.Left is Variable vari)
+                            {
+                                if (block.SymbolTable.Get(vari.Type) is Delegate)
+                                    ret += tbs + "  this.delegate$" + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                                else
+                                    ret += tbs + "  this." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                            }
+                            else
+                                ret += tbs + "  this." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                        }
+                    }
+                    foreach (Types type in block.children)
+                    {
+                        if (type is Properties prop)
+                        {
+                            ret += tbs + "  this.Property$" + prop.variable.TryVariable().Value + ".$self = this;\n";
+                        }
+                    }
+                    ret += tbs + "}\n";
+
+
+                    foreach (KeyValuePair<string, Assign> var in block.variables)
+                    {
+                        if (!var.Value.isStatic) continue;
+                        if (var.Value.Right.getToken().type == Token.Type.NULL)
+                            ret += tbs + "" + getName() + "." + var.Key + " = null;\n";
+                        else
+                            ret += tbs + "" + getName() + "." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                    }
+                    ret += tbs + "\n";
+
+                    ret += tbs + "var " + getName() + "$META = function(){\n";
+                    ret += tbs + "  return {";
+                    ret += "\n" + tbs + "    type: 'class'" + (attributes.Count > 0 ? ", " : "");
+                    if (attributes.Count > 0)
+                    {
+                        ret += "\n" + tbs + "    attributes: {";
+                        int i = 0;
+                        foreach (_Attribute a in attributes)
+                        {
+                            ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
+                            i++;
+                        }
+                        ret += "\n" + tbs + "    },";
+                    }
+                    ret += "\n" + tbs + "  };\n";
+                    ret += tbs + "};\n";
+                    ret += block.Compile(tabs, true);
+                    return ret;
                 }
-                ret += "\n" + tbs + "  };\n";            
-                ret += tbs + "};\n";                
-                ret += block.Compile(tabs, true);
-                return ret;
+                else if(Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
+                {
+                    string tbs = DoTabs(tabs-1);
+                    string ret = tbs + "class " + getName();
+                    bool frst = true;
+                    foreach (UnaryOp parent in parents)
+                    {
+                        if(frst)
+                        {
+                            ret += ", ";
+                            frst = false;
+                        }
+                        if (assingBlock.SymbolTable.Find(parent.Name.Value))
+                        {
+                            Types inname = assingBlock.SymbolTable.Get(parent.Name.Value, genericArgs: parent.genericArgments.Count);
+                            if (inname is Interface)
+                                ret += ((Interface)inname).getName();
+                            else if (inname is Class)
+                                ret += ((Class)inname).getName();
+                        }
+                    }
+                    ret += ":";
+                    if (block.variables.Count != 0 || parents.Count != 0 || genericArguments.Count != 0) ret += "\n";
+                    ret += tbs + "  def __init__(self):\n";
+                    foreach (string generic in genericArguments)
+                    {
+                        block.SymbolTable.Add(generic, new Generic(this, block, generic));
+                        ret += tbs + "    self.generic__" + generic + " = None;\n";
+                    }
+                    
+                    foreach (KeyValuePair<string, Assign> var in block.variables)
+                    {
+                        if (var.Value.isStatic) continue;
+                        if (var.Value.Right.getToken().type == Token.Type.NULL)
+                        {
+                            if (var.Value.Left is Variable vari)
+                            {
+                                if (block.SymbolTable.Get(vari.Type) is Delegate)
+                                    ret += tbs + "    self.delegate__" + var.Key + " = None;\n";
+                                else
+                                    ret += tbs + "    self." + var.Key + " = None;\n";
+                            }
+                            else
+                                ret += tbs + "    self." + var.Key + " = None;\n";
+                        }
+                        else
+                        {
+                            if (var.Value.Left is Variable vari)
+                            {
+                                if (block.SymbolTable.Get(vari.Type) is Delegate)
+                                    ret += tbs + "    self.delegate__" + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                                else
+                                    ret += tbs + "    self." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                            }
+                            else
+                                ret += tbs + "    self." + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                        }
+                    }
+                    foreach (Types type in block.children)
+                    {
+                        if (type is Properties prop)
+                        {
+                            ret += tbs + "    self.Property__" + prop.variable.TryVariable().Value + ".__self = self;\n";
+                        }
+                    }
+                    ret += tbs + "\n";
+
+
+                    foreach (KeyValuePair<string, Assign> var in block.variables)
+                    {
+                        if (!var.Value.isStatic) continue;
+                        if (var.Value.Right.getToken().type == Token.Type.NULL)
+                            ret += tbs + "  " + var.Key + " = None;\n";
+                        else
+                            ret += tbs + "  " + var.Key + " = " + var.Value.Right.Compile() + ";\n";
+                    }
+                    ret += tbs + "\n";
+                    
+                    ret += block.Compile(tabs+1, true);
+                    return ret;
+                }
             }
             return "";
         }        
@@ -132,6 +280,8 @@ namespace Compilator
 
         public Token OutputType(string op, object a, object b)
         {
+            if (op == "dot" || op == ".")
+                return Name;
             if(block.SymbolTable.Find("operator " + op))
             {
                 Types t = block.SymbolTable.Get("operator " + op);
@@ -144,6 +294,8 @@ namespace Compilator
         }
         public bool SupportOp(string op)
         {
+            if (op == "dot" || op == ".")
+                return true;
             if (block.SymbolTable.Find("operator " + op))
             {
                 Types t = block.SymbolTable.Get("operator " + op);
@@ -156,6 +308,8 @@ namespace Compilator
         }
         public bool SupportSecond(string op, object second, object secondAsVariable)
         {
+            if (op == "dot" || op == ".")
+                return true;
             if (block.SymbolTable.Find("operator " + op))
             {
                 Types t = block.SymbolTable.Get("operator " + op);

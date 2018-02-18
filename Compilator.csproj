@@ -35,6 +35,9 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -43,15 +46,20 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+    <Reference Include="websocket-sharp, Version=1.0.2.59611, Culture=neutral, PublicKeyToken=5660b08a1845a91e, processorArchitecture=MSIL">
+      <HintPath>..\packages\WebSocketSharp.1.0.3-rc11\lib\websocket-sharp.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="InternalTypes\TypeBool.cs" />
     <Compile Include="InternalTypes\TypeInt.cs" />
     <Compile Include="InternalTypes\TypeObject.cs" />
     <Compile Include="InternalTypes\TypeString.cs" />
+    <Compile Include="Service.cs" />
     <Compile Include="Types\Assign.cs" />
     <Compile Include="Types\Block.cs" />
     <Compile Include="Types\Class.cs" />
+    <Compile Include="Types\Delegate.cs" />
     <Compile Include="Types\For.cs" />
     <Compile Include="Types\Function.cs" />
     <Compile Include="Types\Generic.cs" />
@@ -82,6 +90,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

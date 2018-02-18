@@ -11,7 +11,7 @@ namespace Compilator
         public string Name { get { return "object"; } }
         public virtual bool SupportOp(string op)
         {
-            if (op == "==" || op == "!=" || op == "is" || op == "get")
+            if (op == "==" || op == "!=" || op == "is" || op == "get" || op == ".")
                 return true;
             return false;
         }

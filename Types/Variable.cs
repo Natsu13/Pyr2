@@ -25,8 +25,9 @@ namespace Compilator
         public int arraySize = 0;
         public bool isDateType = false;
         bool getFoundButBadArgs = false;
+        List<string> generic = new List<string>();
 
-        public Variable(Token token, Types block, Token dateType = null)
+        public Variable(Token token, Types block, Token dateType = null, List<string> generic = null)
         {
             this.block = (Block)block;
             this.token = token;
@@ -34,6 +35,8 @@ namespace Compilator
             if (dateType == null)
                 dateType = new Token(Token.Type.AUTO, "auto");
             this.dateType = dateType;
+            if(generic != null)
+                this.generic = generic;
             
             if (this.dateType.Value != "auto" && this.block != null)
             {
@@ -65,6 +68,15 @@ namespace Compilator
                     Type type = this.block.SymbolTable.GetType(dateType.Value);
                     _class = (TypeObject)Activator.CreateInstance(type);
                 }
+                else if (this.block.SymbolTable.Find(dateType.Value))
+                {
+                    _class = null;
+                    Types fic = this.block.SymbolTable.Get(dateType.Value);
+                    if (fic is Class)
+                        class_ = (Class)fic;
+                    else if (fic is Interface)
+                        inter_ = (Interface)fic;
+                }
             }
         }
         public Token  getType() { return dateType; }
@@ -76,6 +88,7 @@ namespace Compilator
         public bool   IsKey { get { return isKey; } }
         public Types  Key { get { return key; } }
         public void MadeArray(bool isArray) { isArray = true; }
+        public List<string> GenericList { get { return generic; } }
 
         public Token AsDateType
         {
@@ -87,9 +100,15 @@ namespace Compilator
                     _class = null;
                     Types fic = this.block.SymbolTable.Get(dateType.Value);
                     if (fic is Class)
+                    {
                         class_ = (Class)fic;
+                        dateType = class_.Name;
+                    }
                     else if (fic is Interface)
+                    {
                         inter_ = (Interface)fic;
+                        dateType = inter_.Name;
+                    }
                 }
                 asDateType = value;
             }
@@ -141,19 +160,24 @@ namespace Compilator
                 Types fvar = this.block.FindVariable(newname);
                 if (this.block.SymbolTable.Find(newname))
                 {
-                    if(this.block.SymbolTable.Get(newname) is Generic)
+                    Types t = this.block.SymbolTable.Get(newname);
+                    if(t is Generic)
                     {
                         this.dateType = new Token(Token.Type.CLASS, "object");
                     }
-                    else if (this.block.SymbolTable.Get(newname) is Properties prop)
+                    else if (t is Properties prop)
                     {
                         this.dateType = prop.variable.TryVariable().dateType;
                     }
-                    else if (((Assign)this.block.SymbolTable.Get(newname)).Right is UnaryOp)
+                    else if (t is Function tf)
                     {
-                        if (((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Op == "call")
+                        this.dateType = tf.Returnt;
+                    }
+                    else if (t is Assign && ((Assign)t).Right is UnaryOp)
+                    {
+                        if (((UnaryOp)((Assign)t).Right).Op == "call")
                         {
-                            Token fname = ((UnaryOp)((Assign)this.block.SymbolTable.Get(newname)).Right).Name;
+                            Token fname = ((UnaryOp)((Assign)t).Right).Name;
                             Types sd = this.block.SymbolTable.Get(fname.Value);
                             if (!(sd is Error))
                             {
@@ -161,10 +185,14 @@ namespace Compilator
                                 this.dateType = f.Returnt;
                             }
                         }else
-                            this.dateType = ((Variable)(((Assign)this.block.SymbolTable.Get(newname)).Left)).dateType;
+                            this.dateType = ((Variable)(((Assign)t).Left)).dateType;
+                    }
+                    else if (t is Variable)
+                    {
+                        this.dateType = ((Variable) t).dateType;
                     }
                     else
-                        this.dateType = ((Variable)(((Assign)this.block.SymbolTable.Get(newname)).Left)).dateType;
+                        this.dateType = ((Variable)(((Assign)t).Left)).dateType;
                 }
                 else if (fvar != null)
                 {
@@ -193,6 +221,8 @@ namespace Compilator
                     }                    
                 }
             }
+            if (this.dateType == null)
+                this.dateType = new Token(Token.Type.AUTO, "auto");
             if (this.dateType.Value != "auto")
             {
                 if (this.block.SymbolTable.FindInternal(dateType.Value))
@@ -212,10 +242,15 @@ namespace Compilator
                 }
             }
         }
-        
+
         public override string Compile(int tabs = 0)
         {
-            if(key != null)
+            return CompileHard(tabs, null);
+        }
+
+        public string CompileHard(int tabs = 0, Types ti = null)
+        {
+            if (key != null)
                 key.endit = false;
 
             string vname = "";
@@ -228,64 +263,177 @@ namespace Compilator
             else if (_class != null)
                 nameclass = _class.Name;
 
-            var t__ = "this" + (Value == "this"?"":".");
-            if (assingBlock != null && assingBlock.isType(Block.BlockType.PROPERTIES))
-                t__ = "this.$self" + (Value == "this"?"":".");
-
-            var not = Value;
-
-            if (Value.Split('.')[0] == "this")
+            if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
             {
-                not = t__ + string.Join(".", value.Split('.').Skip(1));
-                vname = string.Join(".", value.Split('.').Skip(1)) + (isKey ? "[" + key.Compile() + "]" : "");
+                var t__ = "this" + (Value == "this" ? "" : ".");
+                if (assingBlock != null && assingBlock.isType(Block.BlockType.PROPERTIES))
+                    t__ = "this.$self" + (Value == "this" ? "" : ".");
+                if (value.Split('.')[0] != "this")
+                    t__ = "";
+                if (value.Contains("."))
+                    t__ = value.Split('.')[0] + ".";
 
-                if (block.isInConstructor)
+                var not = Value;
+                var withouthis = Value;
+                if (value.Contains("."))
+                    withouthis = string.Join(".", value.Split('.').Skip(1));
+
+                if (Value.Split('.')[0] == "this")
                 {
-                    if(block.SymbolTable.Get(this.value) is Properties)
-                    {
-                        if (asDateType != null)
-                            return DoTabs(tabs) + (inParen ? "(" : "") + "($this.Property$" + vname + "_getter().constructor.name == '" + nameclass + "' ? $this.Property$" + vname + "_getter() : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
-                        return DoTabs(tabs) + (inParen ? "(" : "") + "$this.Property$" + string.Join(".", value.Split('.').Skip(1)) + "_getter()" + (isKey ? "["+key.Compile()+"]" : "") + (inParen ? ")" : "");
-                    }
-                    if (asDateType != null)
-                        return DoTabs(tabs) + (inParen ? "(" : "") + "($this." + vname + ".constructor.name == '" + nameclass + "' ? $this." + vname + " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
-                    return DoTabs(tabs) + (inParen ? "(" : "") + "$this." + string.Join(".", value.Split('.').Skip(1)) + (isKey ? "["+key.Compile()+"]" : "") + (inParen ? ")" : "");
-                }
-            }
+                    not = t__ + string.Join(".", value.Split('.').Skip(1));
+                    vname = string.Join(".", value.Split('.').Skip(1)) + (isKey ? "[" + key.Compile() + "]" : "");
 
-            if (block.SymbolTable.Get(this.value) is Generic)
-                vname = t__ + "generic$" + Value + (isKey ? "[" + key.Compile() + "]" : "");
-            else if (block.SymbolTable.Get(this.value) is Properties)
-            {              
-                if (value.Split('.')[0] == "this")
-                {                    
-                    vname = t__ + ".Property$" + string.Join(".", value.Split('.').Skip(1)) + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
+                    if (block.isInConstructor)
+                    {
+                        if (block.SymbolTable.Get(this.value) is Properties)
+                        {
+                            if (asDateType != null)
+                                return DoTabs(tabs) + (inParen ? "(" : "") + "($this.Property$" + vname + ".get().constructor.name == '" + nameclass + "' ? $this.Property$" + vname + ".get() : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
+                            return DoTabs(tabs) + (inParen ? "(" : "") + "$this.Property$" + string.Join(".", value.Split('.').Skip(1)) + ".get()" + (isKey ? "[" + key.Compile() + "]" : "") + (inParen ? ")" : "");
+                        }
+                        if (asDateType != null)
+                            return DoTabs(tabs) + (inParen ? "(" : "") + "($this." + vname + ".constructor.name == '" + nameclass + "' ? $this." + vname + " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
+                        return DoTabs(tabs) + (inParen ? "(" : "") + "$this." + string.Join(".", value.Split('.').Skip(1)) + (isKey ? "[" + key.Compile() + "]" : "") + (inParen ? ")" : "");
+                    }
+                }
+
+                Types t = ti ?? block.SymbolTable.Get(value, Type);
+                if (t is Generic)
+                    vname = t__ + "generic$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+                else if (t is Assign ta && ta.Left is Variable tav && tav.Type != "object")
+                {
+                    if(tav.Type == "auto")
+                        tav.Check();
+                    Types tavt = block.SymbolTable.Get(tav.Type, genericArgs: tav.genericArgs.Count);
+                    if (tavt is Delegate)
+                    {
+                        vname = t__ + "delegate$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+                    }
+                    else
+                    {
+                        vname = not + (isKey ? "[" + key.Compile() + "]" : "");
+                    }
+                }
+                else if (t is Properties)
+                {
+                    if (value.Split('.')[0] == "this")
+                    {
+                        vname = t__ + ".Property$" + string.Join(".", value.Split('.').Skip(1)) + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
+                    }
+                    else
+                        vname = t__ + ".Property$" + Value + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
                 }
                 else
-                    vname = t__ + ".Property$" + Value + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
-            }
-            else
-            {
-                vname = not + (isKey ? "[" + key.Compile() + "]" : "");
-            }
-            if (dateType.Value == "auto")
-                Check();
-            if (class_ != null && isKey)
-            {
-                ParameterList plist = new ParameterList(false);
-                plist.Parameters.Add(key);
-                Types oppq = class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(Token.Type.GET), plist);
-                if (!(oppq is Error))
                 {
-                    Function opp = (Function)oppq;
-                    if (!opp.isExternal)
-                        vname = not + "." + opp.Name + "(" + key.Compile() + ")";
+                    vname = not + (isKey ? "[" + key.Compile() + "]" : "");
                 }
-                else if(oppq is Error && ((Error)oppq).Message == "Found but arguments are bad!") getFoundButBadArgs = true;
+                if (dateType.Value == "auto")
+                    Check();
+                if (class_ != null && isKey)
+                {
+                    ParameterList plist = new ParameterList(false);
+                    plist.Parameters.Add(key);
+                    Types oppq = class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(Token.Type.GET), plist);
+                    if (!(oppq is Error))
+                    {
+                        Function opp = (Function)oppq;
+                        if (!opp.isExternal)
+                            vname = not + "." + opp.Name + "(" + key.Compile() + ")";
+                    }
+                    else if (oppq is Error && ((Error)oppq).Message == "Found but arguments are bad!") getFoundButBadArgs = true;
+                }
+                if (asDateType != null)
+                    return DoTabs(tabs) + (inParen ? "(" : "") + "(" + vname + ".constructor.name == '" + nameclass + "' ? " + vname + " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
+                return DoTabs(tabs) + (inParen ? "(" : "") + vname + (inParen ? ")" : "");
             }
-            if (asDateType != null)
-                return DoTabs(tabs) + (inParen ? "(" : "") + "(" + vname + ".constructor.name == '" + nameclass + "' ? "+vname+ " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
-            return DoTabs(tabs) + (inParen ? "(" : "") + vname + (inParen ? ")" : "");
+            else if(Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
+            {
+                var t__ = "self" + (Value == "this" ? "" : ".");
+                if (assingBlock != null && assingBlock.isType(Block.BlockType.PROPERTIES))
+                    t__ = "self.__self" + (Value == "this" ? "" : ".");
+                if (value.Split('.')[0] != "this")
+                    t__ = "";
+                if (value.Contains("."))
+                    t__ = value.Split('.')[0] + ".";
+
+                var not = Value;
+                var withouthis = Value;
+                if (value.Contains("."))
+                    withouthis = string.Join(".", value.Split('.').Skip(1));
+
+                if (Value.Split('.')[0] == "this")
+                {
+                    not = t__ + string.Join(".", value.Split('.').Skip(1));
+                    vname = string.Join(".", value.Split('.').Skip(1)) + (isKey ? "[" + key.Compile() + "]" : "");
+
+                    if (block.isInConstructor)
+                    {
+                        if (block.SymbolTable.Get(this.value) is Properties)
+                        {
+                            if (asDateType != null)
+                                return DoTabs(tabs) + (inParen ? "(" : "") + "(self.Property__" + vname + ".get().constructor.name == '" + nameclass + "' ? self.Property__" + vname + ".get() : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
+                            return DoTabs(tabs) + (inParen ? "(" : "") + "self.Property__" + string.Join(".", value.Split('.').Skip(1)) + ".get()" + (isKey ? "[" + key.Compile() + "]" : "") + (inParen ? ")" : "");
+                        }
+                        if (asDateType != null)
+                            return DoTabs(tabs) + (inParen ? "(" : "") + "(self." + vname + ".constructor.name == '" + nameclass + "' ? self." + vname + " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
+                        return DoTabs(tabs) + (inParen ? "(" : "") + "self." + string.Join(".", value.Split('.').Skip(1)) + (isKey ? "[" + key.Compile() + "]" : "") + (inParen ? ")" : "");
+                    }
+                }
+
+                Types t = block.SymbolTable.Get(this.value);
+                if (t is Generic)
+                    vname = t__ + "generic__" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+                else if (t is Assign ta && ta.Left is Variable tav && tav.Type != "object")
+                {
+                    Types tavt = block.SymbolTable.Get(tav.Type, genericArgs: tav.genericArgs.Count);
+                    if (tavt is Delegate)
+                    {
+                        vname = t__ + "delegate__" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+                    }
+                    else
+                    {
+                        vname = not + (isKey ? "[" + key.Compile() + "]" : "");
+                    }
+                }
+                else if (t is Properties)
+                {
+                    if (value.Split('.')[0] == "this")
+                    {
+                        vname = t__ + ".Property__" + string.Join(".", value.Split('.').Skip(1)) + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
+                    }
+                    else
+                        vname = t__ + ".Property__" + Value + ".get()" + (isKey ? "[" + key.Compile() + "]" : "");
+                }
+                else
+                {
+                    vname = not + (isKey ? "[" + key.Compile() + "]" : "");
+                }
+                if (dateType.Value == "auto")
+                    Check();
+                if (class_ != null && isKey)
+                {
+                    ParameterList plist = new ParameterList(false);
+                    plist.Parameters.Add(key);
+                    Types oppq = class_.block.SymbolTable.Get("operator " + Variable.GetOperatorNameStatic(Token.Type.GET), plist);
+                    if (!(oppq is Error))
+                    {
+                        Function opp = (Function)oppq;
+                        if (!opp.isExternal)
+                            vname = not + "." + opp.Name + "(" + key.Compile() + ")";
+                    }
+                    else if (oppq is Error && ((Error)oppq).Message == "Found but arguments are bad!") getFoundButBadArgs = true;
+                }
+                if (asDateType != null)
+                    return DoTabs(tabs) + (inParen ? "(" : "") + "(" + vname + ".constructor.name == '" + nameclass + "' ? " + vname + " : alert('Variable " + vname + " is not type " + asDateType.Value + "'))" + (inParen ? ")" : "");
+                return DoTabs(tabs) + (inParen ? "(" : "") + vname + (inParen ? ")" : "");
+            }
+
+            return "";
+        }
+
+        public override string ToString()
+        {
+            return "Variable("+Type+", Value: "+Value+")";
         }
 
         public override int Visit()
@@ -313,6 +461,8 @@ namespace Compilator
             if (op == Token.Type.DEC)       o = "--";
             if (op == Token.Type.DIV)       o = "/";
             if (op == Token.Type.MUL)       o = "*";
+
+            if (op == Token.Type.DOT)       o = ".";
             if (op == Token.Type.NEW)       o = "new";
             if (op == Token.Type.RETURN)    o = "return";
             if (op == Token.Type.CALL)      o = "call";
@@ -338,6 +488,7 @@ namespace Compilator
             if (op == Token.Type.MORE)      o = "compareTo";
             if (op == Token.Type.LESS)      o = "compareTo";
 
+            if (op == Token.Type.DOT)       o = "dot";
             if (op == Token.Type.PLUS)      o = "plus";
             if (op == Token.Type.INC)       o = "inc";            
             if (op == Token.Type.MINUS)     o = "minus";

@@ -11,8 +11,10 @@ namespace Compilator
         Variable name;
         Types expresion;
         ParameterList plist;
+        public Types predicate = null;
         public bool isInArgumentList = false;
         public bool isCallInArgument = false;
+        public bool isNormalLambda = false;        
         //bool isDeclare = false;
 
         public Lambda(Variable name, Types expresion, ParameterList plist)
@@ -30,17 +32,58 @@ namespace Compilator
             }
         }
 
+        public Lambda(ParameterList plist, Types block)
+        {
+            this.plist = plist;
+            this.expresion = block;
+            isNormalLambda = true;
+        }
+
         public ParameterList ParameterList { get { return plist; } }
 
         public override string Compile(int tabs = 0)
-        {            
-            if(isInArgumentList)
-                return "lambda$" + name.Value;
-            if (isCallInArgument)
+        {
+            if (isNormalLambda)
             {
-                return "function("+plist.Compile()+"){ return "+ expresion.Compile() + "; }";
+                string tbs = DoTabs(tabs);
+                string ret = "";
+                if (plist.assingToType == null)
+                    plist.assingToType = predicate;
+                if (plist.assingBlock == null)
+                    plist.assingBlock = assingBlock;
+                if (plist.assingToToken == null)
+                    plist.assingToToken = assingToToken;
+                ret += "function(" + plist.Compile() + ")";                
+                expresion.assingToType = this;
+                if (expresion is Block block)
+                {
+                    foreach (var v in plist.Parameters)
+                    {
+                        if (v is Variable va)
+                        {
+                            block.SymbolTable.Add(va.Value, va);
+                        }
+                    }
+                    ret += "{";
+                    ret += "\n" + expresion.Compile(tabs + 2);
+                    ret +=  tbs + "}";
+                }
+                else
+                    ret += "{ return " + expresion.Compile() + "; }";
+                return ret;
             }
-            return DoTabs(tabs) + "var lambda$" + name.Value + " = function("+plist.Compile()+"){ return " + expresion.Compile() + "; };";
+            else
+            {
+                if (isInArgumentList)
+                    return "lambda$" + name.Value;
+                if (isCallInArgument)
+                {
+                    return "function(" + plist.Compile() + "){ return " + expresion.Compile() + "; }";
+                }
+                if (name.Value.Contains("."))
+                    return DoTabs(tabs) + "var " + string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1)) + ".lambda$" + name.Value.Split('.').Skip(name.Value.Split('.').Length - 1) + " = function(" + plist.Compile() + "){ return " + expresion.Compile() + "; };";
+                return DoTabs(tabs) + "var lambda$" + name.Value + " = function(" + plist.Compile() + "){ return " + expresion.Compile() + "; };";
+            }
         }
 
         public string RealName { get { return getToken()?.Value; } }

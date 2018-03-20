@@ -157,13 +157,24 @@ namespace Compilator
                 child.assignTo = (assingBlock == null?blockAssignTo:assingBlock.assignTo);    
                 if(!(child is Class))
                     child.assingBlock = this;
-                string p = child.Compile((tabs > 0?tabs-2:tabs));
+                string p = child.Compile(0);
                 if (tabs != 0)
                 {
+                    var returntab = "";
+                    if (p != "")
+                    {
+                        foreach (var s in p.Split('\n'))
+                        {
+                            returntab += (returntab == "" ? s : (s.Trim() == s ? tbs + s : s)) + "\n";
+                        }
+
+                        p = returntab.Substring(returntab.Length - 1) == "\n" ? returntab.Substring(0, returntab.Length - 1) : returntab;
+                    }
+
                     if (p != "" && p.Substring(p.Length - 2, 1) != "\n")
-                        ret += tbs + "" + p.Replace("\n", "\n  ") + "\n";
+                        ret += tbs + p + "\n";
                     else if(p != "")
-                        ret += "" + p.Replace("\n", "\n  ") + "\n";
+                        ret += p + "\n";
                 }
                 else
                 {

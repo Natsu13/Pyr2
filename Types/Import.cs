@@ -21,22 +21,40 @@ namespace Compilator
         {
             __block = _block;
             this._as = _as;
-            string dir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
+            var dir = Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             this.import = whatimpot;
 
             assingBlock = _block;
+            var module = GetModule();
             
-            if (_block.SymbolTable.Find(GetModule()))
+            if (_block.SymbolTable.Find(module))
             {
-                _ihaveit = _block.SymbolTable.Get(GetModule());   
+                _ihaveit = _block.SymbolTable.Get(module);   
             }
+
+            if (inter != null && _ihaveit == null && inter.parent != null)
+            {
+                var find = inter.parent.MainBlock.SymbolTable.Find(module);
+                if(find)
+                    _ihaveit = inter.parent.MainBlock.SymbolTable.Get(module);   
+            }
+
+            if (inter != null && _ihaveit == null && inter.parent != null)
+            {
+                var mod = inter.parent.FindImport(module);
+                if (mod)
+                {
+                    _ihaveit = inter.parent.GetImport(module);
+                }
+            }
+
             string path = whatimpot.Value.Replace('.', '\\');
             if (File.Exists(dir + "\\" + Program.projectFolder + @"\" + path + ".p"))
             {
                 found = true;
                 if (_ihaveit == null)
                 {
-                    string code = File.ReadAllText(dir + "\\" + Program.projectFolder + @"\" + path + ".p");
+                    string code = File.ReadAllText(dir + "\\" + Program.projectFolder + @"\" + path + ".p");                    
                     interpret = new Interpreter(code, "" + path + ".p", inter);
                     interpret.isConsole = inter.isConsole;
                     block = (Block)interpret.Interpret();
@@ -55,15 +73,13 @@ namespace Compilator
                             }
                             else
                             {
-                                Block b = new Block(_block.Interpret);
+                                //Block b = new Block(_block.Interpret);
+                                Block b = block;
                                 b.Parent = ___block;
                                 Class c = new Class(new Token(Token.Type.ID, part), b, null) { isForImport = true };
                                 c.assignTo = part;
                                 c.block.SymbolTable.isForImport = true;
-                                if(beforeblock != null)
-                                {
-                                    beforeblock.SymbolTable.Add(part, c);
-                                }
+                                beforeblock?.SymbolTable.Add(part, c, true);
                                 if (beforeblock != ___block)
                                 {                                    
                                     ___block.SymbolTable.Add(part, c);
@@ -73,9 +89,9 @@ namespace Compilator
                                 ___block = b;
                             }
                         }
-                        if (!___block.SymbolTable.Find(GetModule()))
+                        if (!___block.SymbolTable.Find(module))
                         {
-                            ___block.SymbolTable.Add(GetModule(), this, true);
+                            ___block.SymbolTable.Add(module, this, true);
                             //block.SymbolTable.Copy(whatimpot.Value.Split('.').Last(), _as);
                         }
                     }
@@ -122,7 +138,13 @@ namespace Compilator
         }
         public Block Block { get { return (block??__block); } }
         public override Token getToken() { return import; }
-        public string GetName() { return string.Join(".", import.Value.Split('.').Take(import.Value.Split('.').Length - 1)); }
+        public string GetName()
+        {
+            var name = string.Join(".", import.Value.Split('.').Take(import.Value.Split('.').Length - 1));
+            if (string.IsNullOrEmpty(name))
+                return GetModule();
+            return name;
+        }
         public string GetModule() { return import.Value.Split('.').Last(); }
 
         public override string Compile(int tabs = 0)
@@ -144,7 +166,7 @@ namespace Compilator
             else
             {
                 outcom = "\n" + tbs + "//Imported " + import.Value + "\n";
-                if (n.Where(c => c == '.').Count() > 0)
+                if (n.Count(c => c == '.') > 0)
                     outcom += tbs + n + " = function (_, __){\n  'use strict';\n";
                 else
                     outcom += tbs + "var " + n + " = function (_, __){\n  'use strict';\n";
@@ -165,6 +187,8 @@ namespace Compilator
                         continue;
                     if (t.Value is Delegate)
                         continue;
+                    if (t.Value is Generic)
+                        continue;
                     if (t.Value is Function tf)
                     {
                         outcom += "  _." + tf.Name + " = " + tf.Name + ";\n";
@@ -179,7 +203,7 @@ namespace Compilator
                         }
                         if (tc.isForImport)
                         {
-                            outcom += Program.DrawClassInside(tc, tc.getName(), exposed);
+                            outcom += Program.DrawClassInside(tc, tc.getName(), exposed, import.Value);
                         }
                     }
                     else if (t.Value is Interface ti)

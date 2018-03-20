@@ -380,7 +380,7 @@ namespace Compilator
                 }
 
                 if (block != null)
-                    ret += block.Compile(tabs + 1);
+                    ret += block.Compile(tabs+1);
                 if (isConstructor && Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                 {
                     ret += tbs + "  return $this;\n";

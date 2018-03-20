@@ -32,11 +32,11 @@ namespace Compilator
         public Dictionary<string, Import> imports = new Dictionary<string, Import>();
 
         /// Interpret settings
-        public static bool _REDECLARATION =     false;      //If you enable redeclaration
+        public static readonly bool _REDECLARATION =     false;      //If you enable redeclaration
         [Obsolete("Please use attribute [OnPageLoad]")] 
-        public static bool _WAITFORPAGELOAD =   false;      //If you want call main in window.onload
-        public static bool _WRITEDEBUG =        false;      //If you want with faul write the output to file
-        public static bool _DEBUG =             false;      //If you want stop at compiling when you use attribute debug
+        public static readonly bool _WAITFORPAGELOAD =   false;      //If you want call main in window.onload
+        public static readonly bool _WRITEDEBUG =        false;      //If you want with faul write the output to file
+        public static readonly bool _DEBUG =             false;      //If you want stop at compiling when you use attribute debug
 
         /// Language settings
         public enum     LANGUAGES { JAVASCRIPT, CSHARP, PYTHON, PHP, CPP };
@@ -44,12 +44,14 @@ namespace Compilator
         public static bool isForExport = false;
         public Interpreter parent = null;
 
+        public Block MainBlock { get; }
+
         public static int counterId = 1;
         public int _uid;
 
         public int UID { get { return _uid; } }
 
-        public Interpreter(string text, string filename = "", Interpreter parent = null, string projectFolder = "")
+        public Interpreter(string text, string filename = "", Interpreter parent = null, string projectFolder = "", Block parent_block = null)
         {
             _uid = counterId;
             counterId++;
@@ -68,6 +70,8 @@ namespace Compilator
             current_file = filename;
             current_block = new Block(this, true);
             current_block.SymbolTable.initialize();
+            MainBlock = current_block;
+            //current_block.Parent = parent_block;
             current_token = GetNextToken();            
         }
 
@@ -1025,7 +1029,11 @@ namespace Compilator
             else
             {
                 i = new Import(im, current_block, this);
-                imports.Add(i.GetName()+"."+i.GetModule(), i);
+                var name = i.GetName();
+                if(string.IsNullOrEmpty(name) || i.GetName() == i.GetModule())
+                    imports.Add(i.GetModule(), i);
+                else
+                    imports.Add(i.GetName()+"."+i.GetModule(), i);
             }            
 
             return i;

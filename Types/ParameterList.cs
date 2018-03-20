@@ -140,9 +140,10 @@ namespace Compilator
                     argDefined[argNamed[i]] = true;
 
                 par.endit = false;
-                if (par is Variable && assingBlock != null && !assingBlock.variables.ContainsKey(((Variable)par).Value))
-                {
-                    assingBlock.variables.Add(((Variable)par).Value, new Assign(((Variable)par), new Token(Token.Type.ASIGN, '='), new Null()));                    
+                if (assingBlock != null && par is Variable && !assingBlock.variables.ContainsKey(((Variable)par).Value))
+                {                    
+                    par.assingBlock = assingBlock;
+                    var assign = new Assign(((Variable) par), new Token(Token.Type.ASIGN, '='), new Null(), assingBlock);
                 }
                 else if(par is Assign && assingBlock != null && !assingBlock.variables.ContainsKey(((Assign)par).Left.TryVariable().Value))
                 {
@@ -180,7 +181,7 @@ namespace Compilator
                         if (foundvar is Assign foundAssign)
                         {
                             var mydelegate = assingBlock.SymbolTable.Get(varia.Type);
-                            if (foundAssign.Left.TryVariable().genericArgs.Count() > 0 && mydelegate is Delegate jdelegate)
+                            if (foundAssign.Left.TryVariable().genericArgs.Any() && mydelegate is Delegate jdelegate)
                             {
                                 var leftvar = foundAssign.Left.TryVariable().genericArgs;
                                 Dictionary<string, string> delegateAssign = new Dictionary<string, string>();

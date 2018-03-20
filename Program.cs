@@ -15,11 +15,11 @@ namespace Compilator
 {  
     class Program
     {
-        public static string DrawClassInside(Class c, string add, List<string> exposed)
+        public static string DrawClassInside(Class c, string add, List<string> exposed, string addMeMain = "")
         {
-            return DrawClassInside(c.Block, add, exposed);
+            return DrawClassInside(c.Block, add, exposed, addMeMain);
         }
-        public static string DrawClassInside(Block block, string add, List<string> exposed)
+        public static string DrawClassInside(Block block, string add, List<string> exposed, string addMeMain = "")
         {
             StringBuilder outcom = new StringBuilder();
             foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
@@ -35,6 +35,8 @@ namespace Compilator
                     continue;
                 if (t.Value is Delegate)
                     continue;
+                if (t.Value is Generic)
+                    continue;
                 if (t.Value is Function tf)
                 {
                     outcom.Append("  _." + tf.Name + " = " + tf.Name + ";\n");
@@ -44,13 +46,23 @@ namespace Compilator
                 {
                     if (!tc.isForImport)
                     {
-                        outcom.Append("  _." + tc.getName() + " = " + tc.getName() + ";\n");
-                        outcom.Append("  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n");
+                        if (addMeMain != "")
+                        {
+                            if(tc.assignTo == "")
+                                continue;                            
+                            outcom.Append("  _." + tc.getName() + " = " + addMeMain + "." + tc.assignTo + "." + tc.getName() + ";\n");
+                            outcom.Append("  _." + tc.getName() + "$META = " + addMeMain + "." + tc.assignTo + "." + tc.getName() + "$META;\n");
+                        }
+                        else
+                        {
+                            outcom.Append("  _." + tc.getName() + " = " + tc.getName() + ";\n");
+                            outcom.Append("  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n");
+                        }
                     }
                     outcom.Append("  var " + t.Key + " = " + add + "." + tc.Name.Value + ";\n");
                     if (tc.isForImport)
                     {
-                        outcom.Append(DrawClassInside(tc, add + "." + tc.Name.Value, new List<string>()));
+                        outcom.Append(DrawClassInside(tc, add + "." + tc.Name.Value, new List<string>(), add));
                     }
                 }
                 else if (t.Value is Interface ti)
@@ -153,6 +165,8 @@ namespace Compilator
                     if (t.Value is Interface && ((Interface)t.Value).isExternal)
                         continue;
                     if (t.Value is Delegate)
+                        continue;
+                    if (t.Value is Generic)
                         continue;
                     if (t.Value is Function tf)
                     {

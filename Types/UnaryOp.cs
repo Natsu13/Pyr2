@@ -5,9 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Compilator
-{
+{    
     public class UnaryOp:Types
-    {
+    {        
         Token token, op, name;
         Types expr;
         ParameterList plist;
@@ -77,7 +77,7 @@ namespace Compilator
                 if(genericArgments.Count == 0)
                 {
                     var funcs = block.SymbolTable.GetAll(name.Value);
-                    if (funcs.Count == 1)
+                    if (funcs != null && funcs.Count == 1)
                     {
                         var func = funcs[0];
                         if (func != null && func is Function funct)

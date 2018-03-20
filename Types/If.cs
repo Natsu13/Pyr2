@@ -18,12 +18,12 @@ namespace Compilator
         public override string Compile(int tabs = 0)
         {
             tabs++;
-            string tbs = DoTabs(tabs+1);
+            string tbs = DoTabs(tabs);
             string ret = "";
             bool first = true;
 
-            tabs+=2;
-            foreach (KeyValuePair<Types, Block> c in conditions)
+            tabs++;
+            foreach (var c in conditions)
             {
                 c.Value.Parent = assingBlock;
                 if(c.Key != null)
@@ -31,14 +31,14 @@ namespace Compilator
                 if (first)
                 {                    
                     first = false;
-                    ret += "if(" + c.Key.Compile() + ") {\n" + c.Value.Compile(tabs) + tbs + "}\n";
+                    ret += "if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs) + tbs + "}\n";
                 }else if(c.Key is NoOp)
                 {
                     ret += tbs + "else {\n" + c.Value.Compile(tabs) + tbs + "}\n";
                 }
                 else
                 {
-                    ret += tbs + "else if(" + c.Key.Compile() + ") {\n" + c.Value.Compile(tabs) + tbs + "}\n";
+                    ret += tbs + "else if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs) + tbs + "}\n";
                 }
             }
             return ret.Substring(0,ret.Length - 1);

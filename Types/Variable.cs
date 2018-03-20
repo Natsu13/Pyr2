@@ -154,6 +154,8 @@ namespace Compilator
                 Types s = this.assingBlock.SymbolTable.Get(this.assingBlock.assignTo.Split('.')[0]);
                 if(s is Class)
                     this.dateType = ((Class)this.assingBlock.SymbolTable.Get(this.assingBlock.assignTo.Split('.')[0])).Name;
+                if (s is Function)
+                    this.dateType = ((Function) s).Returnt;
             }
             if (this.dateType.Value == "auto")
             {

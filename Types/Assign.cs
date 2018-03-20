@@ -30,7 +30,12 @@ namespace Compilator
                 //left.Semantic();
 
                 string name = ((Variable)left).Value;
-                if (!((Variable)left).Block.variables.ContainsKey(name))
+                if (current_block != null && !current_block.variables.ContainsKey(name))
+                {
+                    isDeclare = true;
+                    current_block.variables[name] = this;
+                }
+                else if (!((Variable)left).Block.variables.ContainsKey(name))
                 {
                     isDeclare = true;
                     ((Variable)left).Block.variables[name] = this;

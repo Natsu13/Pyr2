@@ -50,19 +50,27 @@ namespace Compilator
                         {
                             if(tc.assignTo == "")
                                 continue;                            
-                            outcom.Append("  _." + tc.getName() + " = " + addMeMain + "." + tc.assignTo + "." + tc.getName() + ";\n");
-                            outcom.Append("  _." + tc.getName() + "$META = " + addMeMain + "." + tc.assignTo + "." + tc.getName() + "$META;\n");
+                            outcom.Append("  _." + tc.getName() + " = " + addMeMain + "." + tc.getName() + ";\n");
+                            outcom.Append("  _." + tc.getName() + "$META = " + addMeMain + "." + tc.getName() + "$META;\n");
                         }
                         else
                         {
-                            outcom.Append("  _." + tc.getName() + " = " + tc.getName() + ";\n");
-                            outcom.Append("  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n");
+                            if (tc.assignTo != "")
+                            {
+                                outcom.Append("  _." + tc.getName() + " = " + tc.assignTo + "." + tc.getName() + ";\n");
+                                outcom.Append("  _." + tc.getName() + "$META = " + tc.assignTo + "." + tc.getName() + "$META;\n");
+                            }
+                            else
+                            {
+                                outcom.Append("  _." + tc.getName() + " = " + tc.getName() + ";\n");
+                                outcom.Append("  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n");
+                            }
                         }
                     }
                     outcom.Append("  var " + t.Key + " = " + add + "." + tc.Name.Value + ";\n");
                     if (tc.isForImport)
                     {
-                        outcom.Append(DrawClassInside(tc, add + "." + tc.Name.Value, new List<string>(), add));
+                        outcom.Append(DrawClassInside(tc, add + "." + tc.Name.Value, new List<string>(), add + "." + tc.Name.Value));
                     }
                 }
                 else if (t.Value is Interface ti)
@@ -72,6 +80,12 @@ namespace Compilator
                 }
                 else if (t.Value is Import im)
                 {
+                    var split = im.GetName().Split('.');
+                    var namem = string.Join(".", split.Take(split.Length - 1));
+                    if (namem == "") namem = split[0];
+                    if(namem == addMeMain)
+                        continue;
+
                     if (t.Key.Contains("."))
                     {
                         var skl = "";
@@ -93,9 +107,19 @@ namespace Compilator
                     }
                     else
                     {
-                        outcom.Append("  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
-                        if (im.As != "")
-                            outcom.Append("  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
+                        if (add == "")
+                        {
+                            outcom.Append("  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
+                            if (im.As != "")
+                                outcom.Append("  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
+                        }
+                        else
+                        {
+                            outcom.Append("  _." + t.Key + " = " + add + "." + im.GetModule() + ";\n");
+                            if (im.As != "")
+                                outcom.Append("  var " + t.Key + " = " + add + "." + im.GetModule() + ";\n");
+                        }
+                        exposed.Add(t.Key);
                     }
                     foreach(KeyValuePair<string, Types> qq in im.Block.SymbolTable.Table)
                     {
@@ -117,8 +141,8 @@ namespace Compilator
 
         public static void RunServer(int port = 13000)
         {
-            Console.WriteLine("Server runing on port 13000");
-            var wssv = new WebSocketServer("ws://127.0.0.1:13000");
+            Console.WriteLine("Server runing on port " + port);
+            var wssv = new WebSocketServer("ws://127.0.0.1:" + port);
             wssv.AddWebSocketService<Service>("/pyr");
             wssv.Start();
             Console.ReadKey (true);
@@ -236,8 +260,8 @@ namespace Compilator
                 }
                 if (block.SymbolTable.Find("main"))
                 {
-                    if (Interpreter._WAITFORPAGELOAD || ((Function)block.SymbolTable.Get("main")).attributes?.Where(x => x.GetName(true) == "OnPageLoad").Count() > 0)
-                        outcom.Append("\n  window.onload = function(){ main(); };\n");
+                    if (Interpreter._WAITFORPAGELOAD || (((Function)block.SymbolTable.Get("main")).attributes?.Where(x => x.GetName(true) == "OnPageLoad")).Any())
+                        outcom.Append("\n  window.onload = function(){ try { main(); }catch(e){ catcherror(e); } };\n");
                     else
                         outcom.Append("\n  main();\n");
                 }

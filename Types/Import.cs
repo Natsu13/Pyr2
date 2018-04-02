@@ -32,6 +32,15 @@ namespace Compilator
                 _ihaveit = _block.SymbolTable.Get(module);   
             }
 
+            if (Interpreter.Imports.ContainsKey(module))
+            {
+                _ihaveit = Interpreter.Imports[module];
+            }
+            else
+            {
+                Interpreter.Imports.Add(module, this);
+            }
+
             if (inter != null && _ihaveit == null && inter.parent != null)
             {
                 var find = inter.parent.MainBlock.SymbolTable.Find(module);
@@ -106,8 +115,13 @@ namespace Compilator
                 {
                     if (_as == null)
                     {
-                        if(!_block.SymbolTable.Find(GetName()))
-                            _block.SymbolTable.Add(GetName(), _ihaveit.assingBlock?.Parent.import);
+                        if (!_block.SymbolTable.Find(GetName()))
+                        {
+                            if(_ihaveit.assingBlock?.Parent.import == null || _ihaveit is Import)
+                                _block.SymbolTable.Add(GetName(), _ihaveit);
+                            else
+                                _block.SymbolTable.Add(GetName(), _ihaveit.assingBlock?.Parent.import);
+                        }
                     }
                     else
                     {
@@ -213,6 +227,12 @@ namespace Compilator
                     }
                     else if (t.Value is Import im)
                     {
+                        var split = im.GetName().Split('.');
+                        var namem = string.Join(".", split.Take(split.Length - 1));
+                        if (namem == "") namem = split[0];
+                        if(namem == import.Value)
+                            continue;
+                       
                         if (t.Key.Contains("."))
                         {
                             var skl = "";

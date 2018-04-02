@@ -26,10 +26,11 @@ namespace Compilator
         public bool         brekall = false;
         public int          tmpcount = 0;
 
-        public static List<Error> semanticError = new List<Compilator.Error>();
+        public static List<Error> semanticError = new List<Error>();
         public enum ErrorType { INFO, WARNING, ERROR };
         public static Dictionary<string, string> fileList = new Dictionary<string, string>();
         public Dictionary<string, Import> imports = new Dictionary<string, Import>();
+        public static Dictionary<string, Import> Imports = new Dictionary<string, Import>();
 
         /// Interpret settings
         public static readonly bool _REDECLARATION =     false;      //If you enable redeclaration
@@ -69,10 +70,31 @@ namespace Compilator
             current_char = text[pos];
             current_file = filename;
             current_block = new Block(this, true);
-            current_block.SymbolTable.initialize();
+            current_block.SymbolTable.Initialize();
+            current_block.assignTo = (filename == "code.p" ? "main": "");
             MainBlock = current_block;
             //current_block.Parent = parent_block;
             current_token = GetNextToken();            
+        }
+
+        public Types Get(string name)
+        {
+            if (parent != null && _uid != parent.UID)
+            {
+                return parent.MainBlock.SymbolTable.Get(name);
+            }
+
+            return new Error(name + " not found!");
+        }
+
+        public bool Find(string name)
+        {
+            if (parent != null && _uid != parent.UID)
+            {
+                return parent.MainBlock.SymbolTable.Find(name);
+            }
+
+            return false;
         }
 
         public bool FindImport(string name)
@@ -173,6 +195,11 @@ namespace Compilator
                 {
                     Advance(); Advance(); Advance();
                     return new Token(Token.Type.THREEDOT, "...", current_token_pos, current_file);
+                }
+                if (current_char == '.' && Peek() == '.')
+                {
+                    Advance(); Advance();
+                    return new Token(Token.Type.TWODOT, "..", current_token_pos, current_file);
                 }
                 if (current_char == '-' && Peek() == '>') {
                     Advance(); Advance();
@@ -348,7 +375,7 @@ namespace Compilator
                 result.Append(current_char);
                 Advance();
             }
-            if(current_char == '.')
+            if(current_char == '.' && Peek() != '.')
             {
                 result.Append(current_char);
                 Advance();
@@ -605,6 +632,24 @@ namespace Compilator
             {
                 Eat(Token.Type.NULL);
                 return new Null();
+            }
+            else if (token.type == Token.Type.LSQUARE)
+            {
+                var stoken = token;
+                Eat(Token.Type.LSQUARE);
+                var from = Expr();
+                Eat(Token.Type.TWODOT);
+                var to = Expr();
+                Eat(Token.Type.RSQUARE);
+                var uopr = new UnaryOp(new Token(Token.Type.RANGE, "..", stoken.Pos), new List<Types>{ from, to }, current_block);                
+                if(current_token.type == Token.Type.DOT)
+                {
+                    Types t = CatchOutside(uopr);
+                    BinOp biop = new BinOp(uopr, new Token(Token.Type.DOT, "dot"), t, current_block);
+                    return biop;
+                }
+
+                return uopr;
             }
             else if(token.type == Token.Type.LPAREN)
             {
@@ -1084,10 +1129,11 @@ namespace Compilator
         {
             Eat(Token.Type.FOR);
             Eat(Token.Type.LPAREN);
-            if(current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE)
+            if(current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE || current_token.type == Token.Type.ID)
             {
                 Token c = current_token;
                 if (current_token.type == Token.Type.INTERFACE) Eat(Token.Type.INTERFACE);
+                else if (current_token.type == Token.Type.ID) Eat(Token.Type.ID);
                 else Eat(Token.Type.CLASS);
                 Token n = current_token;
                 Eat(Token.Type.ID);
@@ -1255,7 +1301,7 @@ namespace Compilator
             return uopr;
         }
 
-        public Types CatchOutside()
+        public Types CatchOutside(Types parent = null)
         {
             Types t = null;
             while(current_token.type == Token.Type.DOT)
@@ -1271,10 +1317,18 @@ namespace Compilator
                 if(t == null)
                 {
                     t = temp;
+                    if (t is UnaryOp to)
+                    {
+                        to.assignToParent = parent;
+                    }
                 }
                 else
                 {
-                    t = new BinOp(t, new Token(Token.Type.DOT, "."), temp, current_block);
+                    if (temp is UnaryOp to)
+                    {
+                        to.assignToParent = t;
+                    }
+                    t = new BinOp(t, new Token(Token.Type.DOT, "."), temp, current_block);                    
                 }
             }
             return t;
@@ -1571,10 +1625,7 @@ namespace Compilator
                     else
                         Eat(Token.Type.COMMA);
                     var parent_token = current_token;
-                    if (current_token.type == Token.Type.CLASS)
-                        Eat(Token.Type.CLASS, "class or interface for inheritance not found");
-                    else
-                        Eat(Token.Type.INTERFACE, "class or interface for inheritance not found");
+                    Eat(current_token.type);
                     var un = new UnaryOp(new Token(Token.Type.NEW, "new"), parent_token, null, current_block);
 
                     List<string> genericArgs = new List<string>();
@@ -1757,7 +1808,7 @@ namespace Compilator
             }
             else if (current_token.type == Token.Type.SEMI)
             {
-                Types node = new Assign(left, new Token(Token.Type.ASIGN, "="), new Null(), current_block) { attributes = att };
+                Types node = new Assign(left, new Token(Token.Type.ASIGN, "="), new Null(), current_block, true) { attributes = att };
                 if (isModifer(Token.Type.STATIC))
                 {
                     ((Assign)node).isStatic = true;

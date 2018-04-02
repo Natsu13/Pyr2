@@ -29,11 +29,17 @@ namespace Compilator
                 ((Variable)source).Check();
 
                 Types to = block.SymbolTable.Get(((Variable)source).getDateType().Value);
-                if (((Class)to).haveParent("IIterable"))
+                if (to is Class && ((Class) to).haveParent("IIterable"))
                 {
                     isIterable = true;
+                    className = ((Class)to).Name.Value;
                 }
-                className = ((Class)to).Name.Value;
+                if (to is Interface && ((Interface) to).haveParent("IIterable"))
+                {
+                    isIterable = true;
+                    className = ((Interface)to).Name.Value;
+                }
+
             }
             if(source is UnaryOp uop && ((UnaryOp)source).Op == "new")
             {
@@ -55,15 +61,25 @@ namespace Compilator
                 className = ((Class)to).Name.Value;
             }
 
+            if (source is UnaryOp uor && ((UnaryOp)source).Op == "..")
+            {
+                Types to = block.SymbolTable.Get("Range");
+                if (((Class)to).haveParent("IIterable"))
+                {
+                    isIterable = true;
+                }
+                className = ((Class)to).Name.Value;
+            }
+
             if (isIterable)
             {
                 int tmpc = block.Interpret.tmpcount++;
                 source.endit = false;
-                string tab = DoTabs(tabs + 1);
+                string tab = DoTabs(tabs);
                 ret = tab + "var $tmp" + tmpc + " = " + source.Compile(0) + ".iterator();\n";
                 ret += tab + "  while($tmp" + tmpc + ".hasNext()){\n";
                 ret += tab + "    var " + variable.Value + " = $tmp" + tmpc + ".next();\n";
-                ret += block.Compile(tabs + 3);
+                ret += block.Compile(tabs + 2);
                 ret += tab + "  }";
             }
 

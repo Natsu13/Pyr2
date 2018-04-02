@@ -100,7 +100,7 @@ namespace Compilator
         public List<string> GenericArguments { get { return genericArguments; } }
 
         public ParameterList ParameterList { get { return paraml; } }
-        public override Token getToken() { return null; }
+        public override Token getToken() { return name; }
         public Token Returnt { get { return returnt; } }
         public Block Block { get { return block; } }
 

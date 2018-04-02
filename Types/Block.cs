@@ -117,7 +117,22 @@ namespace Compilator
                             if (type == null) type = ava.GetType();
                         }
                         else if (type != null && ((Variable)uop.Expr).Type != type)
-                            Interpreter.semanticError.Add(new Error("#403 Variable " + ((Variable)uop.Expr).Value + " with type " + ((Variable)uop.Expr).Type + " can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).getToken()));
+                        {
+                            var notType = true;
+                            var cla = assingBlock.SymbolTable.Get(((Variable) uop.Expr).Type);
+                            if (cla is Class clac)
+                            {
+                                if (!clac.haveParent(type))
+                                    notType = false;
+                            }
+                            else if (cla is Interface clai)
+                            {
+                                if (!clai.haveParent(type))
+                                    notType = false;
+                            }
+                            if(!notType)
+                                Interpreter.semanticError.Add(new Error("#403 Variable " + ((Variable)uop.Expr).Value + " with type " + ((Variable)uop.Expr).Type + " can't be converted to " + type, Interpreter.ErrorType.ERROR, ((Variable)uop.Expr).getToken()));
+                        }
                         else if (type == null)
                             type = ((Variable)uop.Expr).Type;
                     }

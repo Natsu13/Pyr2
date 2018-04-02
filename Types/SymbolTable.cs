@@ -18,10 +18,19 @@ namespace Compilator
         public Block assigment_block;
         public bool isForImport = false;
 
+        static bool _initializedMain = false;
+        static SymbolTable MainSymbolTable = null;
+
         public SymbolTable(Interpreter interpret, Block assigment_block, bool first = false)
         {
             this.interpret = interpret;
             this.assigment_block = assigment_block;
+
+            if (_initializedMain)
+                return;
+
+            MainSymbolTable = this;
+
             if (first)
             {
                 Token TokenIIterable = new Token(Token.Type.ID, "IIterable");
@@ -110,14 +119,16 @@ namespace Compilator
             if (Find(name))
             {
                 SymbolTable sb = GetSymbolTable(name);
-                if (sb != null)
-                    sb.table.Remove(name);
+                sb?.table.Remove(name);
             }
-        }
+        }        
 
-
-        public void initialize()
+        public void Initialize()
         {
+            if (_initializedMain)
+                return;
+            _initializedMain = true;
+
             //Function js
             Token Function_js = new Token(Token.Type.ID, "js");
             ParameterList plist_js = new ParameterList(true);
@@ -310,92 +321,103 @@ namespace Compilator
 
         public bool Find(string name, List<string> prevClass = null)
         {
-            if (name.Contains('.'))
+            while (true)
             {
-                string[] nams = name.Split('.');
-                if (Find(nams[0]))
+                if (name.Contains('.'))
                 {
-                    Types found = Get(nams[0]);
-                    if (found is Assign)
+                    string[] nams = name.Split('.');
+                    if (Find(nams[0]))
                     {
-                        //Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
-                        Variable vr = (Variable)((Assign)found).Left;
-                        if (vr.Type != "auto")
+                        Types found = Get(nams[0]);
+                        if (found is Assign)
                         {
-                            return Find(vr.Type + "." + string.Join(".", nams.Skip(1)));
+                            //Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
+                            Variable vr = (Variable) ((Assign) found).Left;
+                            if (vr.Type != "auto")
+                            {
+                                name = vr.Type + "." + string.Join(".", nams.Skip(1));
+                                prevClass = null;
+                                continue;
+                            }
+
+                            if (((Assign) assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                            {
+                                if (uop.Op == "new")
+                                {
+                                    name = uop.Name.Value + "." + string.Join(".", nams.Skip(1));
+                                    prevClass = null;
+                                    continue;
+                                }
+                            }
                         }
-                        if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+
+                        if (found is Function)
+                            return ((Function) found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
+                        else if (found is Class)
+                            return ((Class) found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
+                        else if (found is Interface)
+                            return ((Interface) found).Block.SymbolTable.Find(string.Join(".", nams.Skip(1)));
+                        else if (found is Import) return ((Import) found).Block.SymbolTable.Find(string.Join(".", nams.Skip(1)));
+                        name = string.Join(".", nams.Skip(1));
+                        prevClass = null;
+                        continue;
+                    }
+                    else if (assigment_block.variables.ContainsKey(nams[0]))
+                    {
+                        Variable vr = (Variable) ((Assign) assigment_block.variables[nams[0]]).Left;
+                        if (((Assign) assigment_block.variables[nams[0]]).Right is UnaryOp uop)
                         {
                             if (uop.Op == "new")
                             {
-                                return Find(uop.Name.Value + "." + string.Join(".", nams.Skip(1)));
+                                name = uop.Name.Value + "." + string.Join(".", nams.Skip(1));
+                                prevClass = null;
+                                continue;
                             }
                         }
+
+                        return vr.assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
                     }
-                    if (found is Function)
-                        return ((Function)found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
-                    else if (found is Class)
-                        return ((Class)found).assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
-                    else if (found is Interface)
-                        return ((Interface)found).Block.SymbolTable.Find(string.Join(".", nams.Skip(1)));
-                    else if (found is Import)
-                        return ((Import)found).Block.SymbolTable.Find(string.Join(".", nams.Skip(1)));
-                    return Find(string.Join(".", nams.Skip(1)));
                 }
-                else if (assigment_block.variables.ContainsKey(nams[0]))
+
+                if (table.ContainsKey(name))
+                    return true;
+                else
                 {
-                    Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
-                    if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                    if (assigment_block.variables.ContainsKey(name)) return true;
+                    if (assigment_block.Parent != null && (!isForImport || assigment_block.Parent.Parent != null))
                     {
-                        if (uop.Op == "new")
+                        bool ret = assigment_block.Parent.SymbolTable.Find(name, prevClass);
+                        if (ret) return true;
+                    }
+
+                    if (interpret.FindImport(name))
+                    {
+                        var import = interpret.GetImport(name);
+                        var nameLast = name.Split('.').Last();
+                        if (nameLast == name) return true;
+                        return import.Block.SymbolTable.Find(name.Split('.').Last());
+                    }
+
+                    foreach (KeyValuePair<string, Types> type in table)
+                    {
+                        if (type.Value is Import)
                         {
-                            return Find(uop.Name.Value + "." + string.Join(".", nams.Skip(1)));
+                            bool t = ((Import) type.Value).Block.SymbolTable.Find(name);
+                            if (t) return true;
+                        }
+                        else if (type.Value is Class && ((Class) type.Value).isForImport && ((prevClass != null && !prevClass.Contains(type.Key)) || prevClass == null))
+                        {
+                            if (prevClass == null) prevClass = new List<string>();
+                            prevClass.Add(type.Key);
+                            bool t = ((Class) type.Value).Block.SymbolTable.Find(name, prevClass);
+                            if (t) return true;
                         }
                     }
-                    return vr.assingBlock.SymbolTable.Find(string.Join(".", nams.Skip(1)));
-                }
-            }
-            if (table.ContainsKey(name))
-                return true;
-            else
-            {
-                if (assigment_block.variables.ContainsKey(name))
-                    return true;
-                if (assigment_block.Parent != null && (!isForImport || assigment_block.Parent.Parent != null))
-                {
-                    bool ret = assigment_block.Parent.SymbolTable.Find(name, prevClass);
-                    if (ret)
-                        return true;
+
+                    return (bool) interpret?.Find(name);                    
                 }
 
-                if (interpret.FindImport(name))
-                {
-                    var import = interpret.GetImport(name);
-                    var nameLast = name.Split('.').Last();
-                    if (nameLast == name)
-                        return true;
-                    return import.Block.SymbolTable.Find(name.Split('.').Last());
-                }
-
-                foreach (KeyValuePair<string, Types> type in table)
-                {
-                    if (type.Value is Import)
-                    {
-                        bool t = ((Import)type.Value).Block.SymbolTable.Find(name);
-                        if (t)
-                            return true;
-                    }
-                    else if (type.Value is Class && ((Class)type.Value).isForImport && ((prevClass != null && !prevClass.Contains(type.Key)) || prevClass == null))
-                    {
-                        if (prevClass == null) prevClass = new List<string>();
-                        prevClass.Add(type.Key);
-                        bool t = ((Class)type.Value).Block.SymbolTable.Find(name, prevClass);
-                        if (t)
-                            return true;
-                    }
-                }
-
-                return false;
+                break;
             }
         }
 
@@ -712,6 +734,11 @@ namespace Compilator
                         return t;
                 }
             }
+
+            var find = interpret?.Get(name);
+            if (!(find is Error))
+                return find;
+
             return new Error("#100 Internal error what can't normaly occured ups...");
         }
 

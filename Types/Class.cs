@@ -65,7 +65,10 @@ namespace Compilator
 
         public bool haveParent(string name)
         {
-            if (parents == null) return false;
+            if (name == this.name.Value)
+                return true;            
+            if (parents == null) 
+                return false;
             foreach (UnaryOp p in parents)
             {
                 var pp = assingBlock.SymbolTable.Get(p.Name.Value, genericArgs: p.genericArgments.Count);
@@ -81,11 +84,24 @@ namespace Compilator
                 }
             }
             return false;
-        }        
+        }
+
+        public Types Get(string name)
+        {
+            if (parents == null) return null;
+            foreach (UnaryOp p in parents)
+            {
+                var pp = assingBlock.SymbolTable.Get(p.Name.Value, genericArgs: p.genericArgments.Count);
+                var rt = pp.assingBlock.SymbolTable.Get(name);
+                if (rt != null && !(rt is Error))
+                    return rt;
+            }
+            return null;
+        }
 
         public override string Compile(int tabs = 0)
         {
-            if (!isExternal)
+            if (!isExternal && !isForImport)
             {
                 if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                 {
@@ -102,10 +118,18 @@ namespace Compilator
                         if (assingBlock.SymbolTable.Find(parent.Name.Value))
                         {
                             Types inname = assingBlock.SymbolTable.Get(parent.Name.Value, genericArgs: parent.genericArgments.Count);
+                            /*
                             if (inname is Interface)
                                 ret += tbs + "  " + ((Interface)inname).getName() + ".call(this);\n";
                             else if (inname is Class)
                                 ret += tbs + "  " + ((Class)inname).getName() + ".call(this);\n";
+                                */
+                            if (inname is Interface)
+                            {
+                                ret += tbs + "  CloneObjectFunction("+Name.Value+", " + ((Interface) inname).getName() + ");\n";
+                            }
+                            else if (inname is Class)
+                                ret += tbs + "  CloneObjectFunction(this, " + ((Class) inname).getName() + ");\n";
                         }
                     }
                     foreach (KeyValuePair<string, Assign> var in block.variables)

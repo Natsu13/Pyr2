@@ -38,6 +38,8 @@ namespace Compilator
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((BinOp)this).OutputType);
             if(this is UnaryOp && ((UnaryOp)this).Op == "new")
                 return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, ((UnaryOp)this).Name);
+            if(this is UnaryOp && ((UnaryOp)this).Op == "..")
+                return new Variable(new Token(Token.Type.NULL, ""), this.assingBlock, new Token(Token.Type.RANGE, "range"));
             if (this is UnaryOp && ((UnaryOp)this).Op == "call")
             {
                 if(((UnaryOp)this).Name.type == Token.Type.LAMBDA)

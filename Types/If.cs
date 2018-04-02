@@ -21,7 +21,7 @@ namespace Compilator
             string tbs = DoTabs(tabs);
             string ret = "";
             bool first = true;
-
+            
             tabs++;
             foreach (var c in conditions)
             {
@@ -31,14 +31,14 @@ namespace Compilator
                 if (first)
                 {                    
                     first = false;
-                    ret += "if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs) + tbs + "}\n";
+                    ret += "if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs + 1) + tbs + "  }\n";
                 }else if(c.Key is NoOp)
                 {
-                    ret += tbs + "else {\n" + c.Value.Compile(tabs) + tbs + "}\n";
+                    ret += tbs + "else {\n" + c.Value.Compile(tabs + 1) + tbs + "  }\n";
                 }
                 else
                 {
-                    ret += tbs + "else if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs) + tbs + "}\n";
+                    ret += tbs + "else if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs + 1) + tbs + "  }\n";
                 }
             }
             return ret.Substring(0,ret.Length - 1);

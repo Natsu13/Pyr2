@@ -16,26 +16,29 @@ namespace Compilator
         bool isRedeclared = false;
         string originlDateType = "";
         public List<_Attribute> attributes;
+        bool isNull = false;
 
         public bool isStatic = false;
         public Token _static = null;
 
-        public Assign(Types left, Token op, Types right, Block current_block = null)
+        public Assign(Types left, Token op, Types right, Block current_block = null, bool isNull = false)
         {
+            this.isNull = isNull;
             this.left = left;
             left.assingBlock = current_block;
             this.op = this.token = op;
-            this.right = right;        
+            this.right = right;
             if (left is Variable) {
                 //left.Semantic();
 
                 string name = ((Variable)left).Value;
-                if (current_block != null && !current_block.variables.ContainsKey(name))
+                bool notfound = current_block != null && current_block.SymbolTable.Find(name);
+                if (current_block != null && !current_block.variables.ContainsKey(name) && !notfound)
                 {
                     isDeclare = true;
                     current_block.variables[name] = this;
                 }
-                else if (!((Variable)left).Block.variables.ContainsKey(name))
+                else if (!((Variable)left).Block.variables.ContainsKey(name) && !notfound)
                 {
                     isDeclare = true;
                     ((Variable)left).Block.variables[name] = this;
@@ -51,8 +54,8 @@ namespace Compilator
                 }
                 else
                 {
-                    Variable v = ((Variable)((Variable)left).Block.variables[name].Left);
-                    if (v.getType().Value != ((Variable)this.left).getType().Value)
+                    Variable v = (Variable)((Assign)current_block.SymbolTable.Get(name)).Left;
+                    if (v.getType().Value != ((Variable)this.left).getType().Value && ((Variable)this.left).getType().Value != "auto")
                     {
                         originlDateType = v.getType().Value;
                         isMismash = true;
@@ -91,7 +94,7 @@ namespace Compilator
         public override string Compile(int tabs = 0)
         {            
             string addCode = "";
-            if (attributes?.Where(x => x.GetName(true) == "Debug").Count() > 0)
+            if (attributes != null && (attributes?.Where(x => x.GetName(true) == "Debug")).Any())
             {
                 if(Interpreter._DEBUG)
                     Debugger.Break();
@@ -120,11 +123,14 @@ namespace Compilator
             }
             else
                 maybeIs2 = assingBlock.SymbolTable.Get(right.TryVariable().Value);
-            
-            if(left is Variable)
-                right.assingBlock = ((Variable)left).Block;
+
+            if (left is Variable)
+            {
+                right.assingBlock = ((Variable) left).Block;
+                //((Variable)left).Check();
+            }
             if (right is UnaryOp)
-                ((UnaryOp)right).endit = false;
+                ((UnaryOp)right).endit = false;            
 
             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
             {
@@ -159,8 +165,12 @@ namespace Compilator
                             ret = tbs + addCode + (isDeclare ? "var " : "") + string.Join(".", spli.Take(spli.Length - 1)) + ".delegate$" + spli.Skip(spli.Length - 1).First() + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ";";
                         }
                     }
-                    else
-                        ret = tbs + addCode + (isDeclare ? "var " : "") + addName + left.Compile(0) + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ";";
+                    else { 
+                        if(isNull)
+                            ret = tbs + addCode + (isDeclare ? "var " : "") + addName + left.Compile(0) + ";";
+                        else
+                            ret = tbs + addCode + (isDeclare ? "var " : "") + addName + left.Compile(0) + " = " + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ";";
+                    }
                     return ret;
                 }
                 else

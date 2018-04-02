@@ -124,37 +124,23 @@ namespace Compilator
         public void Check()
         {
             string newname = this.value;
-            /*
-            if(Value.Split('.')[0] != "this")
-            {
-                if (this.block.SymbolTable.Find(newname))
-                {
-                    Types __t = this.block.SymbolTable.Get(newname);
-                    if(__t is Assign _a)
-                    {
-                        if(_a.Left is Variable _av)
-                        {
-                            if (_av.Type == "auto")
-                                newname = "this." + newname;
-                        }
-                    }else if(__t is Variable _v)
-                    {
-                        if(_v.Type == "auto")
-                            newname = "this." + newname;
-                    }
-                }
-            }
-            */
-            if (newname.Split('.')[0] == "this")
+            if (newname.Split('.')[0] == "this" && this.value != "this")
             {                
                 newname = block.getClass() + "." + string.Join(".", newname.Split('.').Skip(1));
             }
             if(Value == "this")
             {
-                Types s = this.assingBlock.SymbolTable.Get(this.assingBlock.assignTo.Split('.')[0]);
+                Types s;
+                if(this.assingBlock?.Parent != null)
+                    s = this.assingBlock.SymbolTable.Get(this.assingBlock.Parent.assignTo.Split('.')[0]);
+                else
+                    s = this.assingBlock?.SymbolTable.Get(this.assingBlock.assignTo.Split('.')[0]);
+
                 if(s is Class)
-                    this.dateType = ((Class)this.assingBlock.SymbolTable.Get(this.assingBlock.assignTo.Split('.')[0])).Name;
-                if (s is Function)
+                    this.dateType = ((Class)s).Name;
+                else if (s is Interface si)
+                    this.dateType = si.Name;
+                else if (s is Function sf && sf.Returnt != null)
                     this.dateType = ((Function) s).Returnt;
             }
             if (this.dateType.Value == "auto")
@@ -193,6 +179,8 @@ namespace Compilator
                     {
                         this.dateType = ((Variable) t).dateType;
                     }
+                    else if (t is Class)
+                        this.dateType = ((Class) t).Name;
                     else
                         this.dateType = ((Variable)(((Assign)t).Left)).dateType;
                 }
@@ -450,26 +438,66 @@ namespace Compilator
         public static string GetOperatorStatic(Token.Type op)
         {
             string o = "";
-            if (op == Token.Type.EQUAL)     o = "==";
-            if (op == Token.Type.NOTEQUAL)  o = "!=";
-            if (op == Token.Type.AND)       o = "&&";
-            if (op == Token.Type.OR)        o = "||";
-            if (op == Token.Type.MORE)      o = ">";
-            if (op == Token.Type.LESS)      o = "<";
-
-            if (op == Token.Type.PLUS)      o = "+";
-            if (op == Token.Type.INC)       o = "++";
-            if (op == Token.Type.MINUS)     o = "-";
-            if (op == Token.Type.DEC)       o = "--";
-            if (op == Token.Type.DIV)       o = "/";
-            if (op == Token.Type.MUL)       o = "*";
-
-            if (op == Token.Type.DOT)       o = ".";
-            if (op == Token.Type.NEW)       o = "new";
-            if (op == Token.Type.RETURN)    o = "return";
-            if (op == Token.Type.CALL)      o = "call";
-            if (op == Token.Type.GET)       o = "get";
-            if (op == Token.Type.IS)        o = "is";
+            switch (op)
+            {
+                case Token.Type.EQUAL:
+                    o = "==";
+                    break;
+                case Token.Type.NOTEQUAL:
+                    o = "!=";
+                    break;
+                case Token.Type.AND:
+                    o = "&&";
+                    break;
+                case Token.Type.OR:
+                    o = "||";
+                    break;
+                case Token.Type.MORE:
+                    o = ">";
+                    break;
+                case Token.Type.LESS:
+                    o = "<";
+                    break;
+                case Token.Type.PLUS:
+                    o = "+";
+                    break;
+                case Token.Type.INC:
+                    o = "++";
+                    break;
+                case Token.Type.MINUS:
+                    o = "-";
+                    break;
+                case Token.Type.DEC:
+                    o = "--";
+                    break;
+                case Token.Type.DIV:
+                    o = "/";
+                    break;
+                case Token.Type.MUL:
+                    o = "*";
+                    break;
+                case Token.Type.DOT:
+                    o = ".";
+                    break;
+                case Token.Type.NEW:
+                    o = "new";
+                    break;
+                case Token.Type.RETURN:
+                    o = "return";
+                    break;
+                case Token.Type.CALL:
+                    o = "call";
+                    break;
+                case Token.Type.GET:
+                    o = "get";
+                    break;
+                case Token.Type.IS:
+                    o = "is";
+                    break;
+                case Token.Type.RANGE:
+                    o = "..";
+                    break;
+            }
             return o;
         }
         public string GetOperator(Token.Type op)
@@ -501,6 +529,8 @@ namespace Compilator
             if (op == Token.Type.RETURN)    o = "return";
             if (op == Token.Type.CALL)      o = "invoke";
             if (op == Token.Type.GET)       o = "get";
+            if (op == Token.Type.IS)        o = "is";
+            if (op == Token.Type.RANGE)     o = "range";
             return o;
         }        
         public Token OutputType(Token.Type op, object first, object second)

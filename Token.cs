@@ -24,9 +24,11 @@ namespace Compilator
             IN, GET,
             IMPORT, SET,
             DELEGATE,
-            PROPERTIES
+            PROPERTIES,
+            TWODOT,
+            RANGE
         };
-        public static Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
+        public static readonly Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
             { "var",        new Token(Type.VAR, "var") },
             { "class",      new Token(Type.NEWCLASS, "class") },
@@ -54,13 +56,17 @@ namespace Compilator
             { "declare",    new Token(Type.DECLARE, "declare") },
             { "import",     new Token(Type.IMPORT, "import") },
             { "delegate",   new Token(Type.DELEGATE, "delegate") }
-        };
+        };        
 
         public Type type;
-        string value = "";
-        int pos;
-        string file;
-        int endpos = -1;
+        string      value = "";
+        int         pos;
+        string      file;
+        int         endpos = -1;
+
+        public int      Pos     => pos;
+        public string   File    => file;
+        public string   Value   => value;        
 
         public Token(Type type, string value, int pos = -1, string file = "")
         {
@@ -95,11 +101,7 @@ namespace Compilator
         {
             if (t2 == null) return t1;
             return new Token(t1.type, t1.value + t2.value, t1.pos, t2.pos+t2.value.Length, t1.file);
-        }
-
-        public int Pos { get { return pos; } }
-        public string File { get { return file; } }
-        public string Value { get { return value; } }
+        }        
 
         public override string ToString()
         {

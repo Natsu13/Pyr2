@@ -18,14 +18,14 @@ namespace Compilator
             this.left = left;
             this.op = this.token = op;
             this.right = right;
-            this.block = block;
+            this.block = this.assingBlock = block;            
         }
         public BinOp(Types left, Token op, Token right, Block block)
         {
             this.left = left;
             this.op = this.token = op;
             this.right = null;
-            this.block = block;
+            this.block = this.assingBlock = block;
             this.rtok = right;
         }
 
@@ -98,9 +98,16 @@ namespace Compilator
                         outputType = f.Returnt;
                     }
                 }
+                if (leuo.Op == "..")
+                {
+                    if (assingBlock?.SymbolTable.Get("Range") != null)
+                    {
+                        outputType = ((Class)assingBlock?.SymbolTable.Get("Range")).Name;
+                    }                    
+                }
                 if(op.Value == "dot" && right is UnaryOp riuo)
                 {
-                    riuo.Block = assingBlock.SymbolTable.Get(outputType.Value).assingBlock;
+                    riuo.Block = assingBlock?.SymbolTable.Get(outputType.Value).assingBlock;
                 }
                 else if(op.Value == "dot" && right is Variable riva)
                 {                    

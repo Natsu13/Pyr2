@@ -17,7 +17,7 @@ namespace Compilator
         public override Token getToken() { return new Token(Token.Type.NULL, "null"); }
 
         public override string Compile(int tabs = 0)
-        {
+        {            
             return "null";
         }
 

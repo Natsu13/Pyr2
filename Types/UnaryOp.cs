@@ -10,17 +10,20 @@ namespace Compilator
     {        
         Token token, op, name;
         Types expr;
+        List<Types> exptList = new List<Types>();
         ParameterList plist;
-        Block block;
-        public bool post = false;
-        public List<string> genericArgments = new List<string>();
-        bool isArray = false;
-        int arraySize = -1;
-        public bool asArgument = false;
+        Block block;        
         Token arraySizeVariable = null;
         Types arraySizeVariableTypes = null;
-        public bool isInString = false;
+        bool isArray = false;
+        int arraySize = -1;                      
         bool founded = false;
+
+        public bool post = false;
+        public List<string> genericArgments = new List<string>();
+        public bool asArgument = false;
+        public bool isInString = false;
+        public Types assignToParent = null;
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {
@@ -28,6 +31,7 @@ namespace Compilator
             this.expr = expr;
             this.block = block;
         }
+
         public UnaryOp(Token op, Token name, ParameterList plist = null, Block block = null, bool endit = false)
         {
             this.op = this.token = op;
@@ -35,6 +39,13 @@ namespace Compilator
             this.plist = plist;
             this.block = block;
             this.endit = endit;
+        }
+
+        public UnaryOp(Token op, List<Types> exptList, Block block = null)
+        {
+            this.op = this.token = op;
+            this.exptList = exptList;
+            this.block = block;
         }
         
         public override Token getToken() { return token; }
@@ -54,6 +65,7 @@ namespace Compilator
                 expr.assingBlock = assingBlock;
             string tbs = DoTabs(tabs);
             string o = Variable.GetOperatorStatic(op.type);
+            Types myfunc = null;
             if(o == "call")
             {
                 string nwnam = name.Value;
@@ -67,7 +79,22 @@ namespace Compilator
 
                     if (q is Class @class && @class.isDynamic) { isDynamic = true; }
                     if (q is Interface @interface && @interface.isDynamic) { isDynamic = true; }
-                    if(!isDynamic && (!(q is Function) && !(q is Assign)))
+                    if (q is Error && assignToParent != null && assignToParent is UnaryOp auop)
+                    {
+                        var output = auop.OutputType;
+                        var outClass = assingBlock.SymbolTable.Get(output.Value);
+                        if (outClass is Class outcl)
+                        {
+                            var finbd = outcl.Get(nwnam);
+                            if (finbd is Function finf)
+                            {
+                                name = finf.getToken();
+                                myfunc = finf;
+                            }
+                        }
+                        //assignToParent.assingBlock.SymbolTable.Get(nwnam);
+                    }
+                    if(!isDynamic && (!(q is Function) && !(q is Assign) && myfunc == null))
                         return "";
                 }
 
@@ -76,7 +103,7 @@ namespace Compilator
                 string gname = "";
                 if(genericArgments.Count == 0)
                 {
-                    var funcs = block.SymbolTable.GetAll(name.Value);
+                    var funcs = (myfunc == null ? block.SymbolTable.GetAll(name.Value) : new List<Types>(){ myfunc });
                     if (funcs != null && funcs.Count == 1)
                     {
                         var func = funcs[0];
@@ -122,7 +149,7 @@ namespace Compilator
                     plist.assingToToken = Name;
                 }
 
-                List<Types> allf = block.SymbolTable.GetAll(nwnam);
+                List<Types> allf = (myfunc == null ? block.SymbolTable.GetAll(nwnam) : new List<Types>(){ myfunc });
                 Types t = null;
                 if (allf != null && allf.Count > 1)
                 {
@@ -141,7 +168,7 @@ namespace Compilator
                     }
 
                 }else
-                    t = block.SymbolTable.Get(nwnam);                
+                    t = allf[0];                
 
                 string before = "";
                 if(name.Value.Split('.')[0] == "this")
@@ -367,6 +394,13 @@ namespace Compilator
 
                 return tbs + "return " + expr.Compile() + ";";
             }
+
+            if (o == "..")
+            {
+                var fun = block.SymbolTable.Get("Range.range") as Function;
+                return fun.assignTo + "." + fun.Name + "(" + exptList[0].Compile() + ", " + exptList[1].Compile() + ")";
+            }
+
             if (post)
                 return tbs + (inParen ? "(" : "") + expr.Compile() + Variable.GetOperatorStatic(op.type) + (inParen ? ")" : "") + (endit ? ";" : "");
             else
@@ -382,6 +416,10 @@ namespace Compilator
                 if (o == "new")
                 {
                     return name;
+                }
+                if (o == "..")
+                {
+                    return new Token(Token.Type.CLASS, "Range");
                 }
                 return _outputtype ?? new Token(Token.Type.CLASS, "object");
             }

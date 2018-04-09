@@ -16,7 +16,7 @@ namespace Compilator
             PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN, INC, DEC,
             CLASS, ID, FUNCTION, INTERFACE, LAMBDA, 
             NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,
-            LPAREN, RPAREN, BEGIN, END, VAR, DEFINERETURN, CALL, LSQUARE, RSQUARE, 
+            LPAREN, RPAREN, BEGIN, END, VAR, VAL, DEFINERETURN, CALL, LSQUARE, RSQUARE, 
             STATIC, VOID, EXTERNAL, OPERATOR, DYNAMIC, DECLARE,
             IF, ELSE, ELSEIF, FOR, WHILE,
             EQUAL, NOTEQUAL, AND, OR, MORE, LESS, 
@@ -26,7 +26,7 @@ namespace Compilator
             DELEGATE,
             PROPERTIES,
             TWODOT,
-            RANGE
+            RANGE, YIELD, CONTINUE, BREAK, INLINE
         };
         public static readonly Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
@@ -55,7 +55,12 @@ namespace Compilator
             { "dynamic",    new Token(Type.DYNAMIC, "dynamic") },
             { "declare",    new Token(Type.DECLARE, "declare") },
             { "import",     new Token(Type.IMPORT, "import") },
-            { "delegate",   new Token(Type.DELEGATE, "delegate") }
+            { "delegate",   new Token(Type.DELEGATE, "delegate") },
+            { "yield",      new Token(Type.YIELD, "yield") },
+            { "continue",   new Token(Type.CONTINUE, "continue") },
+            { "break",      new Token(Type.BREAK, "break") },
+            { "inline",     new Token(Type.INLINE, "inline") },
+            { "val",        new Token(Type.VAL, "val") }
         };        
 
         public Type type;

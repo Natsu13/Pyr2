@@ -28,7 +28,7 @@ namespace Compilator
             {
                 ((Variable)source).Check();
 
-                Types to = block.SymbolTable.Get(((Variable)source).getDateType().Value);
+                Types to = block.SymbolTable.Get(((Variable)source).GetDateType().Value);
                 if (to is Class && ((Class) to).haveParent("IIterable"))
                 {
                     isIterable = true;
@@ -76,7 +76,10 @@ namespace Compilator
                 int tmpc = block.Interpret.tmpcount++;
                 source.endit = false;
                 string tab = DoTabs(tabs);
-                ret = tab + "var $tmp" + tmpc + " = " + source.Compile(0) + ".iterator();\n";
+                var s = source.Compile(0).Replace("\n", "");
+                if (s.Substring(s.Length - 1, 1) == ";")
+                    s = s.Substring(0, s.Length - 1);
+                ret = tab + "var $tmp" + tmpc + " = " + s + ".iterator();\n";
                 ret += tab + "  while($tmp" + tmpc + ".hasNext()){\n";
                 ret += tab + "    var " + variable.Value + " = $tmp" + tmpc + ".next();\n";
                 ret += block.Compile(tabs + 2);

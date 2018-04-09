@@ -275,6 +275,9 @@ namespace Compilator
                     else
                         outcom += tbs + "  _." + t.Key + " = " + t.Key + ";\n";
                 }
+
+                outcom += "\n"+tbs+"  DefineModule('"+GetName()+"."+GetModule()+"', _);\n";
+
                 outcom += tbs + "\n  return _;\n";
                 outcom += tbs + "}(typeof " + n + " === 'undefined' ? {} : " + n + ", this);\n";
             }

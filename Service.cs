@@ -11,6 +11,12 @@ namespace Compilator
 {
     public class Service : WebSocketBehavior
     {
+        protected override void OnError(ErrorEventArgs e)
+        {
+            Console.WriteLine(e.Message);
+            base.OnError(e);
+        }
+
         protected override void OnMessage(MessageEventArgs e)
         {
             string[] data = e.Data.Split(' ');

@@ -31,14 +31,14 @@ namespace Compilator
                 if (first)
                 {                    
                     first = false;
-                    ret += "if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs + 1) + tbs + "  }\n";
+                    ret += "if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs) + DoTabs(tabs-2) + "  }\n";
                 }else if(c.Key is NoOp)
                 {
-                    ret += tbs + "else {\n" + c.Value.Compile(tabs + 1) + tbs + "  }\n";
+                    ret += tbs + "else {\n" + c.Value.Compile(tabs) + DoTabs(tabs-2) + "  }\n";
                 }
                 else
                 {
-                    ret += tbs + "else if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs + 1) + tbs + "  }\n";
+                    ret += tbs + "else if(" + c.Key?.Compile() + ") {\n" + c.Value.Compile(tabs) + DoTabs(tabs-2) + "  }\n";
                 }
             }
             return ret.Substring(0,ret.Length - 1);

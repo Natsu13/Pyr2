@@ -18,7 +18,9 @@ namespace Compilator
         public bool isExternal = false;
         public Token _external;
         public bool isDynamic = false;
-        public Token _dynamic;        
+        public Token _dynamic;
+        public bool isInline = false;
+        public Token _inline;
         public bool isExtending = false;
         public string extendingClass = "";
         public bool isOperator = false;
@@ -28,12 +30,15 @@ namespace Compilator
         public List<_Attribute> attributes = new List<_Attribute>();
         public List<string> returnGeneric = new List<string>();
         List<string> genericArguments = new List<string>();
+        public int inlineId = 0;
+        public Types assigmentInlineVariable = null;
+        public static int inlineIdCounter = 1;
 
         bool parentNotDefined = false;
         bool parentIsNotClassOrInterface = false;        
 
         public Function(Token name, Block _block, ParameterList paraml, Token returnt, Interpreter interpret, Block parent_block = null)
-        {
+        {            
             this.name = name;
             if (name.Value.Contains("."))
             {
@@ -71,11 +76,12 @@ namespace Compilator
                 else parentNotDefined = true;
             }            
             this.block = _block;
-            if (_block != null)
+            if (this.block != null)
             {
+                this.block.assingToType = this;
                 this.block.assignTo = name.Value;
                 this.block.assingBlock = this.block;
-            }
+            }               
             //this.block.blockAssignTo = name.Value;
             this.paraml = paraml;
             this.paraml.assingBlock = this.block;
@@ -102,7 +108,7 @@ namespace Compilator
         public ParameterList ParameterList { get { return paraml; } }
         public override Token getToken() { return name; }
         public Token Returnt { get { return returnt; } }
-        public Block Block { get { return block; } }
+        public Block Block { get { return block; } }        
 
         public string _hash = "";
         public string getHash()
@@ -124,7 +130,7 @@ namespace Compilator
                 return name.Value + (hash != "" ? "_" + hash : "");
             }
         }
-        public string RealName { get { return name.Value; } }
+        public string RealName => name.Value;
 
         public string Return()
         {
@@ -251,8 +257,7 @@ namespace Compilator
                                 ret += tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0);
                             
                             functionOpname = hash_name + "." + Name;
-                            bool f = true;
-                            if (paraml.Parameters.Count > 0) f = false;
+                            bool f = !(paraml.Parameters.Count > 0);
                             foreach (string generic in c.GenericArguments)
                             {
                                 if (!f) ret += ", ";
@@ -335,9 +340,9 @@ namespace Compilator
                     ret += tbs + "  " + addCode + "\n";
 
                 //if (genericArguments.Count != 0) ret += "\n";
-                foreach (string generic in genericArguments)
+                foreach (var generic in genericArguments)
                 {
-                    block.SymbolTable.Add(generic, new Generic(this, block, generic) { assingBlock = block });
+                    block?.SymbolTable.Add(generic, new Generic(this, block, generic) { assingBlock = block });
                 }
 
                 if(isConstructor)

@@ -258,6 +258,9 @@ namespace Compilator
                     else
                         outcom.Append("  _." + t.Key + " = " + t.Key + ";\n");
                 }
+
+                outcom.Append("\n  DefineModule('module', _);\n");
+
                 if (block.SymbolTable.Find("main"))
                 {
                     if (Interpreter._WAITFORPAGELOAD || (((Function)block.SymbolTable.Get("main")).attributes?.Where(x => x.GetName(true) == "OnPageLoad")).Any())
@@ -320,7 +323,7 @@ namespace Compilator
                                 foreach (Types v in _f.ParameterList.Parameters)
                                 {
                                     if (v is Variable __v)
-                                        file.WriteLine("plist_" + nax + ".parameters.Add(new Variable(new Token(Token.Type.ID, \"" + __v.Value + "\"), Block_" + nax + ", new Token(Token.Type.CLASS, \"" + __v.getDateType().Value + "\")));");
+                                        file.WriteLine("plist_" + nax + ".parameters.Add(new Variable(new Token(Token.Type.ID, \"" + __v.Value + "\"), Block_" + nax + ", new Token(Token.Type.CLASS, \"" + __v.GetDateType().Value + "\")));");
                                     else if (v is Assign __a)
                                     {
                                         string def = "";
@@ -331,7 +334,7 @@ namespace Compilator
                                         else if(__a.Right is Variable ___v)
                                             def = "new Variable(new Token(Token.Type.ID, \"" + ___v.Value + "\"))";
 
-                                        file.WriteLine("plist_" + nax + ".parameters.Add(new Assign(new Variable(new Token(Token.Type.ID, \"" + ((Variable)(__a.Left)).Value + "\"), Block_" + nax + ", new Token(Token.Type.CLASS, \"" + ((Variable)(__a.Left)).getDateType().Value + "\")), new Token(Token.Type.ASIGN, \"=\"), " + def + ", Block_" + nax + "));");
+                                        file.WriteLine("plist_" + nax + ".parameters.Add(new Assign(new Variable(new Token(Token.Type.ID, \"" + ((Variable)(__a.Left)).Value + "\"), Block_" + nax + ", new Token(Token.Type.CLASS, \"" + ((Variable)(__a.Left)).GetDateType().Value + "\")), new Token(Token.Type.ASIGN, \"=\"), " + def + ", Block_" + nax + "));");
                                     }
                                 }
                                 if(_f.Returnt == null || _f.Returnt.type == Token.Type.VOID)

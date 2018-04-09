@@ -22,13 +22,16 @@ namespace Compilator
         public Token asDateType = null;
         public bool isis = true;
         public bool isArray = false;
-        public int arraySize = 0;
+        public int  arraySize = 0;
         public bool isDateType = false;
+        private bool isVal;
+        public bool asvar = false;
         bool getFoundButBadArgs = false;
         List<string> generic = new List<string>();
 
-        public Variable(Token token, Types block, Token dateType = null, List<string> generic = null)
+        public Variable(Token token, Types block, Token dateType = null, List<string> generic = null, bool isVal = false)
         {
+            this.isVal = isVal;
             this.block = (Block)block;
             this.token = token;
             this.value = token.Value;
@@ -79,16 +82,21 @@ namespace Compilator
                 }
             }
         }
-        public Token  getType() { return dateType; }
-        public string Value { get { return value; } }
-        public string Type { get { return dateType.Value; } }
-        public Block  Block { get { return block; } }
-        public override Token getToken() { return token; }
-        public Token  getDateType() { return dateType; }
-        public bool   IsKey { get { return isKey; } }
-        public Types  Key { get { return key; } }
+        public Token  getType() => dateType;
+        public string Value => value;
+        public string Type => dateType.Value;
+        public Block  Block => block;
+        public bool   IsVal
+        {
+            get => isVal;
+            set => isVal = value;
+        }
+        public override Token getToken() => token;
+        public Token  GetDateType() => dateType;
+        public bool   IsKey => isKey;
+        public Types  Key => key;
         public void MadeArray(bool isArray) { isArray = true; }
-        public List<string> GenericList { get { return generic; } }
+        public List<string> GenericList => generic;
 
         public Token AsDateType
         {
@@ -119,6 +127,17 @@ namespace Compilator
         {
             this.key = key;
             isKey = true;
+        }
+
+        public bool IsPrimitive
+        {
+            get
+            {
+                if(dateType.Value == "auto")
+                    Check();
+
+                return new[] {"int", "string", "bool", "float"}.Contains(dateType.Value);
+            }
         }
 
         public void Check()
@@ -181,6 +200,20 @@ namespace Compilator
                     }
                     else if (t is Class)
                         this.dateType = ((Class) t).Name;
+                    else if (t is Assign ta)
+                    {
+                        var right = ta.Right;
+                        if(right is CString)
+                            this.dateType = new Token(Token.Type.CLASS, "string");
+                        else if (right is Number && ((Number)right).isReal)
+                            this.dateType = new Token(Token.Type.CLASS, "float");
+                        else if (right is Number)
+                            this.dateType = new Token(Token.Type.CLASS, "int");
+                        else if (right.getToken().Value == "true" || right.getToken().Value == "false")
+                            this.dateType = new Token(Token.Type.CLASS, "bool");
+                        else
+                            this.dateType = ((Variable)(((Assign)t).Left)).dateType;
+                    }
                     else
                         this.dateType = ((Variable)(((Assign)t).Left)).dateType;
                 }
@@ -244,6 +277,7 @@ namespace Compilator
                 key.endit = false;
 
             string vname = "";
+            string overidename = "";
 
             string nameclass = "";
             if (class_ != null)
@@ -255,6 +289,35 @@ namespace Compilator
 
             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
             {
+                var fasign = block.SymbolTable.Get(this.value);
+                if (fasign is Assign fass)
+                {
+                    if (fass.Left is Variable fasv && fasv.GetHashCode() != GetHashCode() && !(fass.Right is Null))
+                    {
+                        if (fasv.IsVal && fasv.IsPrimitive)
+                        {
+                            fass.Right.endit = endit;
+                            return fass.Right.Compile(tabs);
+                        }
+                    }
+                }
+
+                var split = Value.Split(new[] {'.'}, 1);
+                var usingBlock = assingBlock ?? block;
+                if (usingBlock != null && (usingBlock = usingBlock.GetBlock(Block.BlockType.FUNCTION, new List<Block.BlockType>{ Block.BlockType.CLASS, Block.BlockType.INTERFACE })) != null)
+                {
+                    if (usingBlock.SymbolTable.Get(usingBlock.assignTo) is Function ass && ass.isInline && ass.inlineId > 0)
+                    {
+                        if (split[0] == "this")
+                        {
+                            overidename = split[0] + "." + ass.Name + "$" + ass.inlineId + "$" + value;
+                        }
+                        else
+                        {
+                            overidename = ass.Name + "$" + ass.inlineId + "$" + value;
+                        }
+                    }
+                }
                 var t__ = "this" + (Value == "this" ? "" : ".");
                 if (assingBlock != null && assingBlock.isType(Block.BlockType.PROPERTIES))
                     t__ = "this.$self" + (Value == "this" ? "" : ".");
@@ -301,7 +364,7 @@ namespace Compilator
                     }
                     else
                     {
-                        vname = not + (isKey ? "[" + key.Compile() + "]" : "");
+                        vname = (overidename != "" ? overidename : not) + (isKey ? "[" + key.Compile() + "]" : "");
                     }
                 }
                 else if (t is Properties)

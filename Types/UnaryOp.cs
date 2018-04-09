@@ -59,6 +59,134 @@ namespace Compilator
 
         public Function usingFunction = null;
 
+        private Types _myt = null;
+        private string newname = "";
+        private bool isDynamic = false;
+        private string generic = "";
+        public Function FindUsingFunction()
+        {
+            string o = Variable.GetOperatorStatic(op.type);
+            if (o != "call")
+                return null;
+
+            //if (usingFunction != null)
+            //    return usingFunction;
+
+            string nwnam = name.Value;
+            Types myfunc = null;
+            isDynamic = false;
+            if (!block.SymbolTable.Find(name.Value))
+            {
+                nwnam = name.Value.Split('.')[0];
+                if (name.Value.Split('.')[0] == "this")
+                    nwnam = string.Join(".", name.Value.Split('.').Skip(1));
+                Types q = block.SymbolTable.Get(nwnam);
+
+                if (q is Class @class && @class.isDynamic) { isDynamic = true; }
+                if (q is Interface @interface && @interface.isDynamic) { isDynamic = true; }
+                if (q is Error && assignToParent != null && assignToParent is UnaryOp auop)
+                {
+                    var output = auop.OutputType;
+                    var outClass = assingBlock.SymbolTable.Get(output.Value);
+                    if (outClass is Class outcl)
+                    {
+                        var finbd = outcl.Get(nwnam);
+                        if (finbd is Function finf)
+                        {
+                            name = finf.getToken();
+                            myfunc = finf;
+                        }
+                    }
+                    //assignToParent.assingBlock.SymbolTable.Get(nwnam);
+                }
+                if(!isDynamic && (!(q is Function) && !(q is Assign) && myfunc == null))
+                    return null;
+            }
+
+            generic = "";
+            bool fir = true;
+            string gname = "";
+            if(genericArgments.Count == 0)
+            {
+                var funcs = (myfunc == null ? block.SymbolTable.GetAll(name.Value) : new List<Types>(){ myfunc });
+                if (funcs != null && funcs.Count == 1)
+                {
+                    var func = funcs[0];
+                    if (func != null && func is Function funct)
+                    {
+                        if (funct.GenericArguments.Count > 0)
+                        {
+                            if (funct.ParameterList.parameters.Count == plist.parameters.Count || funct.ParameterList.allowMultipel)
+                            {
+                                int i = 0;
+                                foreach (var parameter in funct.ParameterList.parameters)
+                                {
+                                    var vleft = parameter.TryVariable();
+                                    var vright = plist.parameters[i++].TryVariable();     
+                                    if(vright.Type == "auto")
+                                        vright.Check();
+                                    if(vleft.Type == vright.Type)
+                                        continue;
+                                    if (funct.GenericArguments.Contains(vleft.Type))
+                                    {
+                                        genericArgments.Add(vright.Type);
+                                        if (genericArgments.Count == funct.GenericArguments.Count)
+                                            break;
+                                    }                                        
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            foreach(string g in genericArgments)
+            {
+                if (!fir) generic += ", ";
+                fir = false;
+                Types gf = block.SymbolTable.Get(g);
+                if (gf is Class) gname = ((Class)gf).getName();
+                if (gf is Interface) gname = ((Interface)gf).getName();
+                generic += "'"+ gname + "'";
+            }
+
+            if (plist != null && plist.assingToType == null)
+            {
+                plist.assingToToken = Name;
+            }
+
+            List<Types> allf = (myfunc == null ? block.SymbolTable.GetAll(nwnam) : new List<Types>(){ myfunc });
+            Types t = null;
+            if (allf != null && allf.Count > 1)
+            {
+                foreach (Types q in allf)
+                {
+                    ParameterList p = null;
+                    if (q is Function)
+                        p = ((Function)q).ParameterList;
+                    if (q is Lambda)
+                        p = ((Lambda)q).ParameterList;
+
+                    if (p.Compare(plist))
+                    {
+                        t = q;
+                    }
+                }
+
+            }else
+                t = allf[0];                
+            
+            newname = nwnam;
+            if (t is Function _f)
+            {
+                newname = _f.Name;
+                usingFunction = _f;
+            }
+
+            _myt = t;
+
+            return usingFunction;
+        }
+
         public override string Compile(int tabs = 0)
         {
             if(expr != null)
@@ -68,107 +196,9 @@ namespace Compilator
             Types myfunc = null;
             if(o == "call")
             {
-                string nwnam = name.Value;
-                bool isDynamic = false;
-                if (!block.SymbolTable.Find(name.Value))
-                {
-                    nwnam = name.Value.Split('.')[0];
-                    if (name.Value.Split('.')[0] == "this")
-                        nwnam = string.Join(".", name.Value.Split('.').Skip(1));
-                    Types q = block.SymbolTable.Get(nwnam);
+                FindUsingFunction();
 
-                    if (q is Class @class && @class.isDynamic) { isDynamic = true; }
-                    if (q is Interface @interface && @interface.isDynamic) { isDynamic = true; }
-                    if (q is Error && assignToParent != null && assignToParent is UnaryOp auop)
-                    {
-                        var output = auop.OutputType;
-                        var outClass = assingBlock.SymbolTable.Get(output.Value);
-                        if (outClass is Class outcl)
-                        {
-                            var finbd = outcl.Get(nwnam);
-                            if (finbd is Function finf)
-                            {
-                                name = finf.getToken();
-                                myfunc = finf;
-                            }
-                        }
-                        //assignToParent.assingBlock.SymbolTable.Get(nwnam);
-                    }
-                    if(!isDynamic && (!(q is Function) && !(q is Assign) && myfunc == null))
-                        return "";
-                }
-
-                string generic = "";
-                bool fir = true;
-                string gname = "";
-                if(genericArgments.Count == 0)
-                {
-                    var funcs = (myfunc == null ? block.SymbolTable.GetAll(name.Value) : new List<Types>(){ myfunc });
-                    if (funcs != null && funcs.Count == 1)
-                    {
-                        var func = funcs[0];
-                        if (func != null && func is Function funct)
-                        {
-                            if (funct.GenericArguments.Count > 0)
-                            {
-                                if (funct.ParameterList.parameters.Count == plist.parameters.Count || funct.ParameterList.allowMultipel)
-                                {
-                                    int i = 0;
-                                    foreach (var parameter in funct.ParameterList.parameters)
-                                    {
-                                        var vleft = parameter.TryVariable();
-                                        var vright = plist.parameters[i++].TryVariable();     
-                                        if(vright.Type == "auto")
-                                            vright.Check();
-                                        if(vleft.Type == vright.Type)
-                                            continue;
-                                        if (funct.GenericArguments.Contains(vleft.Type))
-                                        {
-                                            genericArgments.Add(vright.Type);
-                                            if (genericArgments.Count == funct.GenericArguments.Count)
-                                                break;
-                                        }                                        
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                foreach(string g in genericArgments)
-                {
-                    if (!fir) generic += ", ";
-                    fir = false;
-                    Types gf = block.SymbolTable.Get(g);
-                    if (gf is Class) gname = ((Class)gf).getName();
-                    if (gf is Interface) gname = ((Interface)gf).getName();
-                    generic += "'"+ gname + "'";
-                }
-
-                if (plist != null && plist.assingToType == null)
-                {
-                    plist.assingToToken = Name;
-                }
-
-                List<Types> allf = (myfunc == null ? block.SymbolTable.GetAll(nwnam) : new List<Types>(){ myfunc });
-                Types t = null;
-                if (allf != null && allf.Count > 1)
-                {
-                    foreach (Types q in allf)
-                    {
-                        ParameterList p = null;
-                        if (q is Function)
-                            p = ((Function)q).ParameterList;
-                        if (q is Lambda)
-                            p = ((Lambda)q).ParameterList;
-
-                        if (p.Compare(plist))
-                        {
-                            t = q;
-                        }
-                    }
-
-                }else
-                    t = allf[0];                
+                var t = _myt;
 
                 string before = "";
                 if(name.Value.Split('.')[0] == "this")
@@ -177,12 +207,6 @@ namespace Compilator
                         before = "$this.";
                     else
                         before = "this.";
-                }
-                string newname = nwnam;
-                if (t is Function _f)
-                {
-                    newname = _f.Name;
-                    usingFunction = _f;
                 }
 
                 if (t is Assign && ((Assign)t).Right is Lambda)
@@ -208,7 +232,7 @@ namespace Compilator
                 if (name.Value == "js")
                 {
                     string pl = plist.Compile();
-                    return pl.Substring(1, pl.Length - 2).Replace("\\", "") + (pl.Substring(pl.Length - 2, 1) != ";"?"":"");
+                    return pl.Substring(1, pl.Length - 2).Replace("\\", "");
                 }
                 if (name.Value.Contains("."))
                 {
@@ -227,11 +251,80 @@ namespace Compilator
                         nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t)?.Name;
                     if (nname.Split('.')[0] == "this")
                         nname = string.Join(".", nname.Split('.').Skip(1));
+
+                    if (usingFunction.isInline)
+                    {
+                        int tmpc = usingFunction.inlineId > 0 ? usingFunction.inlineId : (usingFunction.inlineId = Function.inlineIdCounter++);
+
+                        if (assignToParent is Assign astpa)
+                        {
+                            usingFunction.assigmentInlineVariable = assignToParent;
+                        }
+                        var ret = "\n";
+                        var i = 0;
+
+                        Dictionary<Assign, Types> defaultVal = new Dictionary<Assign, Types>();
+
+                        foreach (var par in usingFunction.ParameterList.Parameters)
+                        {
+                            if (i >= plist.Parameters.Count)
+                            {
+                                if (par is Assign para)
+                                {                                    
+                                    //ret += tbs + "var " + newname + "$" + tmpc + "$" + par.TryVariable().Value + " = " + para.Right.Compile() + ";\n";
+                                }
+                            }
+                            else
+                            {
+                                //ret += tbs + "var "+newname+"$"+tmpc+"$"+par.TryVariable().Value+" = " + plist.Parameters[i].Compile() + ";\n";
+                                if (par is Assign para)
+                                {      
+                                    defaultVal.Add(para, para.Right);
+                                    para.Right = plist.Parameters[i];
+                                }
+                            }                            
+                            i++;
+                        }
+
+                        ret += usingFunction.Block.Compile(tabs);
+
+                        foreach (var typese in defaultVal)
+                        {
+                            typese.Key.Right = typese.Value;
+                        }
+
+                        usingFunction.inlineId = 0;
+                        usingFunction.assigmentInlineVariable = null;
+                        return ret;
+                    }
+
                     if (plist == null)
                         return tbs + (inParen ? "(" : "") + before + nname + "("+generic+")" + (inParen ? ")" : "") + (endit ? ";" : "");
                     if (plist.assingBlock == null)
                         plist.assingBlock = block;
                     return tbs + (inParen ? "(" : "") + before + nname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != ""?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                }
+                else if (usingFunction.isInline)
+                {
+                    int tmpc = usingFunction.inlineId > 0 ? usingFunction.inlineId : (usingFunction.inlineId = Function.inlineIdCounter++);
+
+                    if (assignToParent is Assign astpa)
+                    {
+                        usingFunction.assigmentInlineVariable = assignToParent;
+                    }
+                    var ret = "\n";
+                    var i = 0;
+                    foreach (var par in usingFunction.ParameterList.Parameters)
+                    {
+                        ret += tbs + "var "+newname+"$"+tmpc+"$"+par.TryVariable().Value+" = " + plist.Parameters[i].Compile() + ";\n";
+                        i++;
+                    }
+
+                    ret += usingFunction.Block.Compile(tabs);
+
+                    usingFunction.inlineId = 0;
+                    usingFunction.assigmentInlineVariable = null;
+                    return ret;
                 }
                 else
                 {
@@ -387,11 +480,30 @@ namespace Compilator
                 return (inParen ? "(" : "") + rt + (inParen ? ")" : "");
             }
             if(o == "return")
-            {
+            {                              
+                if (expr != null)
+                    expr.endit = false;
+
+                var usingBlock = assingBlock ?? block;
+                if (usingBlock != null && (usingBlock = usingBlock.GetBlock(Block.BlockType.FUNCTION, new List<Block.BlockType>{ Block.BlockType.CLASS, Block.BlockType.INTERFACE })) != null)
+                {
+                    if (usingBlock.SymbolTable.Get(usingBlock.assignTo) is Function ass && ass.isInline && ass.inlineId > 0)
+                    {
+                        if (ass.assigmentInlineVariable == null)
+                        {
+                            if (expr != null)
+                                return tbs + expr.Compile();
+                        }
+                        else if(ass.assigmentInlineVariable is Assign assv)
+                        {
+                            if (expr != null)
+                                return tbs + ass.Name + "$" + ass.inlineId + "$return = " + expr.Compile() + ";";
+                        }
+                    }
+                }
+
                 if (expr == null)
                     return tbs + "return;";
-                expr.endit = false;
-
                 return tbs + "return " + expr.Compile() + ";";
             }
 

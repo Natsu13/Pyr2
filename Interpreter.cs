@@ -455,9 +455,9 @@ namespace Compilator
                     else if (current_token.type == Token.Type.THREEDOT)
                     {
                         Eat(Token.Type.THREEDOT);
-                        Token multiple_name = current_token;
+                        Token multipleName = current_token;
                         Eat(Token.Type.ID);
-                        plist.allowMultipelName = multiple_name;
+                        plist.allowMultipelName = multipleName;
                         plist.allowMultipel = true;
                         continue;
                     }
@@ -472,6 +472,8 @@ namespace Compilator
                     }
                     else
                         Eat(Token.Type.CLASS);
+
+                    bool isInline = IsModifer(Token.Type.INLINE);
                     Token vname = current_token;
                     Eat(Token.Type.ID);
                     if (current_token.type == Token.Type.ASIGN)
@@ -479,13 +481,23 @@ namespace Compilator
                         Token assign = current_token;
                         Eat(Token.Type.ASIGN);
                         Types _default = Expr();
-                        plist.parameters.Add(new Assign(new Variable(vname, current_block, vtype, generic), assign, _default, current_block));
+                        plist.parameters.Add(new Assign(new Variable(vname, current_block, vtype, generic, isVal: isInline), assign, _default, current_block));
                         defaultstart = true;
                     }
                     else
                     {
                         if (defaultstart) { plist.cantdefault = true; }
-                        plist.parameters.Add(new Variable(vname, current_block, vtype, generic));
+                        var va = new Variable(vname, current_block, vtype, generic, isVal: isInline);
+                        if (isInline)
+                        {
+                            plist.parameters.Add(new Assign(va, new Token(Token.Type.ASIGN, "="), new Null(), current_block));
+                        }
+                        else
+                        {
+                            plist.parameters.Add(va);
+                            new Assign(va, new Token(Token.Type.ASIGN, "="), new Null(), current_block);
+                        }                                                
+                        //current_block.SymbolTable.Add(vname.Value, va);
                     }
                 }
                 else
@@ -622,6 +634,11 @@ namespace Compilator
             {
                 Eat(Token.Type.INTEGER);
                 return new Number(token);
+            }
+            else if (token.type == Token.Type.REAL)
+            {
+                Eat(Token.Type.REAL);
+                return new Number(token, true);
             }
             else if (token.type == Token.Type.STRING)
             {
@@ -911,6 +928,10 @@ namespace Compilator
                 return ConditionCatch();
             else if (current_token.type == Token.Type.ID)
                 return AssignmentStatement();
+            else if (current_token.type == Token.Type.VAR)
+                return DeclareVariable(asvar: true);
+            else if (current_token.type == Token.Type.VAL)
+                return DeclareVariable(isVal: true);
             else if (current_token.type == Token.Type.CLASS)
                 return DeclareVariable();
             else if (current_token.type == Token.Type.FOR)
@@ -954,6 +975,23 @@ namespace Compilator
                 if (current_token.type != Token.Type.SEMI)
                     returnv = Expr();
                 return new UnaryOp(token, returnv, current_block);
+            }
+            else if (current_token.type == Token.Type.INLINE)
+            {
+                Token modifer = current_token;
+                current_modifer.Add(current_token);
+                Eat(Token.Type.INLINE);
+                if (current_token.type == Token.Type.NEWFUNCTION ||
+                    current_token.type == Token.Type.STATIC ||
+                    current_token.type == Token.Type.OPERATOR ||
+                    current_token.type == Token.Type.ID)
+                {
+                    Types type = Statement();
+                    current_modifer.Remove(modifer);
+                    return type;
+                }
+                Error("The inline modifer can modify only function");
+                return null;
             }
             else if (current_token.type == Token.Type.DYNAMIC)
             {
@@ -1175,6 +1213,7 @@ namespace Compilator
             attributes.Clear();
             Block _bloc;
             current_block_with_variable = ablock;
+            current_block.Add(ablock);
             Block.BlockType last_block_type = current_block_type;
             current_block_type = btype;
             if(btype != Block.BlockType.CONDITION && btype != Block.BlockType.FOR)
@@ -1338,7 +1377,7 @@ namespace Compilator
         {
             List<_Attribute> att = new List<_Attribute>(attributes);
             attributes.Clear();
-            if (!isModifer(Token.Type.DELEGATE))
+            if (!IsModifer(Token.Type.DELEGATE))
                 Eat(Token.Type.NEWFUNCTION);
             Token name = current_token;
             Eat(current_token.type);
@@ -1366,7 +1405,7 @@ namespace Compilator
 
             Block sb = current_block;
             current_block = new Block(this);
-            current_block.Parent = sb;
+            current_block.Parent = sb;            
             ParameterList p = Parameters(true);
             Token returnt = null;            
             List<string> garg = new List<string>();
@@ -1375,14 +1414,7 @@ namespace Compilator
             {
                 Eat(Token.Type.DEFINERETURN);
                 returnt = current_token;
-                if (current_token.type == Token.Type.ID)
-                    Eat(Token.Type.ID);
-                else if (current_token.type == Token.Type.VOID)
-                    Eat(Token.Type.VOID);
-                else if (current_token.type == Token.Type.INTERFACE)
-                    Eat(Token.Type.INTERFACE);
-                else
-                    Eat(Token.Type.CLASS);
+                Eat(current_token.type);
 
                 if(current_token.type == Token.Type.LSQUARE)
                 {
@@ -1416,14 +1448,14 @@ namespace Compilator
             Block _bloc = CatchBlock(Block.BlockType.FUNCTION, false, sendb);
             if (brekall) return null;
             string sname = name.Value;
-            if (isModifer(Token.Type.OPERATOR))
+            if (IsModifer(Token.Type.OPERATOR))
             {                
                 name = new Token(Token.Type.ID, "operator_" + name.Value, name.Pos, name.File);
                 sname = "operator " + sname;
             }
             List<Types> paramas = new List<Types>();
 
-            if (isModifer(Token.Type.DELEGATE))
+            if (IsModifer(Token.Type.DELEGATE))
             {
                 Block block = new Block(this);
                 block.Parent = sb;
@@ -1453,6 +1485,8 @@ namespace Compilator
             p.parameters = paramas;
 
             Function func = new Function(name, _bloc, p, returnt, this, sendb);
+            if(_bloc != null)
+                _bloc.assingToType = func;
             func.returnAsArray = returnrArray;
             func.returnGeneric = garg;
             func.SetGenericArgs(genericArgs);
@@ -1460,24 +1494,29 @@ namespace Compilator
             func.assignTo = current_block.assignTo;
             func.assingToType = current_block.assingToType;
             func.attributes = att;
-            if (isModifer(Token.Type.STATIC))
+            if (IsModifer(Token.Type.STATIC))
             {
                 func.isStatic = true;
-                func._static = getModifer(Token.Type.STATIC);
+                func._static = GetModifer(Token.Type.STATIC);
             }
-            if (isModifer(Token.Type.EXTERNAL))
+            if (IsModifer(Token.Type.EXTERNAL))
             {
                 func.isExternal = true;
-                func._external = getModifer(Token.Type.EXTERNAL);
+                func._external = GetModifer(Token.Type.EXTERNAL);
             }
-            if (isModifer(Token.Type.DYNAMIC))
+            if (IsModifer(Token.Type.DYNAMIC))
             {
                 func.isDynamic = true;
-                func._dynamic = getModifer(Token.Type.DYNAMIC);
+                func._dynamic = GetModifer(Token.Type.DYNAMIC);
             }            
-            if (isModifer(Token.Type.OPERATOR))
+            if (IsModifer(Token.Type.OPERATOR))
             {
                 func.isOperator = true;
+            }
+            if (IsModifer(Token.Type.INLINE))
+            {                
+                func.isInline = true;
+                func._inline = GetModifer(Token.Type.INLINE);
             }
             if (func.isConstructor)
             {
@@ -1490,17 +1529,17 @@ namespace Compilator
             return func;
         }
 
-        public bool isModifer(Token.Type type)
+        private bool IsModifer(Token.Type type)
         {
-            foreach (Token t in current_modifer)
+            foreach (var t in current_modifer)
                 if (t.type == type)
                     return true;
             return false;
         }
 
-        public Token getModifer(Token.Type type)
+        private Token GetModifer(Token.Type type)
         {
-            foreach (Token t in current_modifer)
+            foreach (var t in current_modifer)
                 if (t.type == type)
                     return t;
             return null;
@@ -1571,15 +1610,15 @@ namespace Compilator
             c.SetGenericArgs(garg);
             c.attributes = att;
 
-            if (isModifer(Token.Type.EXTERNAL))
+            if (IsModifer(Token.Type.EXTERNAL))
             {
                 c.isExternal = true;
-                c._external = getModifer(Token.Type.EXTERNAL);
+                c._external = GetModifer(Token.Type.EXTERNAL);
             }
-            if (isModifer(Token.Type.DYNAMIC))
+            if (IsModifer(Token.Type.DYNAMIC))
             {
                 c.isDynamic = true;
-                c._dynamic = getModifer(Token.Type.DYNAMIC);
+                c._dynamic = GetModifer(Token.Type.DYNAMIC);
             }
 
             current_block.SymbolTable.Add(name.Value, c);
@@ -1667,15 +1706,15 @@ namespace Compilator
             c.SetGenericArgs(garg);
             c.attributes = att;
 
-            if (isModifer(Token.Type.EXTERNAL))
+            if (IsModifer(Token.Type.EXTERNAL))
             {
                 c.isExternal = true;
-                c._external = getModifer(Token.Type.EXTERNAL);
+                c._external = GetModifer(Token.Type.EXTERNAL);
             }
-            if (isModifer(Token.Type.DYNAMIC))
+            if (IsModifer(Token.Type.DYNAMIC))
             {
                 c.isDynamic = true;
-                c._dynamic = getModifer(Token.Type.DYNAMIC);
+                c._dynamic = GetModifer(Token.Type.DYNAMIC);
             }
 
             if (current_block.SymbolTable.Find(name.Value))
@@ -1691,8 +1730,18 @@ namespace Compilator
             return c;
         }
 
-        public Types DeclareVariable(Token sDateType = null, Types have = null)
+        public Types DeclareVariable(Token sDateType = null, Types have = null, bool asvar = false, bool isVal = false)
         {
+            if (asvar)
+            {
+                Eat(Token.Type.VAR);
+                sDateType = new Token(Token.Type.AUTO, "auto");
+            }
+            if (isVal)
+            {
+                Eat(Token.Type.VAL);
+                sDateType = new Token(Token.Type.AUTO, "auto");
+            }
             List<_Attribute> att = new List<_Attribute>(attributes);
             attributes.Clear();
             List<string> garg = new List<string>();
@@ -1751,12 +1800,14 @@ namespace Compilator
                 }
             }
 
-            Types left = Variable(dateType);
+            Types left = Variable(dateType, isVal);
             if(left is Variable)
             {
                 (left as Variable).genericArgs = garg;
                 if (isArray)
                     (left as Variable).MadeArray(true);
+                if (asvar || isVal)
+                    (left as Variable).asvar = true;
             }     
             if(current_token.type == Token.Type.SET)
             {
@@ -1797,11 +1848,11 @@ namespace Compilator
                 Token token = current_token;
                 Eat(Token.Type.ASIGN);
                 Types right = Expr();
-                Types node = new Assign(left, token, right, current_block) { attributes = att };
-                if (isModifer(Token.Type.STATIC))
+                Types node = new Assign(left, token, right, current_block, false, isVal) { attributes = att };
+                if (IsModifer(Token.Type.STATIC))
                 {
                     ((Assign)node).isStatic = true;
-                    ((Assign)node)._static = getModifer(Token.Type.STATIC);
+                    ((Assign)node)._static = GetModifer(Token.Type.STATIC);
                 }
                 node.assingBlock = current_block;
                 return node;
@@ -1809,10 +1860,10 @@ namespace Compilator
             else if (current_token.type == Token.Type.SEMI)
             {
                 Types node = new Assign(left, new Token(Token.Type.ASIGN, "="), new Null(), current_block, true) { attributes = att };
-                if (isModifer(Token.Type.STATIC))
+                if (IsModifer(Token.Type.STATIC))
                 {
                     ((Assign)node).isStatic = true;
-                    ((Assign)node)._static = getModifer(Token.Type.STATIC);
+                    ((Assign)node)._static = GetModifer(Token.Type.STATIC);
                 }
                 node.assingBlock = current_block;
                 return node;
@@ -1857,14 +1908,14 @@ namespace Compilator
             Token token = current_token;
             Eat(Token.Type.ASIGN); 
             Types right = Expr();
-            Types node = new Assign(left, token, right, current_block);
+            Types node = new Assign(left, token, right, current_block);            
             node.assingBlock = current_block;
             return node;
         }
 
-        public Types Variable(Token dateType = null)
+        public Types Variable(Token dateType = null, bool isVal = false)
         {            
-            Types node = new Variable(current_token, current_block, dateType);
+            Types node = new Variable(current_token, current_block, dateType, isVal: isVal);
             node.assingBlock = current_block;
             if (current_token.type == Token.Type.TRUE)
                 Eat(Token.Type.TRUE);

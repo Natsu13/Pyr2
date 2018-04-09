@@ -147,7 +147,7 @@ namespace Compilator
                     }                        
                 }
             }
-        }
+        }        
 
         public Assign FindVariable(string name)
         {
@@ -158,6 +158,33 @@ namespace Compilator
                 if (parent != null)
                     return parent.FindVariable(name);
                 return null;
+            }
+        }
+
+        public Block GetBlock(Block.BlockType type, List<Block.BlockType> nottype = null)
+        {
+            if (type == this.type)
+                return this;
+            
+            if (parent != null)
+            {               
+                if(parent.type == type)
+                    return parent;
+                if (nottype == null || !nottype.Contains(parent.type))
+                    return parent.GetBlock(type, nottype);
+            }            
+
+            return null;
+        }
+
+        public void Add(Block block)
+        {
+            if (block == null)
+                return;
+            symbolTable.Add(block);
+            foreach (var blockVariable in block.variables)
+            {
+                variables[blockVariable.Key] = blockVariable.Value;
             }
         }
 

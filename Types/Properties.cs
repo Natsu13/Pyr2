@@ -48,7 +48,7 @@ namespace Compilator
 
             if(this.setter is Block)
             {
-                ((Block)this.setter).variables.Add("value", new Assign(new Variable(new Token(Token.Type.STRING, "value"), assingBlock, ((Variable)variable).getDateType()), new Token(Token.Type.ASIGN, "="), new Null(), assingBlock));
+                ((Block)this.setter).variables.Add("value", new Assign(new Variable(new Token(Token.Type.STRING, "value"), assingBlock, ((Variable)variable).GetDateType()), new Token(Token.Type.ASIGN, "="), new Null(), assingBlock));
             }
 
             string var_name = variable.TryVariable().Value;

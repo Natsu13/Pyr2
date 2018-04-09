@@ -95,6 +95,16 @@ namespace Compilator
                     JSName = "Number"
                 };
                 Add("int", Int);
+                /// Date type float implicit
+                //Add("int", typeof(TypeInt));
+                Token TokenFloat = new Token(Token.Type.ID, "float");
+                Block BlockFloat = new Block(interpret) { Parent = assigment_block };
+                Class Float = new Class(TokenFloat, BlockFloat, null)
+                {
+                    isExternal = true,
+                    JSName = "Number"
+                };
+                Add("float", Int);
             }
         }
 
@@ -225,7 +235,7 @@ namespace Compilator
             Token FunctionIntOperatorEqualName = new Token(Token.Type.ID, "operator equal");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
-            Function FunctionIntOperatorEqual = new Function(FunctionStringOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            Function FunctionIntOperatorEqual = new Function(FunctionIntOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
             BlockInt.SymbolTable.Add("operator equal", FunctionIntOperatorEqual);
             //Operator More
             Token FunctionIntOperatorMoreName = new Token(Token.Type.ID, "operator compareTo");
@@ -261,6 +271,49 @@ namespace Compilator
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
             Function FunctionIntMultipleGet = new Function(FunctionIntOperatorMultipleName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true, isExternal = true };
             BlockInt.SymbolTable.Add("operator multiple", FunctionIntMultipleGet);
+
+            /// Initial Float Class
+            Block BlockFloat = ((Class)Get("float")).assingBlock;
+            //Operator Equal
+            Token FunctionFloatOperatorEqualName = new Token(Token.Type.ID, "operator equal");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
+            Function FunctionFloatOperatorEqual = new Function(FunctionFloatOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockFloat.SymbolTable.Add("operator equal", FunctionFloatOperatorEqual);
+            //Operator More
+            Token FunctionFloatOperatorMoreName = new Token(Token.Type.ID, "operator compareTo");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
+            Function FunctionFloatOperatorMore = new Function(FunctionFloatOperatorMoreName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockFloat.SymbolTable.Add("operator compareTo", FunctionFloatOperatorMore);
+            //Operator Plus
+            Token FunctionFloatOperatorPlusName = new Token(Token.Type.ID, "operator plus");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
+            Function FunctionFloatOperatorPlus = new Function(FunctionFloatOperatorPlusName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
+            BlockFloat.SymbolTable.Add("operator plus", FunctionFloatOperatorPlus);
+            //Operator Minus
+            Token FunctionFloatOperatorMinusName = new Token(Token.Type.ID, "operator minus");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
+            Function FunctionFloatOperatorMinus = new Function(FunctionFloatOperatorMinusName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
+            BlockFloat.SymbolTable.Add("operator minus", FunctionFloatOperatorMinus);
+            //Operator Inc
+            Token FunctionFloatOperatorIncrementName = new Token(Token.Type.ID, "operator inc");
+            Function FunctionFloatOperatorIncrement = new Function(FunctionFloatOperatorIncrementName, null, new ParameterList(true), new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
+            BlockFloat.SymbolTable.Add("operator inc", FunctionFloatOperatorIncrement);
+            //Operator Get
+            Token FunctionFloatOperatorGetName = new Token(Token.Type.ID, "operator get");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "key"), BlockFloat, new Token(Token.Type.CLASS, "int")));
+            Function FunctionFloatOperatorGet = new Function(FunctionFloatOperatorGetName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true, isExternal = true };
+            BlockFloat.SymbolTable.Add("operator get", FunctionFloatOperatorGet);
+            //Operator Multiple
+            Token FunctionFloatOperatorMultipleName = new Token(Token.Type.ID, "operator multiple");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
+            Function FunctionFloatMultipleGet = new Function(FunctionFloatOperatorMultipleName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true, isExternal = true };
+            BlockFloat.SymbolTable.Add("operator multiple", FunctionFloatMultipleGet);
         }
 
         public Dictionary<string, Types> Table { get { return table; } }
@@ -271,6 +324,16 @@ namespace Compilator
         {
             table.Add(name, (Types)Activator.CreateInstance(typeof(Class<>).MakeGenericType(type), this.interpret, this.assigment_block, name, parent));
             tableType.Add(name, type);
+        }
+
+        public void Add(Block block)
+        {
+            if (block == null)
+                return;
+            foreach (var typese in block.SymbolTable.Table)
+            {
+                Add(typese.Key, typese.Value);
+            }
         }
 
         public void Add(string name, Types type, bool isForImport = false)

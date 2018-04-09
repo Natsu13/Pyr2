@@ -41,7 +41,8 @@ namespace Compilator
 
         public override void Semantic()
         {
-
+            expr.Semantic();
+            block.Semantic();
         }
 
         public override int Visit()

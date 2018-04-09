@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,17 +11,26 @@ namespace Compilator
     {
         Token token;
         int value;
-        public Number(Token token)
+        private float fvalue;
+        public bool isReal = false;
+        public Number(Token token, bool isReal = false)
         {
+            this.isReal = isReal;
             this.token = token;
-            value = Int32.Parse(token.Value);
+            if (isReal)
+                fvalue = float.Parse(token.Value, CultureInfo.InvariantCulture);
+            else
+                value = Int32.Parse(token.Value);
         }
         public int Value { get { return value; } }
+        public float FValue { get { return fvalue;} }
         public Token.Type Type { get { return token.type; } }
         public override Token getToken() { return token; }
 
         public override string Compile(int tabs = 0)
         {
+            if(isReal)
+                return fvalue.ToString(CultureInfo.InvariantCulture);
             return value.ToString();
         }
 
@@ -36,7 +46,7 @@ namespace Compilator
 
         public override string InterpetSelf()
         {
-            return "new Number("+token.InterpetSelf()+");";
+            return "new Number(" + token.InterpetSelf() + ", " + (isReal ? "true" : "false") + ");";
         }
     }
 }

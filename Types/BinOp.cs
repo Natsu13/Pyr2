@@ -52,11 +52,7 @@ namespace Compilator
                 right = block.SymbolTable.Get(rtok.Value);
                 string vname = left.TryVariable().Value;
 
-                string classname = "";
-                if (right is Class) classname = ((Class)right).getName();
-                else if (right is Interface) classname = ((Interface)right).getName();
-                else if (right is Generic) classname = ((Generic)right).Name;
-                else classname = right.TryVariable().Value;
+                string classname = right.TryVariable().Value;
 
                 string rt = "";
                 if (right is Generic)
@@ -70,7 +66,10 @@ namespace Compilator
             if (left is Number)
             {
                 v = new Variable(((Number)left).getToken(), block, new Token(Token.Type.CLASS, "int"));
+                var saveOut = outputType;
                 outputType = v.OutputType(op.type, left, right);
+                if (outputType.type == Token.Type.CLASS && outputType.Value == "int")
+                    outputType = saveOut;
             }
             else if (left is CString)
             {
@@ -82,7 +81,7 @@ namespace Compilator
             else if(left is Variable)
             {
                 v = ((Variable)left);
-                if (v.getDateType().Value == "auto")
+                if (v.GetDateType().Value == "auto")
                     v.Check();
                 outputType = ((Variable)left).OutputType(op.type, left, right);
             }
@@ -117,13 +116,13 @@ namespace Compilator
                         if(t is Assign ta)
                         {
                             if (ta.Left is Variable tav)
-                                riva.setType(tav.getDateType());
+                                riva.setType(tav.GetDateType());
                         }
                         else if(t is Variable tv)
                         {
-                            riva.setType(tv.getDateType());
+                            riva.setType(tv.GetDateType());
                         }
-                        outputType = riva.getDateType();
+                        outputType = riva.GetDateType();
                     }
                 }
                 v = left.TryVariable();
@@ -204,17 +203,17 @@ namespace Compilator
                     if(t is Assign ta)
                     {
                         if (ta.Left is Variable tav)
-                            riva.setType(tav.getDateType());
+                            riva.setType(tav.GetDateType());
                     }
                     else if(t is Variable tv)
                     {
-                        riva.setType(tv.getDateType());
+                        riva.setType(tv.GetDateType());
                     }
                 }
             }
 
             if (op.Value == "dot")
-                this.outputType = right.TryVariable().getDateType();
+                this.outputType = right.TryVariable().GetDateType();
             else
                 this.outputType = v.OutputType(op.type, v, r);
 
@@ -241,17 +240,25 @@ namespace Compilator
                         if(t is Assign ta)
                         {
                             if (ta.Left is Variable tav)
-                                riva.setType(tav.getDateType());
+                                riva.setType(tav.GetDateType());
                         }
                         else if(t is Variable tv)
                         {
-                            riva.setType(tv.getDateType());
+                            riva.setType(tv.GetDateType());
                         }
-                        this.outputType = right.TryVariable().getDateType();
+                        this.outputType = right.TryVariable().GetDateType();
                         return this.outputType;
                     }
                 }
 
+                if (left is Number ln && right is Number rn)
+                {
+                    if(ln.isReal || rn.isReal)
+                        this.outputType = new Token(Token.Type.REAL, "float");
+                    else
+                        this.outputType = new Token(Token.Type.INTEGER, "int");
+                    return this.outputType;
+                }
                 if(left is UnaryOp leuo)
                 {
                     if(leuo.OutputType.Value == "object")

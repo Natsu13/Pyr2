@@ -30,6 +30,22 @@ namespace Compilator
             defaultCustom = plist.defaultCustom;
         }
 
+        public bool IsAllPrimitive
+        {
+            get
+            {
+                foreach (var param in parameters)
+                {
+                    if (param is Variable pv && !pv.IsPrimitive)
+                        return false;
+                    else if (param is Assign pa && pa.Right is Variable pav && !pav.IsPrimitive)
+                        return false;
+                }
+
+                return true;
+            }
+        }
+
         public Dictionary<string, Types> GenericTUsage
         {
             get { return genericTusage; }
@@ -127,7 +143,11 @@ namespace Compilator
             bool startne = false;
             if(allowMultipel && plist == null && assingBlock != null && !assingBlock.variables.ContainsKey(allowMultipelName.Value))
             {
-                new Assign(new Variable(new Token(Token.Type.ID, allowMultipelName.Value), assingBlock) { isArray = true }, new Token(Token.Type.ASIGN, '='), new Null());
+                new Assign(
+                    new Variable(new Token(Token.Type.ID, allowMultipelName.Value), assingBlock) { isArray = true }, 
+                    new Token(Token.Type.ASIGN, '='), 
+                    new Null(),
+                    isVal: (assingBlock != null && assingBlock.assingToType is Function asif && asif.isInline));
             }
             foreach (Types par in parameters)
             {
@@ -140,18 +160,31 @@ namespace Compilator
                     argDefined[argNamed[i]] = true;
 
                 par.endit = false;
-                if (assingBlock != null && par is Variable && !assingBlock.variables.ContainsKey(((Variable)par).Value))
+                if (assingBlock != null && par is Variable && !assingBlock.SymbolTable.Find(((Variable)par).Value))
                 {                    
                     par.assingBlock = assingBlock;
-                    var assign = new Assign(((Variable) par), new Token(Token.Type.ASIGN, '='), new Null(), assingBlock);
+                    var assign = new Assign(
+                        ((Variable) par), 
+                        new Token(Token.Type.ASIGN, '='), 
+                        new Null(), 
+                        assingBlock, 
+                        isVal: (assingBlock != null && assingBlock.assingToType is Function asif && asif.isInline));
                 }
                 else if(par is Assign && assingBlock != null && !assingBlock.variables.ContainsKey(((Assign)par).Left.TryVariable().Value))
                 {
                     assingBlock.variables.Add(((Assign)par).Left.TryVariable().Value, (Assign)par);
+                    if (((Assign) par).Left is Variable parl)
+                    {
+                        parl.IsVal = (assingBlock != null && assingBlock.assingToType is Function asif && asif.isInline);
+                    }
                 }
                 if (ret != "" && ret[ret.Length-1] != '[') ret += ", ";
                 if (declare)
                 {
+                    if (par is Variable parv)
+                    {
+                        parv.IsVal = (assingBlock != null && assingBlock.assingToType is Function asif && asif.isInline);
+                    }
                     if (par is Assign)
                         ret += ((Assign)par).Left.Compile();
                     else if (par is Variable && ((Variable)par).Block?.SymbolTable.Get(((Variable)par).Type) is Delegate)
@@ -375,7 +408,7 @@ namespace Compilator
                 }
                 else if (def)
                 {
-                    haveDefault = true;
+                    //haveDefault = true;
                     if (i < p.parameters.Count)
                     {
                         if (dtype != p.parameters[i].TryVariable().Type)
@@ -407,7 +440,7 @@ namespace Compilator
             {
                 Variable v1 = (Variable)t;
                 Variable v2 = (Variable)b.parameters[index];
-                if (v1.getDateType().Value != v2.getDateType().Value)
+                if (v1.GetDateType().Value != v2.GetDateType().Value)
                     return false;
                 index++;
             }
@@ -466,7 +499,10 @@ namespace Compilator
             {
                 if (par.assingBlock == null)
                     par.assingBlock = assingBlock;
-                par.Semantic();
+                if(par is Assign para)
+                    para.Semantic(true);
+                else
+                    par.Semantic();
             }
         }
 

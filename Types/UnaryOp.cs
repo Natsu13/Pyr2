@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -75,7 +76,7 @@ namespace Compilator
             string nwnam = name.Value;
             Types myfunc = null;
             isDynamic = false;
-            if (!block.SymbolTable.Find(name.Value))
+            if (!block.SymbolTable.Find(name.Value, true))
             {
                 nwnam = name.Value.Split('.')[0];
                 if (name.Value.Split('.')[0] == "this")
@@ -109,6 +110,8 @@ namespace Compilator
             if(genericArgments.Count == 0)
             {
                 var funcs = (myfunc == null ? block.SymbolTable.GetAll(name.Value) : new List<Types>(){ myfunc });
+                if (funcs == null)
+                    funcs = block.SymbolTable.GetAll(nwnam);
                 if (funcs != null && funcs.Count == 1)
                 {
                     var func = funcs[0];
@@ -165,6 +168,9 @@ namespace Compilator
                         p = ((Function)q).ParameterList;
                     if (q is Lambda)
                         p = ((Lambda)q).ParameterList;
+                    
+                    if (p.assingBlock == null)
+                        p.assingBlock = assingBlock;
 
                     if (p.Compare(plist))
                     {
@@ -218,6 +224,16 @@ namespace Compilator
                         return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + (inParen ? ")" : "") + (endit ? ";" : "");
                     return tbs + (inParen ? "(" : "") + "lambda$" + name.Value + args + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
+
+                if (t is Assign ta && ta.Right is UnaryOp tau)
+                {
+                    if (tau.Op == "new" && tau.isArray)
+                    {
+                        var func = name.Value.Split('.')[1];                        
+                        var functio = (Function)assingBlock.SymbolTable.Get("Array."+func);
+                        return tbs + (inParen ? "(" : "") + before + newname + "." + functio.Name + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != "" ?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    }
+                }
                 if (t is Assign && block?.SymbolTable.Get(((Variable)((Assign)t).Left).Type) is Delegate)
                 {
                     string args = "()";
@@ -252,7 +268,7 @@ namespace Compilator
                     if (nname.Split('.')[0] == "this")
                         nname = string.Join(".", nname.Split('.').Skip(1));
 
-                    if (usingFunction.isInline)
+                    if (usingFunction != null && usingFunction.isInline)
                     {
                         int tmpc = usingFunction.inlineId > 0 ? usingFunction.inlineId : (usingFunction.inlineId = Function.inlineIdCounter++);
 
@@ -304,7 +320,7 @@ namespace Compilator
                         plist.assingBlock = block;
                     return tbs + (inParen ? "(" : "") + before + nname + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != ""?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
                 }
-                else if (usingFunction.isInline)
+                else if (usingFunction != null && usingFunction.isInline)
                 {
                     int tmpc = usingFunction.inlineId > 0 ? usingFunction.inlineId : (usingFunction.inlineId = Function.inlineIdCounter++);
 
@@ -448,11 +464,26 @@ namespace Compilator
                             arrayS = arraySizeVariableTypes.Compile();
                         else
                             arrayS = arraySize.ToString();
-                        
-                        rt = tbs + "new Array(" + arrayS + ").fill(new " + _name + "(" + plist?.Compile();
-                        if (plist != null && plist.Parameters.Count > 0) rt += ", ";
-                        rt += generic;
-                        rt += "))";
+
+                        var tv = t.TryVariable();
+                        if (tv.IsPrimitive)
+                        {
+                            var type = tv.GetDateType().Value;
+                            var primitiveFill = "";
+                            if(type == "string"){ primitiveFill = "\"\""; }
+                            if(type == "int") { primitiveFill = "0"; }
+                            if(type == "float") { primitiveFill = "0.0"; }
+                            if(type == "bool") { primitiveFill = "false"; }
+
+                            rt = tbs + "new Array(" + arrayS + ").fill(" + primitiveFill + ")";
+                        }
+                        else
+                        {
+                            rt = tbs + "new Array(" + arrayS + ").fill(new " + _name + "(" + plist?.Compile();
+                            if (plist != null && plist.Parameters.Count > 0) rt += ", ";
+                            rt += generic;
+                            rt += "))";
+                        }
                     }
                     else
                     {
@@ -504,6 +535,10 @@ namespace Compilator
 
                 if (expr == null)
                     return tbs + "return;";
+
+                var compiled = expr.Compile();
+                if (compiled.Contains("\n"))
+                    return compiled;                
                 return tbs + "return " + expr.Compile() + ";";
             }
 
@@ -611,11 +646,13 @@ namespace Compilator
 
                 if (block.Parent?.Parent == null)
                     Interpreter.semanticError.Add(new Error("#000 Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
-                if (block.assingBlock != null && !block.assingBlock.SymbolTable.Find(name.Value))
+
+                string nwnam = name.Value.Split('.')[0];
+                if (name.Value.Split('.')[0] == "this")
+                    nwnam = string.Join(".", name.Value.Split('.').Skip(1));
+
+                if (block.assingBlock != null && (!block.assingBlock.SymbolTable.Find(name.Value) && !block.assingBlock.SymbolTable.Find(nwnam)))
                 {
-                    string nwnam = name.Value.Split('.')[0];
-                    if (name.Value.Split('.')[0] == "this")
-                        nwnam = string.Join(".", name.Value.Split('.').Skip(1));
                     t = block.assingBlock.SymbolTable.Get(nwnam);
                     if (t is Class || t is Interface)
                     {
@@ -750,7 +787,7 @@ namespace Compilator
                         }
                     }
                 }
-                if (plist != null && !asArgument) plist.Semantic();
+                //if (plist != null && !asArgument) plist.Semantic();
             }
             if(o == "new")
             {

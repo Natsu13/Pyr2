@@ -95,7 +95,7 @@ namespace Compilator
         public Token  GetDateType() => dateType;
         public bool   IsKey => isKey;
         public Types  Key => key;
-        public void MadeArray(bool isArray) { isArray = true; }
+        public void MadeArray(bool isArray) { this.isArray = isArray; }
         public List<string> GenericList => generic;
 
         public Token AsDateType
@@ -127,6 +127,11 @@ namespace Compilator
         {
             this.key = key;
             isKey = true;
+        }
+
+        public static bool IsItPrimitive(string name)
+        {
+            return new[] {"int", "string", "bool", "float"}.Contains(name);
         }
 
         public bool IsPrimitive
@@ -355,6 +360,8 @@ namespace Compilator
                     vname = t__ + "generic$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
                 else if (t is Assign ta && ta.Left is Variable tav && tav.Type != "object")
                 {
+                    //Datetype
+                    //((Assign)t).Left.assingBlock.SymbolTable.Get("T1")
                     if(tav.Type == "auto")
                         tav.Check();
                     Types tavt = block.SymbolTable.Get(tav.Type, genericArgs: tav.genericArgs.Count);
@@ -382,7 +389,7 @@ namespace Compilator
                 }
                 if (dateType.Value == "auto")
                     Check();
-                if (class_ != null && isKey)
+                if (class_ != null && isKey && !class_.isExternal)
                 {
                     ParameterList plist = new ParameterList(false);
                     plist.Parameters.Add(key);
@@ -654,6 +661,35 @@ namespace Compilator
             {
                 if(p.Getter == null)
                     Interpreter.semanticError.Add(new Error("#802 Properties "+this.value+" don't define getter!", Interpreter.ErrorType.ERROR, token));
+            }
+
+            var t = value.Split('.');
+            if (t.Length > 1)
+            {
+                var block = assingBlock.SymbolTable.Get(t[0]);
+                if (block is Assign bloa)
+                {
+                    if (bloa.Right is UnaryOp bluo && bluo.Op == "call")
+                    {
+                        var funct = bluo.assingBlock.SymbolTable.Get(bluo.Name.Value);
+                        if (funct is Function fun)
+                        {
+                            var ret = fun.Returnt.Value;
+                            var retclass = fun.assingBlock.SymbolTable.Get(ret, genericArgs: fun.returnGeneric.Count);
+                            if (!(retclass is Error))
+                            {                                
+                                var myvar = retclass.assingBlock.SymbolTable.Get(t[1]);
+                                if (myvar is Error)
+                                {
+                                    if (retclass is Class rtc)
+                                        Interpreter.semanticError.Add(new Error("#3x0 Variable " + value + " in class " + rtc.Name.Value + " not exists!", Interpreter.ErrorType.ERROR, token));
+                                    else if (retclass is Interface rti)
+                                        Interpreter.semanticError.Add(new Error("#3x1 Variable " + value + " in interface " + rti.Name.Value + " not exists!", Interpreter.ErrorType.ERROR, token));
+                                }
+                            }                            
+                        }
+                    }
+                }
             }
         }
 

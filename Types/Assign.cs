@@ -47,7 +47,7 @@ namespace Compilator
                 }
                 else if (((Variable)left).Type != "auto")
                 {
-                    var v = ((Variable)((Variable)left).Block.FindVariable(name).Left);
+                    var v = ((Variable)(((Assign)((Variable)left).Block.SymbolTable.Get(name)).Left));
                     if (!Interpreter._REDECLARATION && v.getType().Value != ((Variable)this.left).getType().Value)
                     {
                         originlDateType = v.getType().Value;

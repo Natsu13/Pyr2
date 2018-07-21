@@ -56,7 +56,7 @@ namespace Compilator
                 case Lambda _:
                     return new Variable(new Token(Token.Type.STRING, ((Lambda)this).RealName), this.assingBlock, new Token(Token.Type.LAMBDA, "lambda"));
                 case Class _:
-                    return new Variable(new Token(Token.Type.CLASS, ((Class)this).getName()), this.assingBlock, new Token(Token.Type.CLASS, ((Class)this).getName()));
+                    return new Variable(new Token(Token.Type.CLASS, ((Class)this).getName()), this.assingBlock, new Token(Token.Type.CLASS, ((Class)this).getName(true)));
                 case Interface _:
                     return new Variable(new Token(Token.Type.CLASS, ((Interface)this).getName()), this.assingBlock, new Token(Token.Type.CLASS, ((Interface)this).getName()));
                 case Null _:

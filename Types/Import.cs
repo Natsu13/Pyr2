@@ -63,6 +63,7 @@ namespace Compilator
                 found = true;
                 if (_ihaveit == null)
                 {
+                    //Console.WriteLine("[ADD]"+inter.File + "\tAdding " + GetName() + ", module: " + GetModule());
                     string code = File.ReadAllText(dir + "\\" + Program.projectFolder + @"\" + path + ".p");                    
                     interpret = new Interpreter(code, "" + path + ".p", inter);
                     interpret.isConsole = inter.isConsole;
@@ -113,10 +114,12 @@ namespace Compilator
                 }
                 else
                 {
+                    //Console.WriteLine("[HAS]"+inter.File + "\tAdding " + GetName() + ", module: " + GetModule());
                     if (_as == null)
                     {
+                        //_block.SymbolTable.Get("Array.Clear");
                         if (!_block.SymbolTable.Find(GetName()))
-                        {
+                        {                            
                             if(_ihaveit.assingBlock?.Parent.import == null || _ihaveit is Import)
                                 _block.SymbolTable.Add(GetName(), _ihaveit);
                             else
@@ -131,7 +134,7 @@ namespace Compilator
                         this._as = string.Join(".", whatimpot.Value.Split('.').Take(whatimpot.Value.Split('.').Length - 1));
                     }
                 }
-            }                
+            }
         }
 
         public string As { 
@@ -254,9 +257,11 @@ namespace Compilator
                         }
                         else
                         {
-                            outcom += "  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                            var name = "module_" + im.GetName().Replace('.', '_') + "_" + im.GetModule();
+                            outcom += "  var "+name+" = GetModule(\"" + im.GetName() + "." + im.GetModule() + "\");\n";
+                            //outcom += "  _." + t.Key + " = " + name + ";\n";
                             if (im.As != "")
-                                outcom += "  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n";
+                                outcom += "  var " + t.Key + " = " + name + ";\n";
                         }
                         if(!exposed.Contains(t.Key))
                             exposed.Add(t.Key);
@@ -276,7 +281,10 @@ namespace Compilator
                         outcom += tbs + "  _." + t.Key + " = " + t.Key + ";\n";
                 }
 
-                outcom += "\n"+tbs+"  DefineModule('"+GetName()+"."+GetModule()+"', _);\n";
+                if(import.Value.Contains("."))
+                    outcom += "\n"+tbs+"  DefineModule('"+GetName()+"."+GetModule()+"', _);\n";
+                else
+                    outcom += "\n"+tbs+"  DefineModule('"+GetModule()+"', _);\n";
 
                 outcom += tbs + "\n  return _;\n";
                 outcom += tbs + "}(typeof " + n + " === 'undefined' ? {} : " + n + ", this);\n";

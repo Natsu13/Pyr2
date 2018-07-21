@@ -54,9 +54,11 @@ namespace Compilator
             return _hash;
         }
 
-        public string getName() {
+        public string getName(bool force = false) {
             if (assingBlock.SymbolTable.GetAll(name.Value, true).Count > 1)
                 return name.Value + "_" + getHash();
+            if (force)
+                return name.Value;
             if (JSName == null || JSName == "") return name.Value; else return JSName; 
         }
         public override Token getToken() { return null; }

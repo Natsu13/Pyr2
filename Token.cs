@@ -26,7 +26,7 @@ namespace Compilator
             DELEGATE,
             PROPERTIES,
             TWODOT,
-            RANGE, YIELD, CONTINUE, BREAK, INLINE
+            RANGE, YIELD, CONTINUE, BREAK, INLINE, NAMEDTUPLE
         };
         public static readonly Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {

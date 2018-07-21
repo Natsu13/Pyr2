@@ -67,6 +67,7 @@
     <Compile Include="Types\Import.cs" />
     <Compile Include="Types\Interface.cs" />
     <Compile Include="Types\Lambda.cs" />
+    <Compile Include="Types\NamedTuple.cs" />
     <Compile Include="Types\NoOp.cs" />
     <Compile Include="Types\Null.cs" />
     <Compile Include="Types\ParameterList.cs" />

@@ -50,24 +50,25 @@ namespace Compilator
                         {
                             if(tc.assignTo == "")
                                 continue;                            
-                            outcom.Append("  _." + tc.getName() + " = " + addMeMain + "." + tc.getName() + ";\n");
-                            outcom.Append("  _." + tc.getName() + "$META = " + addMeMain + "." + tc.getName() + "$META;\n");
+                            //outcom.Append("  _." + tc.getName() + " = " + addMeMain + "." + tc.getName() + ";\n");
+                            //outcom.Append("  _." + tc.getName() + "$META = " + addMeMain + "." + tc.getName() + "$META;\n");
                         }
                         else
                         {
                             if (tc.assignTo != "")
                             {
-                                outcom.Append("  _." + tc.getName() + " = " + tc.assignTo + "." + tc.getName() + ";\n");
-                                outcom.Append("  _." + tc.getName() + "$META = " + tc.assignTo + "." + tc.getName() + "$META;\n");
+                                //outcom.Append("  _." + tc.getName() + " = " + tc.assignTo + "." + tc.getName() + ";\n");
+                                //outcom.Append("  _." + tc.getName() + "$META = " + tc.assignTo + "." + tc.getName() + "$META;\n");
                             }
                             else
                             {
-                                outcom.Append("  _." + tc.getName() + " = " + tc.getName() + ";\n");
-                                outcom.Append("  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n");
+                                //outcom.Append("  _." + tc.getName() + " = " + tc.getName() + ";\n");
+                                //outcom.Append("  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n");
                             }
                         }
                     }
-                    outcom.Append("  var " + t.Key + " = " + add + "." + tc.Name.Value + ";\n");
+                    //outcom.Append("  var " + t.Key + " = " + add + "." + tc.Name.Value + ";\n");
+                    outcom.Append("  var " + t.Key + " = GetModule(\"" + tc.block.Parent.import.getToken().Value + "\")." + t.Key + ";\n");             
                     if (tc.isForImport)
                     {
                         outcom.Append(DrawClassInside(tc, add + "." + tc.Name.Value, new List<string>(), add + "." + tc.Name.Value));
@@ -115,15 +116,18 @@ namespace Compilator
                         }
                         else
                         {
-                            outcom.Append("  _." + t.Key + " = " + add + "." + im.GetModule() + ";\n");
-                            if (im.As != "")
-                                outcom.Append("  var " + t.Key + " = " + add + "." + im.GetModule() + ";\n");
+                            //outcom.Append("  _." + t.Key + " = " + add + "." + im.GetModule() + ";\n");
+                            //if (!string.IsNullOrEmpty(im.As))
+                            //{
+                                //outcom.Append("  var " + t.Key + " = " + add + "." + im.GetModule() + ";\n");
+                                outcom.Append("  var " + t.Key + " = GetModule(\"" + im.getToken().Value + "\")." + t.Key + ";\n");
+                            //}
                         }
                         exposed.Add(t.Key);
                     }
                     foreach(KeyValuePair<string, Types> qq in im.Block.SymbolTable.Table)
                     {
-                        if(qq.Value is Class && !exposed.Contains(qq.Key) && !((Class)qq.Value).isExternal)
+                        if(qq.Value is Class cc && !exposed.Contains(qq.Key) && !((Class)qq.Value).isExternal && !cc.isForImport)
                         {
                             if (im.GetName() != "")
                             {
@@ -263,7 +267,7 @@ namespace Compilator
 
                 if (block.SymbolTable.Find("main"))
                 {
-                    if (Interpreter._WAITFORPAGELOAD || (((Function)block.SymbolTable.Get("main")).attributes?.Where(x => x.GetName(true) == "OnPageLoad")).Any())
+                    if (((Function)block.SymbolTable.Get("main")).attributes.Any(x => x.GetName(true) == "OnPageLoad"))
                         outcom.Append("\n  window.onload = function(){ try { main(); }catch(e){ catcherror(e); } };\n");
                     else
                         outcom.Append("\n  main();\n");

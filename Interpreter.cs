@@ -46,6 +46,7 @@ namespace Compilator
         public Interpreter parent = null;
 
         public Block MainBlock { get; }
+        public string File { get { return current_file; } }
 
         public static int counterId = 1;
         public int _uid;
@@ -81,7 +82,7 @@ namespace Compilator
         {
             if (parent != null && _uid != parent.UID)
             {
-                return parent.MainBlock.SymbolTable.Get(name);
+                return parent.MainBlock.SymbolTable.Get(name, oncePleaseTakeImport: false);
             }
 
             return new Error(name + " not found!");
@@ -97,21 +98,50 @@ namespace Compilator
             return false;
         }
 
-        public bool FindImport(string name)
+        public bool FindImport(string name, bool deep = false)
         {
             if (imports.ContainsKey(name))
                 return true;
             else if (parent != null && !isForExport)
-                return parent.FindImport(name);
-            return false;
-        }
+            {
+                var f = parent.FindImport(name, deep);
+                if (f)
+                    return true;
+            }
 
-        public Import GetImport(string name)
-        {
+            if (deep)
+            {
+                foreach (var import in imports)
+                {
+                    if (import.Value.Block.SymbolTable.Get(name, oncePleaseTakeImport: false) != null)
+                        return true;
+                }
+            }
+
+            return false;
+    }
+
+        public Import GetImport(string name, bool deep = false)
+        {            
             if (imports.ContainsKey(name))
                 return imports[name];
-            else if (parent != null)
-                return parent.GetImport(name);
+            else
+            {
+                var f = parent?.GetImport(name, deep);
+                if (f != null)
+                    return f;
+            }
+
+            if (deep)
+            {
+                foreach (var import in imports)
+                {
+                    var imp = import.Value.Block.SymbolTable.Get(name, oncePleaseTakeImport: false);
+                    if (imp != null)
+                        return import.Value;
+                }
+            }
+
             return null;
         }
 
@@ -287,11 +317,11 @@ namespace Compilator
 
         public char Peek(int howmuch = 1)
         {
-            int peek_pos = pos + howmuch;
-            if(peek_pos >= text.Length)
+            int peekPos = pos + howmuch;
+            if(peekPos >= text.Length)
                 return '\0';
             else
-                return text[peek_pos];
+                return text[peekPos];
         }
 
         public Token String(char end)
@@ -503,6 +533,7 @@ namespace Compilator
                 else
                 {
                     SaveTokenState();
+                    var lambdaJe = false;
                     string defname = "";
                     bool isDefaultDefined = false;
                     if(current_token.type == Token.Type.ID)
@@ -520,14 +551,34 @@ namespace Compilator
                         {
                             LoadTokenState();
                         }
-                    }                    
-                    Types vname = Expr();
-                    if (isDefaultDefined)
-                        plist.defaultCustom.Add(defname, vname);
-                    else
+                    }     
+                    else if (current_token.type == Token.Type.LPAREN)
                     {
-                        if (defaultstart) plist.cantDefaultThenNormal = true;
-                        plist.parameters.Add(vname);
+                        lambdaJe = true;
+                        ParameterList list = Parameters();
+                        Eat(Token.Type.DEFINERETURN);
+                        Types _block = null;
+                        if (current_token.type == Token.Type.BEGIN)
+                        {
+                            _block = CatchBlock(Block.BlockType.LAMBDA);
+                        }
+                        else
+                        {
+                            _block = Expr();
+                        }
+                        plist.parameters.Add(new Lambda(list, _block));
+                    }
+
+                    if (!lambdaJe)
+                    {
+                        Types vname = Expr();
+                        if (isDefaultDefined)
+                            plist.defaultCustom.Add(defname, vname);
+                        else
+                        {
+                            if (defaultstart) plist.cantDefaultThenNormal = true;
+                            plist.parameters.Add(vname);
+                        }
                     }
                 }
                 if (current_token.type == Token.Type.COMMA)
@@ -672,6 +723,7 @@ namespace Compilator
             {
                 bool isLambda = false;
                 bool isDeclared = false;
+                bool isNamedTuple = false;
                 SaveTokenState();
                 Eat(Token.Type.LPAREN);
                 if(current_token.type == Token.Type.ID || current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE)
@@ -687,9 +739,19 @@ namespace Compilator
                         Eat(Token.Type.ID);
                         isDeclared = true;
                     }
-                    if(current_token.type == Token.Type.COMMA)
+                    if (current_token.type == Token.Type.COLON)
                     {
-                        isLambda = true;                        
+                        isNamedTuple = true;
+                    }
+                    else if(current_token.type == Token.Type.COMMA)
+                    {
+                        isLambda = true;   
+                        Eat(Token.Type.COMMA);
+                        if (current_token.type == Token.Type.ID)
+                        {
+                            isLambda = false;
+                            isNamedTuple = true;
+                        }
                     }
                     else
                     {
@@ -705,7 +767,23 @@ namespace Compilator
                 }
                 LoadTokenState();
                 Types result = null;
-                if (!isLambda)
+                if (isNamedTuple)
+                {
+                    Eat(Token.Type.LPAREN);
+                    Dictionary<Token, Types> vars = new Dictionary<Token, Types>();
+                    while (current_token.type != Token.Type.RPAREN)
+                    {                        
+                        var id = current_token;
+                        Eat(Token.Type.ID);
+                        Eat(Token.Type.COLON);
+                        vars.Add(id, Expr());                        
+                        if(current_token.type == Token.Type.COMMA)
+                            Eat(Token.Type.COMMA);
+                    }
+                    Eat(Token.Type.RPAREN);
+                    return new NamedTuple(vars);
+                }
+                else if (!isLambda)
                 {
                     Eat(Token.Type.LPAREN);
                     result = Expr();
@@ -1803,11 +1881,11 @@ namespace Compilator
             Types left = Variable(dateType, isVal);
             if(left is Variable)
             {
-                (left as Variable).genericArgs = garg;
+                ((Variable)left).genericArgs = garg;
                 if (isArray)
-                    (left as Variable).MadeArray(true);
+                    ((Variable)left).MadeArray(true);
                 if (asvar || isVal)
-                    (left as Variable).asvar = true;
+                    ((Variable)left).asvar = true;
             }     
             if(current_token.type == Token.Type.SET)
             {
@@ -1874,11 +1952,11 @@ namespace Compilator
             }
         }
 
-        public Types AssignmentStatement(Types left = null)
+        private Types AssignmentStatement(Types left = null)
         {
             if (left == null)
             {
-                Token saveToken = current_token;
+                var saveToken = current_token;
                 left = Variable();
                 if (left is UnaryOp)
                     return left;

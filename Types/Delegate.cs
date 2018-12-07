@@ -3,19 +3,40 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     public class Delegate : Types
     {
         Token name;
-        Block block;
-        ParameterList paraml;
+        public Block block;
+        public ParameterList paraml;
         Token returnt;
         public bool returnAsArray = false;
         public List<_Attribute> attributes = new List<_Attribute>();
         public List<string> returnGeneric = new List<string>();
-        List<string> genericArguments = new List<string>();
+        public bool returnTuple = false;
+        public List<string> genericArguments = new List<string>();
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public String RealName => name.Value;
+        [JsonParam] public List<string> GenericArguments => genericArguments;
+        [JsonParam] public ParameterList ParameterList => paraml;
+        [JsonParam] public Token Returnt => returnt;
+        [JsonParam] public string CacheName => Name;
+
+        private string _cacheName = null;
+
+        public override void FromJson(JObject o)
+        {
+            name = Token.FromJson(o["RealName"]);
+            genericArguments = JsonParam.FromJsonArrayBase<string>((JArray)o["GenericArguments"]);
+            paraml = JsonParam.FromJson<ParameterList>(o["ParameterList"]);
+            returnt = Token.FromJson(o["Returnt"]);
+            _cacheName = o["CacheName"].ToString();
+        }
+        public Delegate() { }
 
         public Delegate(Token name, ParameterList paraml, Token returnt, Interpreter interpret, Block parent_block = null)
         {
@@ -28,7 +49,7 @@ namespace Compilator
             this.paraml.assingBlock = this.block;
             this.returnt = returnt;
 
-            parent_block.Parent.SymbolTable.Add(name.Value, this);
+            parent_block.BlockParent.SymbolTable.Add(name.Value, this);
         }
 
         public void AddGenericArg(string name)
@@ -38,11 +59,8 @@ namespace Compilator
         public void SetGenericArgs(List<string> list)
         {
             genericArguments = list;
-        }
-        public List<string> GenericArguments { get { return genericArguments; } }
-
-        public ParameterList ParameterList { get { return paraml; } }
-        public Token Returnt { get { return returnt; } }
+        }        
+        
         public override Token getToken(){ return name; }
 
         /// <summary>
@@ -175,15 +193,15 @@ namespace Compilator
         {
             if (errorCode == 1)
                 return "Return type is not same";
-            else if (errorCode == 2)
+            if (errorCode == 2)
                 return "Generic return is not same";
-            else if (errorCode == 3)
+            if (errorCode == 3)
                 return "Predicate is not return as Array";
-            else if (errorCode == 4)
+            if (errorCode == 4)
                 return "Predicate return as Array";
-            else if (errorCode == 5)
+            if (errorCode == 5)
                 return "Number of arguments are not same";
-            else if (errorCode == 6)
+            if (errorCode == 6)
                 return "Parameters types are not same";
             return "UNKOWN errorCode";
         }
@@ -195,18 +213,20 @@ namespace Compilator
             if (assingBlock.SymbolTable.GetAll(name.Value)?.Count > 1)
             {
                 if (_hash == "")
-                    _hash = string.Format("{0:X8}", (name.Value + paraml.List() + block?.GetHashCode()).GetHashCode());
+                    _hash = $"{(name.Value + paraml.List() + block?.GetHashCode()).GetHashCode():X8}";
                 return _hash;
             }
             return "";
         }
         public String Name {
-            get {
+            get
+            {
+                if (_cacheName != null) return _cacheName;
                 string hash = getHash();
                 return name.Value + (hash != "" ? "_" + hash : "");
             }
         }
-        public String RealName { get { return name.Value; } }
+        
 
         public override string Compile(int tabs = 0)
         {
@@ -231,7 +251,8 @@ namespace Compilator
         
         public override void Semantic()
         {
-            
+            if(returnTuple)
+                Interpreter.semanticError.Add(new Error("#7xx in Delegate you can't return NamedTuple", Interpreter.ErrorType.ERROR, name));
         }
 
         public override int Visit()

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
@@ -10,15 +11,29 @@ namespace Compilator
     {
         Token name;
         public Block block;
-        List<Types> parents;
+        public List<Types> parents;
         public bool isExternal = false;
         public Token _external;
         public bool isDynamic = false;
         public Token _dynamic;
         public string JSName = "";
-        List<string> genericArguments = new List<string>();
+        public List<string> genericArguments = new List<string>();
         public List<_Attribute> attributes = new List<_Attribute>();
         public bool isForImport = false;
+        
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Token Name => name;
+        [JsonParam] public Block Block => block;
+        [JsonParam] public List<Types> Parents => parents;
+
+        public override void FromJson(JObject o)
+        {
+            name = Token.FromJson(o["Name"]);
+            block = JsonParam.FromJson<Block>(o["Block"]);
+            parents = JsonParam.FromJsonArray<Types>((JArray) o["Parents"]);
+            this.assingBlock = block;
+        }
+        public Class() { }
 
         public Class(Token name, Block block, List<Types> parents)
         {
@@ -31,6 +46,10 @@ namespace Compilator
             this.parents = parents;
             if (this.parents == null)
                 this.parents = new List<Types>();
+            if(!this.parents.Any(x => x is UnaryOp && ((UnaryOp)x).Name.Value == "object") && name.Value != "object")
+            {
+                this.parents.Add(new UnaryOp(new Token(Token.Type.NEW, "new"), new Token(Token.Type.ID, "object"), null, block));
+            }
         }
 
         public void AddGenericArg(string name)
@@ -42,9 +61,7 @@ namespace Compilator
             genericArguments = list;
         }
         public List<string> GenericArguments { get { return genericArguments; } }
-
-        public Token Name { get { return name; } }
-
+        
         string _hash = "";
         public string getHash()
         {
@@ -63,8 +80,26 @@ namespace Compilator
         }
         public override Token getToken() { return null; }
 
-        public Block Block { get { return block; } }
+        public override string ToString()
+        {
+            return "<Class\""+getName()+"\">";
+        }
 
+        public Class GetParent()
+        {
+            if (parents.FirstOrDefault() != null)
+            {
+                if (parents.FirstOrDefault() is UnaryOp puo)
+                {
+                    var parentClass = puo.Name.Value;
+                    var parent = assingBlock.SymbolTable.Get(parentClass) as Class;                    
+                    return parent;
+                }
+            }
+
+            return null;
+        }
+        
         public bool haveParent(string name)
         {
             if (name == this.name.Value)
@@ -88,8 +123,14 @@ namespace Compilator
             return false;
         }
 
-        public Types Get(string name)
+        public Types Get(string name, bool import = true)
         {
+            var fn = assingBlock.SymbolTable.Get(name);
+            if (!(fn is Error))
+            {
+                if(fn is Import && import)
+                    return fn;
+            }
             if (parents == null) return null;
             foreach (UnaryOp p in parents)
             {
@@ -117,20 +158,15 @@ namespace Compilator
                     }
                     foreach (UnaryOp parent in parents)
                     {
-                        if (assingBlock.SymbolTable.Find(parent.Name.Value))
+                        var fnd = assingBlock.SymbolTable.Get(parent.Name.Value, genericArgs: parent.genericArgments.Count);
+                        if (!(fnd is Error))
                         {
-                            Types inname = assingBlock.SymbolTable.Get(parent.Name.Value, genericArgs: parent.genericArgments.Count);
-                            /*
-                            if (inname is Interface)
-                                ret += tbs + "  " + ((Interface)inname).getName() + ".call(this);\n";
-                            else if (inname is Class)
-                                ret += tbs + "  " + ((Class)inname).getName() + ".call(this);\n";
-                                */
+                            Types inname = fnd;
                             if (inname is Interface)
                             {
                                 ret += tbs + "  CloneObjectFunction("+Name.Value+", " + ((Interface) inname).getName() + ");\n";
                             }
-                            else if (inname is Class)
+                            else if (inname is Class ic && ic.JSName != "Object")
                                 ret += tbs + "  CloneObjectFunction(this, " + ((Class) inname).getName() + ");\n";
                         }
                     }
@@ -182,22 +218,36 @@ namespace Compilator
                     }
                     ret += tbs + "\n";
 
-                    ret += tbs + "var " + getName() + "$META = function(){\n";
-                    ret += tbs + "  return {";
-                    ret += "\n" + tbs + "    type: 'class'" + (attributes.Count > 0 ? ", " : "");
-                    if (attributes.Count > 0)
+                    if (Interpreter._DEBUG)
                     {
-                        ret += "\n" + tbs + "    attributes: {";
-                        int i = 0;
-                        foreach (_Attribute a in attributes)
+                        ret += tbs + "var " + getName() + "$META = function(){\n";
+                        ret += tbs + "  return {";
+                        ret += "\n" + tbs + "    type: 'class'" + (attributes.Count > 0 ? ", " : "");
+                        if (attributes.Count > 0)
                         {
-                            ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
-                            i++;
+                            ret += "\n" + tbs + "    attributes: {";
+                            int i = 0;
+                            foreach (_Attribute a in attributes)
+                            {
+                                ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
+                                i++;
+                            }
+
+                            ret += "\n" + tbs + "    },";
                         }
-                        ret += "\n" + tbs + "    },";
+
+                        ret += "\n" + tbs + "  };\n";
+                        ret += tbs + "};\n";
                     }
-                    ret += "\n" + tbs + "  };\n";
-                    ret += tbs + "};\n";
+
+                    foreach(var b in block.SymbolTable.Table)
+                    {
+                        if (b.Value is Function bf)
+                        {
+                            if(string.IsNullOrEmpty(bf.assingBlock.blockClassTo))
+                                bf.assingBlock.blockClassTo = Name.Value;
+                        }
+                    }
                     ret += block.Compile(tabs, true);
                     return ret;
                 }
@@ -213,7 +263,7 @@ namespace Compilator
                             ret += ", ";
                             frst = false;
                         }
-                        if (assingBlock.SymbolTable.Find(parent.Name.Value))
+                        if (!(assingBlock.SymbolTable.Get(parent.Name.Value) is Error))
                         {
                             Types inname = assingBlock.SymbolTable.Get(parent.Name.Value, genericArgs: parent.genericArgments.Count);
                             if (inname is Interface)
@@ -308,13 +358,10 @@ namespace Compilator
         {
             if (op == "dot" || op == ".")
                 return Name;
-            if(block.SymbolTable.Find("operator " + op))
+            var t = block.SymbolTable.Get("operator " + op);
+            if (t is Function f)
             {
-                Types t = block.SymbolTable.Get("operator " + op);
-                if(t is Function f)
-                {
-                    return f.Returnt;
-                }
+                return f.Returnt;
             }
             return new Token(Token.Type.VOID, "void");
         }
@@ -322,29 +369,15 @@ namespace Compilator
         {
             if (op == "dot" || op == ".")
                 return true;
-            if (block.SymbolTable.Find("operator " + op))
-            {
-                Types t = block.SymbolTable.Get("operator " + op);
-                if (t is Function f)
-                {
-                    return true;
-                }
-            }
-            return false;
+            var t = block.SymbolTable.Get(block.blockAssignTo + "::operator " + op);
+            return t is Function;
         }
         public bool SupportSecond(string op, object second, object secondAsVariable)
         {
             if (op == "dot" || op == ".")
                 return true;
-            if (block.SymbolTable.Find("operator " + op))
-            {
-                Types t = block.SymbolTable.Get("operator " + op);
-                if (t is Function f)
-                {
-                    return true;
-                }
-            }
-            return false;
+            var t = block.SymbolTable.Get(block.blockAssignTo + "::operator " + op);
+            return t is Function;
         }
 
         public override string InterpetSelf()
@@ -367,7 +400,7 @@ namespace Compilator
             this.parents = parents;
             this.intr = new T();
             this.block = new Block(interpreter);
-            this.block.Parent = block;
+            this.block.BlockParent = block;
         }
 
         public bool haveParent(string name)
@@ -391,6 +424,11 @@ namespace Compilator
         public override void Semantic()
         {
             
+        }
+
+        public override void FromJson(JObject o)
+        {
+            throw new NotImplementedException();
         }
 
         public override int Visit()

@@ -38,8 +38,11 @@ namespace Compilator
 
             if (first)
             {
+                Class Object = new Class(new Token(Token.Type.ID, "object"), new Block(interpret) {BlockParent = assigment_block}, null) {isExternal = true, JSName = "Object"};
+                Add("object", Object);
+
                 Token TokenIIterable = new Token(Token.Type.ID, "IIterable");
-                Block BlockIIterable = new Block(interpret) { Parent = assigment_block };
+                Block BlockIIterable = new Block(interpret) { BlockParent = assigment_block };
                 Interface IIterable = new Interface(TokenIIterable, BlockIIterable, null)
                 {
                     isExternal = true
@@ -47,7 +50,7 @@ namespace Compilator
                 Add("IIterable", IIterable);
 
                 Token TokenIterator = new Token(Token.Type.ID, "Iterator");
-                Block BlockIterator = new Block(interpret) { Parent = assigment_block };
+                Block BlockIterator = new Block(interpret) { BlockParent = assigment_block };
                 Interface Iterator = new Interface(TokenIterator, BlockIterator, null)
                 {
                     isExternal = true
@@ -55,7 +58,7 @@ namespace Compilator
                 Add("Iterator", Iterator);
 
                 Token TokenAttribute = new Token(Token.Type.ID, "Attribute");
-                Block BlockAttribute = new Block(interpret) { Parent = assigment_block };
+                Block BlockAttribute = new Block(interpret) { BlockParent = assigment_block };
                 Interface Attribute = new Interface(TokenAttribute, BlockAttribute, null)
                 {
                     isExternal = true
@@ -63,7 +66,7 @@ namespace Compilator
                 Add("Attribute", Attribute);
 
                 Token TokenDebug = new Token(Token.Type.ID, "Debug");
-                Block BlockDebug = new Block(interpret) { Parent = assigment_block };
+                Block BlockDebug = new Block(interpret) { BlockParent = assigment_block };
                 Class Debug = new Class(TokenDebug, BlockDebug, new List<Types> { new UnaryOp(new Token(Token.Type.NEW, "new"), TokenAttribute) })
                 {
                     isExternal = true
@@ -73,7 +76,7 @@ namespace Compilator
                 /// Date type bool implicit
                 // Add("bool", typeof(TypeBool));
                 Token TokenBool = new Token(Token.Type.ID, "bool");
-                Block BlockBool = new Block(interpret) { Parent = assigment_block };
+                Block BlockBool = new Block(interpret) { BlockParent = assigment_block };
                 Class Bool = new Class(TokenBool, BlockBool, new List<Types> { })
                 {
                     isExternal = true,
@@ -83,7 +86,7 @@ namespace Compilator
                 /// Date type string implicit
                 // Add("string", typeof(TypeString), new List<Token> { TokenIIterable });
                 Token TokenString = new Token(Token.Type.ID, "string");
-                Block BlockString = new Block(interpret) { Parent = assigment_block };
+                Block BlockString = new Block(interpret) { BlockParent = assigment_block };
                 Class String = new Class(TokenString, BlockString, new List<Types> { new UnaryOp(new Token(Token.Type.NEW, "new"), TokenIIterable) })
                 {
                     isExternal = true,
@@ -91,9 +94,9 @@ namespace Compilator
                 };
                 Add("string", String);
                 /// Date type int implicit
-                //Add("int", typeof(TypeInt));
+                //Add("int", typeof(TypeInt));               
                 Token TokenInt = new Token(Token.Type.ID, "int");
-                Block BlockInt = new Block(interpret) { Parent = assigment_block };
+                Block BlockInt = new Block(interpret) { BlockParent = assigment_block };
                 Class Int = new Class(TokenInt, BlockInt, null)
                 {
                     isExternal = true,
@@ -103,13 +106,13 @@ namespace Compilator
                 /// Date type float implicit
                 //Add("int", typeof(TypeInt));
                 Token TokenFloat = new Token(Token.Type.ID, "float");
-                Block BlockFloat = new Block(interpret) { Parent = assigment_block };
+                Block BlockFloat = new Block(interpret) { BlockParent = assigment_block };
                 Class Float = new Class(TokenFloat, BlockFloat, null)
                 {
                     isExternal = true,
                     JSName = "Number"
                 };
-                Add("float", Int);
+                Add("float", Float);
             }
         }
 
@@ -131,7 +134,7 @@ namespace Compilator
 
         public void Delete(string name)
         {
-            if (Find(name))
+            if (!(Get(name) is Error))
             {
                 SymbolTable sb = GetSymbolTable(name);
                 sb?.table.Remove(name);
@@ -147,7 +150,7 @@ namespace Compilator
             //Function js
             Token Function_js = new Token(Token.Type.ID, "js");
             ParameterList plist_js = new ParameterList(true);
-            Block Block_js = new Block(interpret) { Parent = assigment_block };
+            Block Block_js = new Block(interpret) { BlockParent = assigment_block };
             plist_js.parameters.Add(new Variable(new Token(Token.Type.ID, "code"), Block_js, new Token(Token.Type.CLASS, "string")));
             Function js = new Function(Function_js, Block_js, plist_js, new Token(Token.Type.VOID, "void"), interpret) { isExternal = true, isConstructor = false, isOperator = false, isStatic = false };
             Add("js", js);
@@ -162,7 +165,7 @@ namespace Compilator
             //Function alert
             Token Function_alert = new Token(Token.Type.ID, "alert");
             ParameterList plist_alert = new ParameterList(true);
-            Block Block_alert = new Block(interpret) { Parent = assigment_block };
+            Block Block_alert = new Block(interpret) { BlockParent = assigment_block };
             plist_alert.parameters.Add(new Variable(new Token(Token.Type.ID, "message"), Block_alert, new Token(Token.Type.CLASS, "string")));
             Function alert = new Function(Function_alert, Block_alert, plist_alert, new Token(Token.Type.VOID, "void"), interpret) { isExternal = true, isConstructor = false, isOperator = false, isStatic = false };
             Add("alert", alert);
@@ -172,20 +175,41 @@ namespace Compilator
             Block BlockIterator = ((Interface)Get("Iterator")).assingBlock;
             Token FunctionIteratorNextName = new Token(Token.Type.ID, "next");
             ParameterList plist = new ParameterList(true);
-            Function FunctionIteratorNext = new Function(FunctionIteratorNextName, null, plist, new Token(Token.Type.CLASS, "string"), interpret);
-            BlockIterator.SymbolTable.Add("next", FunctionIteratorNext);
+            Function FunctionIteratorNext = new Function(FunctionIteratorNextName, BlockIterator, plist, new Token(Token.Type.CLASS, "string"), interpret);
+            BlockIterator.SymbolTable.Add("next", FunctionIteratorNext, parent: BlockIterator);
             Token FunctionIteratorHasNextName = new Token(Token.Type.ID, "hasNext");
             plist = new ParameterList(true);
-            Function FunctionIteratorHasNext = new Function(FunctionIteratorHasNextName, null, plist, new Token(Token.Type.CLASS, "string"), interpret);
-            BlockIterator.SymbolTable.Add("hasNext", FunctionIteratorHasNext);
+            Function FunctionIteratorHasNext = new Function(FunctionIteratorHasNextName, BlockIterator, plist, new Token(Token.Type.CLASS, "string"), interpret);
+            BlockIterator.SymbolTable.Add("hasNext", FunctionIteratorHasNext, parent: BlockIterator);
 
             /// Initialize IIterable interface
             Block BlockIIterable = ((Interface)Get("IIterable")).assingBlock;
             Token FunctionIIterableIteratorName = new Token(Token.Type.ID, "iterator");
             plist = new ParameterList(true);
-            Function FunctionIIterableIterator = new Function(FunctionIIterableIteratorName, null, plist, new Token(Token.Type.CLASS, "Iterator"), interpret);
-            BlockIIterable.SymbolTable.Add("iterator", FunctionIIterableIterator);
+            Function FunctionIIterableIterator = new Function(FunctionIIterableIteratorName, BlockIIterable, plist, new Token(Token.Type.CLASS, "Iterator"), interpret);
+            BlockIIterable.SymbolTable.Add("iterator", FunctionIIterableIterator, parent: BlockIIterable);
 
+
+            /// Initialize Object Class
+            Block BlockObject = ((Class)Get("object")).assingBlock;
+            //Operator Equal
+            Token FunctionObjectOperatorEqualName = new Token(Token.Type.ID, "operator equal");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockObject, new Token(Token.Type.CLASS, "object")));
+            Function FunctionObjectOperatorEqual = new Function(FunctionObjectOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockObject.SymbolTable.Add("operator equal", FunctionObjectOperatorEqual, parent: BlockObject);
+            //Operator Is
+            Token FunctionObjectOperatorIsName = new Token(Token.Type.ID, "operator is");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockObject, new Token(Token.Type.CLASS, "object")));
+            Function FunctionObjectOperatorIs = new Function(FunctionObjectOperatorIsName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockObject.SymbolTable.Add("operator equal", FunctionObjectOperatorIs, parent: BlockObject);
+            //Operator Or
+            Token FunctionObjectOperatorOrName = new Token(Token.Type.ID, "operator or");
+            plist = new ParameterList(true);
+            plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockObject, new Token(Token.Type.CLASS, "object")));
+            Function FunctionObjectOperatorOr = new Function(FunctionObjectOperatorOrName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
+            BlockObject.SymbolTable.Add("operator or", FunctionObjectOperatorOr, parent: BlockObject);
 
             /// Initialize Bool Class
             Block BlockBool = ((Class)Get("bool")).assingBlock;
@@ -194,19 +218,19 @@ namespace Compilator
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockBool, new Token(Token.Type.CLASS, "bool")));
             Function FunctionBoolOperatorEqual = new Function(FunctionBoolOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
-            BlockBool.SymbolTable.Add("operator equal", FunctionBoolOperatorEqual);
+            BlockBool.SymbolTable.Add("operator equal", FunctionBoolOperatorEqual, parent: BlockBool);
             //Operator And
             Token FunctionBoolOperatorAndName = new Token(Token.Type.ID, "operator and");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockBool, new Token(Token.Type.CLASS, "bool")));
             Function FunctionBoolOperatorAnd = new Function(FunctionBoolOperatorAndName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
-            BlockBool.SymbolTable.Add("operator and", FunctionBoolOperatorAnd);
+            BlockBool.SymbolTable.Add("operator and", FunctionBoolOperatorAnd, parent: BlockBool);
             //Operator Or
             Token FunctionBoolOperatorOrName = new Token(Token.Type.ID, "operator or");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockBool, new Token(Token.Type.CLASS, "bool")));
             Function FunctionBoolOperatorOr = new Function(FunctionBoolOperatorOrName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
-            BlockBool.SymbolTable.Add("operator or", FunctionBoolOperatorOr);
+            BlockBool.SymbolTable.Add("operator or", FunctionBoolOperatorOr, parent: BlockBool);
 
             /// Initialize String Class
             Block BlockString = ((Class)Get("string")).assingBlock;
@@ -220,19 +244,19 @@ namespace Compilator
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockString, new Token(Token.Type.CLASS, "string")));
             Function FunctionStringOperatorEqual = new Function(FunctionStringOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
-            BlockString.SymbolTable.Add("operator equal", FunctionStringOperatorEqual);
+            BlockString.SymbolTable.Add("operator equal", FunctionStringOperatorEqual, parent: BlockString);
             //Operator Plus
             Token FunctionStringOperatorPlusName = new Token(Token.Type.ID, "operator plus");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockString, new Token(Token.Type.CLASS, "string")));
             Function FunctionStringOperatorPlus = new Function(FunctionStringOperatorPlusName, null, plist, new Token(Token.Type.CLASS, "string"), interpret) { isOperator = true };
-            BlockString.SymbolTable.Add("operator plus", FunctionStringOperatorPlus);
+            BlockString.SymbolTable.Add("operator plus", FunctionStringOperatorPlus, parent: BlockString);
             //Operator get for key [key]
             Token FunctionStringOperatorGetName = new Token(Token.Type.ID, "operator get");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "key"), BlockString, new Token(Token.Type.CLASS, "int")));
             Function FunctionStringOperatorGet = new Function(FunctionStringOperatorGetName, null, plist, new Token(Token.Type.CLASS, "string"), interpret) { isOperator = true, isExternal = true };
-            BlockString.SymbolTable.Add("operator get", FunctionStringOperatorGet);
+            BlockString.SymbolTable.Add("operator get", FunctionStringOperatorGet, parent: BlockString);
 
             /// Initial Int Class
             Block BlockInt = ((Class)Get("int")).assingBlock;
@@ -241,47 +265,47 @@ namespace Compilator
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
             Function FunctionIntOperatorEqual = new Function(FunctionIntOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
-            BlockInt.SymbolTable.Add("operator equal", FunctionIntOperatorEqual);
+            BlockInt.SymbolTable.Add("operator equal", FunctionIntOperatorEqual, parent: BlockInt);
             //Operator More
             Token FunctionIntOperatorMoreName = new Token(Token.Type.ID, "operator compareTo");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
             Function FunctionIntOperatorMore = new Function(FunctionIntOperatorMoreName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
-            BlockInt.SymbolTable.Add("operator compareTo", FunctionIntOperatorMore);
+            BlockInt.SymbolTable.Add("operator compareTo", FunctionIntOperatorMore, parent: BlockInt);
             //Operator Plus
             Token FunctionIntOperatorPlusName = new Token(Token.Type.ID, "operator plus");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
             Function FunctionIntOperatorPlus = new Function(FunctionIntOperatorPlusName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
-            BlockInt.SymbolTable.Add("operator plus", FunctionIntOperatorPlus);
+            BlockInt.SymbolTable.Add("operator plus", FunctionIntOperatorPlus, parent: BlockInt);
             //Operator Minus
             Token FunctionIntOperatorMinusName = new Token(Token.Type.ID, "operator minus");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
             Function FunctionIntOperatorMinus = new Function(FunctionIntOperatorMinusName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
-            BlockInt.SymbolTable.Add("operator minus", FunctionIntOperatorMinus);
+            BlockInt.SymbolTable.Add("operator minus", FunctionIntOperatorMinus, parent: BlockInt);
             //Operator Inc
             Token FunctionIntOperatorIncrementName = new Token(Token.Type.ID, "operator inc");
             Function FunctionIntOperatorIncrement = new Function(FunctionIntOperatorIncrementName, null, new ParameterList(true), new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
-            BlockInt.SymbolTable.Add("operator inc", FunctionIntOperatorIncrement);
+            BlockInt.SymbolTable.Add("operator inc", FunctionIntOperatorIncrement, parent: BlockInt);
             //Operator Get
             Token FunctionIntOperatorGetName = new Token(Token.Type.ID, "operator get");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "key"), BlockInt, new Token(Token.Type.CLASS, "int")));
             Function FunctionIntOperatorGet = new Function(FunctionIntOperatorGetName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true, isExternal = true };
-            BlockInt.SymbolTable.Add("operator get", FunctionIntOperatorGet);
+            BlockInt.SymbolTable.Add("operator get", FunctionIntOperatorGet, parent: BlockInt);
             //Operator Multiple
             Token FunctionIntOperatorMultipleName = new Token(Token.Type.ID, "operator multiple");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
             Function FunctionIntMultipleGet = new Function(FunctionIntOperatorMultipleName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true, isExternal = true };
-            BlockInt.SymbolTable.Add("operator multiple", FunctionIntMultipleGet);
+            BlockInt.SymbolTable.Add("operator multiple", FunctionIntMultipleGet, parent: BlockInt);
             //Operator Divide
             Token FunctionIntOperatorDivideName = new Token(Token.Type.ID, "operator multiple");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockInt, new Token(Token.Type.CLASS, "int")));
             Function FunctionIntDivideGet = new Function(FunctionIntOperatorDivideName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true, isExternal = true };
-            BlockInt.SymbolTable.Add("operator divide", FunctionIntDivideGet);            
+            BlockInt.SymbolTable.Add("operator divide", FunctionIntDivideGet, parent: BlockInt);            
 
             /// Initial Float Class
             Block BlockFloat = ((Class)Get("float")).assingBlock;
@@ -290,41 +314,41 @@ namespace Compilator
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
             Function FunctionFloatOperatorEqual = new Function(FunctionFloatOperatorEqualName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
-            BlockFloat.SymbolTable.Add("operator equal", FunctionFloatOperatorEqual);
+            BlockFloat.SymbolTable.Add("operator equal", FunctionFloatOperatorEqual, parent: BlockFloat);
             //Operator More
             Token FunctionFloatOperatorMoreName = new Token(Token.Type.ID, "operator compareTo");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
             Function FunctionFloatOperatorMore = new Function(FunctionFloatOperatorMoreName, null, plist, new Token(Token.Type.CLASS, "bool"), interpret) { isOperator = true };
-            BlockFloat.SymbolTable.Add("operator compareTo", FunctionFloatOperatorMore);
+            BlockFloat.SymbolTable.Add("operator compareTo", FunctionFloatOperatorMore, parent: BlockFloat);
             //Operator Plus
             Token FunctionFloatOperatorPlusName = new Token(Token.Type.ID, "operator plus");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
             Function FunctionFloatOperatorPlus = new Function(FunctionFloatOperatorPlusName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
-            BlockFloat.SymbolTable.Add("operator plus", FunctionFloatOperatorPlus);
+            BlockFloat.SymbolTable.Add("operator plus", FunctionFloatOperatorPlus, parent: BlockFloat);
             //Operator Minus
             Token FunctionFloatOperatorMinusName = new Token(Token.Type.ID, "operator minus");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
             Function FunctionFloatOperatorMinus = new Function(FunctionFloatOperatorMinusName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
-            BlockFloat.SymbolTable.Add("operator minus", FunctionFloatOperatorMinus);
+            BlockFloat.SymbolTable.Add("operator minus", FunctionFloatOperatorMinus, parent: BlockFloat);
             //Operator Inc
             Token FunctionFloatOperatorIncrementName = new Token(Token.Type.ID, "operator inc");
             Function FunctionFloatOperatorIncrement = new Function(FunctionFloatOperatorIncrementName, null, new ParameterList(true), new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true };
-            BlockFloat.SymbolTable.Add("operator inc", FunctionFloatOperatorIncrement);
+            BlockFloat.SymbolTable.Add("operator inc", FunctionFloatOperatorIncrement, parent: BlockFloat);
             //Operator Get
             Token FunctionFloatOperatorGetName = new Token(Token.Type.ID, "operator get");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "key"), BlockFloat, new Token(Token.Type.CLASS, "int")));
             Function FunctionFloatOperatorGet = new Function(FunctionFloatOperatorGetName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true, isExternal = true };
-            BlockFloat.SymbolTable.Add("operator get", FunctionFloatOperatorGet);
+            BlockFloat.SymbolTable.Add("operator get", FunctionFloatOperatorGet, parent: BlockFloat);
             //Operator Multiple
             Token FunctionFloatOperatorMultipleName = new Token(Token.Type.ID, "operator multiple");
             plist = new ParameterList(true);
             plist.parameters.Add(new Variable(new Token(Token.Type.ID, "a"), BlockFloat, new Token(Token.Type.CLASS, "int")));
             Function FunctionFloatMultipleGet = new Function(FunctionFloatOperatorMultipleName, null, plist, new Token(Token.Type.CLASS, "int"), interpret) { isOperator = true, isExternal = true };
-            BlockFloat.SymbolTable.Add("operator multiple", FunctionFloatMultipleGet);
+            BlockFloat.SymbolTable.Add("operator multiple", FunctionFloatMultipleGet, parent: BlockFloat);
         }
 
         public Dictionary<string, Types> Table { get { return table; } }
@@ -347,19 +371,23 @@ namespace Compilator
             }
         }
 
-        public void Add(string name, Types type, bool isForImport = false)
+        public void Add(string name, Types type, bool isForImport = false, Types parent = null)
         {
+            if (parent is Block parentBlock)
+                name = parentBlock.getTokenParent() + "::" + name;
+            else if (parent != null)
+                name = parent.getToken().Value + "::" + name;
             if (!tableCounter.ContainsKey(name))
             {
-                if (Find(name))
+                if (!(Get(name) is Error))
                 {
                     Types t = Get(name);
                     if (isForImport)
                         return;
                     if (t.assingBlock?.Interpret.UID != interpret.UID)
                         tableCounter.Add(name, 1);
-                    else if (t.assingBlock != null && t.assingBlock.Parent.SymbolTable.tableCounter.ContainsKey(name))
-                        tableCounter.Add(name, Get(name).assingBlock.Parent.SymbolTable.tableCounter[name] + 1);
+                    else if (t.assingBlock != null && t.assingBlock.BlockParent.SymbolTable.tableCounter.ContainsKey(name))
+                        tableCounter.Add(name, Get(name).assingBlock.BlockParent.SymbolTable.tableCounter[name] + 1);
                     else
                         tableCounter.Add(name, 1);
                 } else
@@ -375,16 +403,25 @@ namespace Compilator
                 table.Add(name, type);
         }
 
-        public List<Types> GetAll(string name, bool getImport = false)
+        public List<Types> GetAll(string name, bool getImport = false, Types parent = null)
         {
+            if (parent != null)
+            {
+                if (parent is Block parentBlock)
+                    name = parentBlock.getTokenParent() + "::" + name;
+                else
+                    name = parent.getToken().Value + "::" + name;
+            }
+
             List<Types> types = new List<Types>();
             int index = 2;
-            if (!Find(name, true))
-                return null;
             Types rt = Get(name, getImport: getImport);
+            if (rt is Error)
+                return null;
+
             types.Add(rt);
 
-            while (Find(name + " " + index))
+            while (!(Get(name + " " + index) is Error))
             {
                 types.Add(Get(name + " " + index, getImport: getImport));
                 index++;
@@ -393,6 +430,7 @@ namespace Compilator
             return types;
         }
 
+        [Obsolete("Use !(Get is Error)", true)]
         public bool Find(string name, bool full = false)
         {
             var f = __Find(name, new List<string>());
@@ -400,7 +438,7 @@ namespace Compilator
             {
                 if (interpret.FindImport(name, true))
                 {
-                    var import = interpret.GetImport(name, true);
+                    var import = interpret.GetImport(name, true) as Import;
                     var importLast = name.Split('.').Last();
                     if (name == importLast)
                         return true;
@@ -437,7 +475,7 @@ namespace Compilator
                                 continue;
                             }
 
-                            if (((Assign) assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                            if ((assigment_block.variables[nams[0]]).Right is UnaryOp uop)
                             {
                                 if (uop.Op == "new")
                                 {
@@ -461,8 +499,8 @@ namespace Compilator
                     }
                     else if (assigment_block.variables.ContainsKey(nams[0]))
                     {
-                        Variable vr = (Variable) ((Assign) assigment_block.variables[nams[0]]).Left;
-                        if (((Assign) assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                        Variable vr = (Variable) (assigment_block.variables[nams[0]]).Left;
+                        if ((assigment_block.variables[nams[0]]).Right is UnaryOp uop)
                         {
                             if (uop.Op == "new")
                             {
@@ -481,15 +519,15 @@ namespace Compilator
                 else
                 {
                     if (assigment_block.variables.ContainsKey(name)) return true;
-                    if (assigment_block.Parent != null && (!isForImport || assigment_block.Parent.Parent != null))
+                    if (assigment_block.BlockParent != null && (!isForImport || assigment_block.BlockParent.BlockParent != null))
                     {
-                        bool ret = assigment_block.Parent.SymbolTable.__Find(name, prevClass);
+                        bool ret = assigment_block.BlockParent.SymbolTable.__Find(name, prevClass);
                         if (ret) return true;
                     }
 
                     if (interpret.FindImport(name))
                     {
-                        var import = interpret.GetImport(name);
+                        var import = interpret.GetImport(name) as Import;
                         var nameLast = name.Split('.').Last();
                         if (nameLast == name) return true;
                         return import.Block.SymbolTable.__Find(name.Split('.').Last());
@@ -513,8 +551,6 @@ namespace Compilator
 
                     return (bool) interpret?.Find(name);                    
                 }
-
-                break;
             }
         }
 
@@ -524,13 +560,13 @@ namespace Compilator
                 return true;
             else
             {
-                if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.FindInternal(name);
+                if (assigment_block.BlockParent != null)
+                    return assigment_block.BlockParent.SymbolTable.FindInternal(name);
                 return false;
             }
         }
 
-        public static Stopwatch stopwatch = new Stopwatch();
+        //public static Stopwatch stopwatch = new Stopwatch();
         public Types Get(string name, ParameterList plist)
         {
             Types r = Get(name);
@@ -584,7 +620,7 @@ namespace Compilator
             if (name.Contains('.'))
             {
                 string[] nams = name.Split('.');
-                if (Find(nams[0]))
+                if (!(Get(nams[0]) is Error))
                 {
                     Types found = Get(nams[0], noConstrucotr, getImport);
                     if (found is Assign)
@@ -594,7 +630,7 @@ namespace Compilator
                         {
                             return GetSymbolTable(vr.Type + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                         }
-                        if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                        if ((assigment_block.variables[nams[0]]).Right is UnaryOp uop)
                         {
                             if (uop.Op == "new")
                             {
@@ -615,19 +651,19 @@ namespace Compilator
                         Types ttt = ((Import)found).Block.SymbolTable.Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                         if (ttt is Error)
                         {
-                            if (((Import)found).Block.SymbolTable.Find(name))
+                            if (!(((Import)found).Block.SymbolTable.Get(name) is Error))
                             {
                                 return ((Import)found).Block.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
                             }
                         }
-                        return ttt.assingBlock.Parent?.SymbolTable;
+                        return ttt.assingBlock.BlockParent?.SymbolTable;
                     }
                     return GetSymbolTable(string.Join(".", nams.Skip(1)), noConstrucotr, getImport);
                 }
                 else if (assigment_block.variables.ContainsKey(nams[0]))
                 {
-                    Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
-                    if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                    Variable vr = (Variable)(assigment_block.variables[nams[0]]).Left;
+                    if ((assigment_block.variables[nams[0]]).Right is UnaryOp uop)
                     {
                         if (uop.Op == "new")
                         {
@@ -639,65 +675,103 @@ namespace Compilator
             }
             if (table.Where(t => t.Key == name).Count() > 0)
             {
-                Types ttt = table.Where(t => t.Key == name).First().Value;
+                Types ttt = table.First(t => t.Key == name).Value;
                 if (ttt is Import)
                 {
                     if (getImport)
-                        return ttt.assingBlock.Parent?.SymbolTable;
-                    if (((Import)ttt).Block.SymbolTable.Find(name))
+                        return ttt.assingBlock.BlockParent?.SymbolTable;
+                    if (!(((Import)ttt).Block.SymbolTable.Get(name) is Error))
                     {
                         return ((Import)ttt).Block.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
                     }
                 }
-                return table.Where(t => t.Key == name).First().Value.assingBlock.Parent?.SymbolTable;
+                return table.First(t => t.Key == name).Value.assingBlock.BlockParent?.SymbolTable;
             }
             else
             {
                 if (assigment_block.variables.Where(t => t.Key.Split(' ')[0] == name).Count() > 0)
-                    return assigment_block.variables[name].assingBlock.Parent?.SymbolTable;
-                if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
+                    return assigment_block.variables[name].assingBlock.BlockParent?.SymbolTable;
+                if (assigment_block.BlockParent != null)
+                    return assigment_block.BlockParent.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
             }
             if (interpret.FindImport(name))
             {
-                return interpret.GetImport(name).Block.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
+                return (interpret.GetImport(name) as Import)?.Block.SymbolTable.GetSymbolTable(name, noConstrucotr, getImport);
             }
             return null;
         }
 
         public Types Get(string name, string type)
         {
-            stopwatch.Start();
+            interpret.stopwatch.Start();
             Types t = __Get(name, false, false, -1, type);
-            stopwatch.Stop();
+            interpret.stopwatch.Stop();
             return t;
         }
 
-        public Types Get(string name, bool noConstrucotr = false, bool getImport = false, int genericArgs = -1, string type = "", bool ignoreOnce = false, bool oncePleaseTakeImport = true)
+        public Types Get(string name, Types parent)
         {
-            stopwatch.Start();
-            Types t = __Get(name, noConstrucotr, getImport, genericArgs, type, ignoreOnce, oncePleaseTakeImport);
+            return Get(name, false, parent: parent);
+        }
+
+        private Dictionary<string, Types> _cache = new Dictionary<string, Types>();
+        public Types Get(string name, bool noConstrucotr = false, bool getImport = false, int genericArgs = -1, string type = "", bool ignoreOnce = false, bool oncePleaseTakeImport = true, Types parent = null)
+        {
+            //TODO: new getting ::
+            if (parent != null)
+            {
+                if (parent is Block parentBlock)
+                    name = parentBlock.getTokenParent() + "::" + name;
+                else
+                    name = parent.getToken().Value + "::" + name;
+            }
+
+            var hash = name + "_" + (("" + noConstrucotr + getImport + genericArgs + type + ignoreOnce + oncePleaseTakeImport).GetHashCode()).ToString();
+            if (_cache.ContainsKey(hash))
+            {
+                return _cache[hash];
+            }
+
+            Interpreter.SymboltableStopwatch.Start();
+            interpret.stopwatch.Start();
+            Types t = __Get(name, noConstrucotr, getImport, genericArgs, type, ignoreOnce);
             if (t is Error && oncePleaseTakeImport)
             {
                 if (interpret.FindImport(name, true))
                 {
-                    var import = interpret.GetImport(name, true);
+                    var import = interpret.GetImport(name, true, true);
                     if (import == null)
                         return t;
                     var importLast = name.Split('.').Last();
-                    if (name == importLast)
+                    if (name == importLast && import is Import)
                         return import;
-                    var g = import.Block.SymbolTable.__Get(name.Split('.').Last(), noConstrucotr, getImport, genericArgs, type, ignoreOnce, false);
-                    if(g is Error)
-                        return import.Block.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, type, ignoreOnce, false);
+                    if (import is Import imp)
+                    {
+                        var g = imp.Block.SymbolTable.__Get(name.Split('.').Last(), noConstrucotr, getImport, genericArgs, type, ignoreOnce);
+                        if (g is Error)
+                            return imp.Block.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, type, ignoreOnce);
+                    }
+                    else
+                    {
+                        return import;
+                    }
                 }
             }
-            stopwatch.Stop();
+            interpret.stopwatch.Stop();
+            Interpreter.SymboltableStopwatch.Stop();
+
+            if(!(t is Error || t is Import))
+                _cache[hash] = t;
+
             return t;
         }
         
-        private Types __Get(string name, bool noConstrucotr = false, bool getImport = false, int genericArgs = -1, string stype = "", bool ignoreOnce = false, bool oncePleaseTakeImport = false)
+        private Types __Get(string name, bool noConstrucotr = false, bool getImport = false, int genericArgs = -1, string stype = "", bool ignoreOnce = false)
         {
+            var nameSplit = name.Split('.');
+            if (nameSplit[0] == "this" && nameSplit.Length > 1)
+                name = string.Join(".", nameSplit.Skip(1));
+
             if(genericArgs > -1)
             {
                 var tttt = GetAll(name);
@@ -730,145 +804,158 @@ namespace Compilator
                     if (tttt.Count > 0)
                         return tttt[0];
                 }
-            }
+            }            
+            /*
+            if (assigment_block.variables.Any(t => t.Key.Split(' ')[0] == name))
+                return assigment_block.variables[name];
+            */
             if (table.Any(t => t.Key == name))
             {
                 Types ttt = table.First(t => t.Key == name).Value;
-                if (ttt is Import)
+                /*if (ttt is Import import)
                 {
                     if (getImport)
-                        return ttt;
-                    if (((Import)ttt).Block.SymbolTable.Find(name))
+                        return import;
+                    if (!(import.Block.SymbolTable.__Get(name, noConstrucotr, !getImport, genericArgs, stype, ignoreOnce) is Error))
                     {
-                        return ((Import)ttt).Block.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
+                        return import.Block.SymbolTable.__Get(name, noConstrucotr, !getImport, genericArgs, stype, ignoreOnce);
                     }
-                }
+                }*/
                 return table.First(t => t.Key == name).Value;
-            }
-            if (name.Split('.')[0] == "this")
-                name = string.Join(".", name.Split('.').Skip(1));
+            }            
+
+            var splname = name.Split(' ');
+            if(splname.Length > 1 && table.Any(t => t.Key == name.Split(' ')[1]))
+            {
+                Types ttt = table.First(t => t.Key == name.Split(' ')[1]).Value;
+                if(ttt is Class)
+                {
+                    return ((Class)ttt).Block.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                }
+            }            
+            
             if (name.Contains('.'))
             {
                 string[] nams = name.Split('.');
-                if (Find(nams[0]))
+                Types found = __Get(nams[0], noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                if (!(found is Error))
                 {
-                    Types found = __Get(nams[0], noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
                     if (found is Assign)
                     {
                         Variable vr = (Variable)((Assign)found).Left;
                         if (vr.Type != "auto")
                         {
-                            return __Get(vr.Type + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
+                            var f = __Get(vr.Type + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                            if (f is Error)
+                            {
+                                var cls = __Get(vr.Type, noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                                if (cls is Class clsc)
+                                {
+                                    var parent = clsc.GetParent();
+                                    if (parent is Class parc)
+                                    {
+                                        return __Get(parc.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                                    }
+                                }
+                            }
+                            return f;
                         }
-                        if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                        if ((assigment_block.variables[nams[0]]).Right is UnaryOp uop)
                         {
                             if (uop.Op == "new")
                             {
-                                return __Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
+                                return __Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
                             }
                         }
                     }
                     else if (found is Function)
-                        return ((Function)found).assingBlock.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
+                        return ((Function)found).assingBlock.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
                     else if (found is Class)
-                        return ((Class)found).assingBlock.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
+                    {
+                        if (((Class) found).Name.Value == "object")
+                            return found;
+                        var f = ((Class) found).assingBlock.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                        if(f is Error)
+                        {
+                            var pclass = ((Class)found).GetParent();
+                            if(pclass != null)
+                                f = pclass.assingBlock.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                        }
+                        return f;
+                    }
                     else if (found is Interface)
-                        return ((Interface)found).Block.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
+                        return ((Interface)found).Block.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                    else if (found is _Enum)
+                        return ((_Enum)found).assingBlock.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
                     else if (found is Import)
                     {
                         if (getImport)
                             return found;
-                        Types ttt = ((Import)found).Block.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
-                        if(ttt is Error)
+                        Types ttt = ((Import)found).Block.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                        if (ttt is Error)
                         {
-                            if (((Import)found).Block.SymbolTable.Find(name))
+                            if (!(((Import)found).Block.SymbolTable.Get(name) is Error))
                             {
                                 return ((Import)found).Block.SymbolTable.Get(name, noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
                             }
                         }
                         return ttt;
                     }
-                    return __Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
+                    return __Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
                 }
-                else if (assigment_block.variables.ContainsKey(nams[0]))
+                if (assigment_block.variables.ContainsKey(nams[0]))
                 {
-                    Variable vr = (Variable)((Assign)assigment_block.variables[nams[0]]).Left;
-                    if (((Assign)assigment_block.variables[nams[0]]).Right is UnaryOp uop)
+                    Variable vr = (Variable)(assigment_block.variables[nams[0]]).Left;
+                    if ((assigment_block.variables[nams[0]]).Right is UnaryOp uop && uop.Op == "new")
                     {
-                        if (uop.Op == "new")
-                        {
-                            return __Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
-                        }
+                        return __Get(uop.Name.Value + "." + string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
                     }
+
                     if(vr.Type == stype || stype == "")
-                        return vr.assingBlock.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
+                        return vr.assingBlock.SymbolTable.__Get(string.Join(".", nams.Skip(1)), noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
                 }
             }
 
-            if (table.Any(t => t.Key == name))
-            {
-                Types ttt = table.First(t => t.Key == name).Value;
-                if (ttt is Import)
-                {
-                    if (getImport)
-                        return ttt;
-                    if (((Import)ttt).Block.SymbolTable.Find(name))
-                    {
-                        return ((Import)ttt).Block.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
-                    }
-                }
-                return table.First(t => t.Key == name).Value;
-            }
-
-            if (assigment_block.variables.Any(t => t.Key.Split(' ')[0] == name))
-                return assigment_block.variables[name];
-
-            if (assigment_block.Parent != null && !isForImport)
-            {
-                Types ret = assigment_block.Parent.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
-                if(!(ret is Error))
-                {
-                    return ret;
-                }                    
-            }
-            else if (assigment_block.Parent != null && isForImport && !ignoreOnce)
-            {
-                Types ret = assigment_block.Parent.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, true);
-                if(!(ret is Error))
-                {
-                    return ret;
-                }
-            }
-
-            if (interpret.FindImport(name))
-            {
-                var import = interpret.GetImport(name);
-                var importLast = name.Split('.').Last();
-                if (name == importLast)
-                    return import;
-                return import.Block.SymbolTable.__Get(name.Split('.').Last(), noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
-            }
-
-            foreach(var type in table)
-            {
-                if(type.Value is Import import)
-                {
-                    var t = import.Block.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
-                    if (!(t is Error))
-                        return t;
-                }
-                else if(type.Value is Class && ((Class)type.Value).isForImport)
-                {
-                    var t = ((Class)type.Value).Block.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, ignoreOnce, false);
-                    if (!(t is Error))
-                        return t;
-                }
-            }
-
+            /*
             var find = interpret?.Get(name);
             if (!(find is Error))
-                return find;
-            
+                return find;                       
+                
+            if (assigment_block.BlockParent != null && (!isForImport || (isForImport && !ignoreOnce)))
+            {
+                Types ret = assigment_block.BlockParent.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, (isForImport || ignoreOnce));
+                if(!(ret is Error))
+                {
+                    return ret;
+                }
+            }            
+            */
+            foreach(var type in table)
+            {/*
+                if(type.Value is Import import)
+                {
+                    var t = import.Block.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                    if (!(t is Error))
+                        return t;
+                }
+                else */
+                if(type.Value is Class && ((Class)type.Value).isForImport)
+                {
+                    var t = ((Class)type.Value).Block.SymbolTable.__Get(name, noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+                    if (!(t is Error))
+                        return t;
+                }
+            }
+
+            if (name.Contains("::"))
+            {
+                var nw = string.Join("::", name.Replace("::", "/").Split('/').Skip(1));
+                var t = __Get(nw, noConstrucotr, getImport, genericArgs, stype, ignoreOnce);
+
+                if (!(t is Error))
+                    return t;
+            }            
+
             return new Error("#100 Internal error what can't normaly occured ups...");
         }
 
@@ -878,8 +965,8 @@ namespace Compilator
                 return tableType[name];
             else
             {
-                if (assigment_block.Parent != null)
-                    return assigment_block.Parent.SymbolTable.GetType(name);
+                if (assigment_block.BlockParent != null)
+                    return assigment_block.BlockParent.SymbolTable.GetType(name);
             }
             //Interpreter.semanticError.Add(new Error("Internal error #101", Interpreter.ErrorType.ERROR));
             return null;            

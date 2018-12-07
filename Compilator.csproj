@@ -35,8 +35,8 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Newtonsoft.Json, Version=10.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.10.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -46,19 +46,23 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
-    <Reference Include="websocket-sharp, Version=1.0.2.59611, Culture=neutral, PublicKeyToken=5660b08a1845a91e, processorArchitecture=MSIL">
-      <HintPath>..\packages\WebSocketSharp.1.0.3-rc11\lib\websocket-sharp.dll</HintPath>
+    <Reference Include="websocket-sharp, Version=1.0.4.0, Culture=neutral, PublicKeyToken=5660b08a1845a91e, processorArchitecture=MSIL">
+      <HintPath>packages\WebSocketSharpFork.1.0.4.0\lib\net35\websocket-sharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Compiler.cs" />
     <Compile Include="InternalTypes\TypeBool.cs" />
     <Compile Include="InternalTypes\TypeInt.cs" />
     <Compile Include="InternalTypes\TypeObject.cs" />
     <Compile Include="InternalTypes\TypeString.cs" />
+    <Compile Include="JsonParam.cs" />
     <Compile Include="Service.cs" />
+    <Compile Include="Types\Array.cs" />
     <Compile Include="Types\Assign.cs" />
     <Compile Include="Types\Block.cs" />
     <Compile Include="Types\Class.cs" />
+    <Compile Include="Types\Component.cs" />
     <Compile Include="Types\Delegate.cs" />
     <Compile Include="Types\For.cs" />
     <Compile Include="Types\Function.cs" />
@@ -72,8 +76,10 @@
     <Compile Include="Types\Null.cs" />
     <Compile Include="Types\ParameterList.cs" />
     <Compile Include="Types\CString.cs" />
+    <Compile Include="Types\ParentBridge.cs" />
     <Compile Include="Types\Properties.cs" />
     <Compile Include="Types\SymbolTable.cs" />
+    <Compile Include="Types\TernaryOp.cs" />
     <Compile Include="Types\Types.cs" />
     <Compile Include="Category.cs" />
     <Compile Include="Interpreter.cs" />
@@ -88,6 +94,7 @@
     <Compile Include="Types\Variable.cs" />
     <Compile Include="Types\While.cs" />
     <Compile Include="Types\_Attribute.cs" />
+    <Compile Include="Types\_Enum.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

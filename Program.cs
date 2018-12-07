@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -15,11 +16,13 @@ namespace Compilator
 {  
     class Program
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static string DrawClassInside(Class c, string add, List<string> exposed, string addMeMain = "")
         {
             return DrawClassInside(c.Block, add, exposed, addMeMain);
         }
-        public static string DrawClassInside(Block block, string add, List<string> exposed, string addMeMain = "")
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static string DrawClassInside(Block block, string add, List<string> exposed, string addMeMain = "")
         {
             StringBuilder outcom = new StringBuilder();
             foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
@@ -39,8 +42,9 @@ namespace Compilator
                     continue;
                 if (t.Value is Function tf)
                 {
-                    outcom.Append("  _." + tf.Name + " = " + tf.Name + ";\n");
-                    outcom.Append("  _." + tf.Name + "$META = " + tf.Name + "$META;\n");
+                    //outcom.Append("  _." + tf.Name + " = " + tf.Name + ";\n");
+                    //if (Interpreter._DEBUG)
+                    //    outcom.Append("  _." + tf.Name + "$META = " + tf.Name + "$META;\n");
                 }
                 else if (t.Value is Class tc)
                 {
@@ -68,16 +72,24 @@ namespace Compilator
                         }
                     }
                     //outcom.Append("  var " + t.Key + " = " + add + "." + tc.Name.Value + ";\n");
-                    outcom.Append("  var " + t.Key + " = GetModule(\"" + tc.block.Parent.import.getToken().Value + "\")." + t.Key + ";\n");             
+                    //if(tc.block.Parent.import.getToken().Value != t.Key)
+                    //    outcom.Append("  var " + t.Key + " = GetModule(\"" + tc.block.Parent.import.getToken().Value + "\")." + t.Key + ";\n");
+                    //else
+                    //    outcom.Append("  var " + t.Key + " = GetModule(\"" + tc.block.Parent.import.getToken().Value + "\");\n");
+
                     if (tc.isForImport)
                     {
-                        outcom.Append(DrawClassInside(tc, add + "." + tc.Name.Value, new List<string>(), add + "." + tc.Name.Value));
+                        if(tc.block.BlockParent.import.getToken().Value != t.Key)
+                            outcom.Append(DrawClassInside(tc, add + "." + tc.Name.Value, new List<string>(), add + "." + tc.Name.Value));
+                        else
+                            outcom.Append(DrawClassInside(tc, add, new List<string>(), add));
                     }
                 }
                 else if (t.Value is Interface ti)
                 {
-                    outcom.Append("  _." + ti.getName() + " = " + ti.getName() + ";\n");
-                    outcom.Append("  _." + ti.getName() + "$META = " + ti.getName() + "$META;\n");
+                    //outcom.Append("  _." + ti.getName() + " = " + ti.getName() + ";\n");
+                    //if (Interpreter._DEBUG)
+                    //    outcom.Append("  _." + ti.getName() + "$META = " + ti.getName() + "$META;\n");
                 }
                 else if (t.Value is Import im)
                 {
@@ -96,23 +108,23 @@ namespace Compilator
                             if (!importClass.Contains(skl))
                             {
                                 importClass.Add(skl);
-                                outcom.Append("  _." + skl + " = {};\n");
+                                //outcom.Append("  _." + skl + " = {};\n");
                             }
                         }
                     }
                     if (im.GetName() == "")
                     {
-                        outcom.Append("  _." + t.Key + " = " + im.GetModule() + ";\n");
-                        if(im.As != "")
-                            outcom.Append("  var " + t.Key + " = " + im.GetModule() + ";\n");
+                        //outcom.Append("  _." + t.Key + " = " + im.GetModule() + ";\n");
+                        //if(im.As != "")
+                        //    outcom.Append("  var " + t.Key + " = " + im.GetModule() + ";\n");
                     }
                     else
                     {
                         if (add == "")
                         {
-                            outcom.Append("  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
-                            if (im.As != "")
-                                outcom.Append("  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
+                            //outcom.Append("  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
+                            //if (im.As != "")
+                            //    outcom.Append("  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
                         }
                         else
                         {
@@ -120,7 +132,7 @@ namespace Compilator
                             //if (!string.IsNullOrEmpty(im.As))
                             //{
                                 //outcom.Append("  var " + t.Key + " = " + add + "." + im.GetModule() + ";\n");
-                                outcom.Append("  var " + t.Key + " = GetModule(\"" + im.getToken().Value + "\")." + t.Key + ";\n");
+                                //outcom.Append("  var " + t.Key + " = GetModule(\"" + im.getToken().Value + "\")." + t.Key + ";\n");
                             //}
                         }
                         exposed.Add(t.Key);
@@ -131,7 +143,7 @@ namespace Compilator
                         {
                             if (im.GetName() != "")
                             {
-                                outcom.Append("  var " + qq.Key + " = " + im.GetName() + "." + ((Class)qq.Value).getName() + ";\n");
+                                //outcom.Append("  var " + qq.Key + " = " + im.GetName() + "." + ((Class)qq.Value).getName() + ";\n");
                                 exposed.Add(qq.Key);
                             }
                         }
@@ -155,131 +167,219 @@ namespace Compilator
 
         public static List<string> importClass = new List<string>();
         public static string projectFolder = "";
+        private static bool _runServer = false;
+
+        private static bool _wait = false;
         static void Main(string[] args)
-        {            
-            if(args.Length < 1 || args[0] == "") { projectFolder = "Project"; } else { projectFolder = args[0]; }
-            if(args.Length < 2 || args[1] == "") { } else {
+        {
+            projectFolder = "Project";
+
+            if (args.Length > 0 && args[0] == "-wait")
+                _wait = true;
+            else if (args.Length < 1 || args[0] == "")
+            {
+                
+            }
+            else
+            {
+                projectFolder = args[0];
+            }
+
+            if (args.Length < 2 || args[1] == "")
+            {
+            }
+            else
+            {
                 if (args[1] == "JS")
                     Interpreter._LANGUAGE = Interpreter.LANGUAGES.JAVASCRIPT;
                 if (args[1] == "PY")
                     Interpreter._LANGUAGE = Interpreter.LANGUAGES.PYTHON;
             }
+
+            if (args.Length > 1)
+            {
+                if (args[2] == "server")
+                    _runServer = true;
+            }
+
             var stopwatch = new Stopwatch();
             stopwatch.Start();
             string text = File.ReadAllText(projectFolder + @"/code.p");
             Interpreter.semanticError.Clear();
-            Interpreter interpret = new Interpreter(text, "/"+projectFolder+"/code.p", null, projectFolder);
+            Interpreter interpret = new Interpreter(text, "/" + projectFolder + "/code.p", null, projectFolder);
             interpret.isConsole = true;
 
-            Block block = (Block)interpret.Interpret();
-            string compiled = block.Compile();            
-            StringBuilder outcom = new StringBuilder("");
-            if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
+            var stopw = new Stopwatch();
+            stopw.Start();
+            Block block = (Block) interpret.Interpret();
+            stopw.Stop();
+            StringBuilder compiled = new StringBuilder();
+            var stopwc = new Stopwatch();
+            stopwc.Start();
+            if (block != null)
             {
-                compiled = compiled.Replace("\n", "\n  ");
-                outcom = new StringBuilder("var module = function (_){\n  'use strict';\n");
-                outcom.Append("  " + compiled.Substring(0, compiled.Length) + "\n");
-                importClass = new List<string>();
-                List<string> exposed = new List<string>();
-                foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
+                var compiler = new Compiler();
+                //compiled.Append(block.Compile());
+                compiled = compiler.Compile(block, addBl: false);
+                //compiled = compiler.StartCompile(block);
+            }
+            stopwc.Stop();
+            
+            StringBuilder outcom = new StringBuilder("");
+            if (block != null)
+            {
+                if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                 {
-                    if (t.Value == null || t.Key.Trim() == "") continue;
-                    if (t.Key == "int" || t.Key == "string" || t.Key == "null")
-                        continue;
-                    if (t.Value is Function && (((Function)t.Value).isExternal || ((Function)t.Value).isExtending))
-                        continue;
-                    if (t.Value is Class && ((Class)t.Value).isExternal)
-                        continue;
-                    if (t.Value is Interface && ((Interface)t.Value).isExternal)
-                        continue;
-                    if (t.Value is Delegate)
-                        continue;
-                    if (t.Value is Generic)
-                        continue;
-                    if (t.Value is Function tf)
+                    compiled = compiled.Replace("\n", "\n  ");
+                    outcom = new StringBuilder("var module = function (_){\n  'use strict';\n");
+                    outcom.Append("  " + compiled.ToString() + "\n");
+                    importClass = new List<string>();
+                    List<string> exposed = new List<string>();
+                    foreach (KeyValuePair<string, Types> t in block.SymbolTable.Table)
                     {
-                        outcom.Append("  _." + tf.Name + " = " + tf.Name + ";\n");
-                        outcom.Append("  _." + tf.Name + "$META = " + tf.Name + "$META;\n");
-                    }
-                    else if (t.Value is Class tc)
-                    {
-                        if (!tc.isForImport)
+                        if (t.Value == null || t.Key.Trim() == "") continue;
+                        if (t.Key == "int" || t.Key == "string" || t.Key == "null")
+                            continue;
+                        if (t.Value is Function && (((Function) t.Value).isExternal || ((Function) t.Value).isExtending))
+                            continue;
+                        if (t.Value is Class && ((Class) t.Value).isExternal)
+                            continue;
+                        if (t.Value is Interface && ((Interface) t.Value).isExternal)
+                            continue;
+                        if (t.Value is Delegate)
+                            continue;
+                        if (t.Value is Generic)
+                            continue;
+                        if (t.Value is Function tf)
                         {
-                            outcom.Append("  _." + tc.getName() + " = " + tc.getName() + ";\n");
-                            outcom.Append("  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n");
+                            //outcom.Append("  _." + tf.Name + " = " + tf.Name + ";\n");
+                            //if (Interpreter._DEBUG)
+                            //    outcom.Append("  _." + tf.Name + "$META = " + tf.Name + "$META;\n");
                         }
-                        if (tc.isForImport)
+                        else if (t.Value is Class tc)
                         {
-                            outcom.Append(DrawClassInside(tc, tc.getName(), exposed));
-                        }
-                    }
-                    else if (t.Value is Interface ti)
-                    {
-                        outcom.Append("  _." + ti.getName() + " = " + ti.getName() + ";\n");
-                        outcom.Append("  _." + ti.getName() + "$META = " + ti.getName() + "$META;\n");
-                    }
-                    else if (t.Value is Import im)
-                    {
-                        if (t.Key.Contains("."))
-                        {
-                            var skl = "";
-                            foreach (string p in t.Key.Split('.').Take(t.Key.Split('.').Length - 1))
+                            if (!tc.isForImport)
                             {
-                                skl += (skl == "" ? "" : ".") + p;
-                                if (!importClass.Contains(skl))
+                                //outcom.Append("  _." + tc.getName() + " = " + tc.getName() + ";\n");
+                                //if (Interpreter._DEBUG)
+                                //    outcom.Append("  _." + tc.getName() + "$META = " + tc.getName() + "$META;\n");
+                            }
+
+                            if (tc.isForImport)
+                            {
+                                outcom.Append(DrawClassInside(tc, tc.getName(), exposed));
+                            }
+                        }
+                        else if (t.Value is Interface ti)
+                        {
+                            //outcom.Append("  _." + ti.getName() + " = " + ti.getName() + ";\n");
+                            //if (Interpreter._DEBUG)
+                            //    outcom.Append("  _." + ti.getName() + "$META = " + ti.getName() + "$META;\n");
+                        }
+                        else if (t.Value is Import im)
+                        {
+                            if (t.Key.Contains("."))
+                            {
+                                var skl = "";
+                                foreach (string p in t.Key.Split('.').Take(t.Key.Split('.').Length - 1))
                                 {
-                                    importClass.Add(skl);
-                                    outcom.Append("  _." + skl + " = {};\n");
+                                    skl += (skl == "" ? "" : ".") + p;
+                                    if (!importClass.Contains(skl))
+                                    {
+                                        importClass.Add(skl);
+                                        //outcom.Append("  _." + skl + " = {};\n");
+                                    }
+                                }
+                            }
+
+                            if (im.GetName() == "")
+                            {
+                                //outcom.Append("  _." + t.Key + " = " + im.GetModule() + ";\n");
+                                //if (im.As != "")
+                                //    outcom.Append("  var " + t.Key + " = " + im.GetModule() + ";\n");
+                            }
+                            else
+                            {
+                                //outcom.Append("  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
+                                //if (im.As != "")
+                                //    outcom.Append("  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
+                            }
+
+                            if (!exposed.Contains(t.Key))
+                                exposed.Add(t.Key);
+                            foreach (KeyValuePair<string, Types> qq in im.Block.SymbolTable.Table)
+                            {
+                                if (qq.Value is Class && !exposed.Contains(qq.Key) && !((Class) qq.Value).isExternal)
+                                {
+                                    if (im.GetName() != "")
+                                    {
+                                        //outcom.Append("  var " + qq.Key + " = " + im.GetName() + "." + ((Class) qq.Value).getName() + ";\n");
+                                        exposed.Add(qq.Key);
+                                    }
                                 }
                             }
                         }
-                        if (im.GetName() == "")
+                        //else
+                        //    outcom.Append("  _." + t.Key + " = " + t.Key + ";\n");
+                    }
+
+                    foreach (var import in interpret.imports)
+                    {
+                        if (import.Key.Length - import.Key.Replace(".", "").Length > 1)
                         {
-                            outcom.Append("  _." + t.Key + " = " + im.GetModule() + ";\n");
-                            if (im.As != "")
-                                outcom.Append("  var " + t.Key + " = " + im.GetModule() + ";\n");
+                            var module = import.Value.GetModule();
+                            //outcom.Append("  var " + module + " = GetModule(\"" + import.Key + "\")." + module + ";\n");
+                        }
+                    }
+
+                    outcom.Append("\n  DefineModule('module', _);\n");
+
+                    var fnd = block.SymbolTable.Get("main");
+                    if (!(fnd is Error))
+                    {
+                        if (((Function) fnd).attributes.Any(x => x.GetName(true) == "OnPageLoad"))
+                        {
+                            outcom.Append("\n  window.onload = function(){ try {");
+                            if (interpret.FileSource != null)
+                            {
+                                string file = "";
+                                if (!File.Exists(projectFolder + "/" + interpret.FileSource.Value))
+                                {
+                                    Interpreter.semanticError.Add(new Error("#002 Source file " + interpret.FileSource.Value + " not found!", Interpreter.ErrorType.WARNING, interpret.FileSource));
+                                }
+                                else
+                                {
+                                    file = File.ReadAllText(projectFolder + "/" + interpret.FileSource.Value);
+                                }
+
+                                outcom.Append("\n    document.querySelector('#container').innerHTML = \"" + file.Replace("\"", "&uvz;").Replace("\r\n", "") + "\".replace(new RegExp(\"&uvz;\", 'g'), '\"');\n");
+                                outcom.Append("    main();\n");
+                                outcom.Append("  }catch(e){ catcherror(e); } };\n");
+                            }
+                            else
+                            {
+                                outcom.Append("main();");
+                                outcom.Append("}catch(e){ catcherror(e); } };\n");
+                            }
+
                         }
                         else
-                        {
-                            outcom.Append("  _." + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
-                            if (im.As != "")
-                                outcom.Append("  var " + t.Key + " = " + im.GetName() + "." + im.GetModule() + ";\n");
-                        }
-                        if (!exposed.Contains(t.Key))
-                            exposed.Add(t.Key);
-                        foreach (KeyValuePair<string, Types> qq in im.Block.SymbolTable.Table)
-                        {
-                            if (qq.Value is Class && !exposed.Contains(qq.Key) && !((Class)qq.Value).isExternal)
-                            {
-                                if (im.GetName() != "")
-                                {
-                                    outcom.Append("  var " + qq.Key + " = " + im.GetName() + "." + ((Class)qq.Value).getName() + ";\n");
-                                    exposed.Add(qq.Key);
-                                }
-                            }
-                        }
+                            outcom.Append("\n  main();\n");
                     }
-                    else
-                        outcom.Append("  _." + t.Key + " = " + t.Key + ";\n");
+
+                    outcom.Append("\n  return _;\n");
+                    outcom.Append("}(typeof module === 'undefined' ? {} : module);");
                 }
-
-                outcom.Append("\n  DefineModule('module', _);\n");
-
-                if (block.SymbolTable.Find("main"))
+                else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                 {
-                    if (((Function)block.SymbolTable.Get("main")).attributes.Any(x => x.GetName(true) == "OnPageLoad"))
-                        outcom.Append("\n  window.onload = function(){ try { main(); }catch(e){ catcherror(e); } };\n");
-                    else
-                        outcom.Append("\n  main();\n");
-                }
-                outcom.Append("\n  return _;\n");
-                outcom.Append("}(typeof module === 'undefined' ? {} : module);");
+                    outcom.Append(compiled.ToString());
+                }                
+                block.Semantic();
             }
-            else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-            { 
-                outcom.Append(compiled.Substring(0, compiled.Length));
-            }
-            block.Semantic();
+
+
+            stopwatch.Stop();
+
             bool iserror = false;
             if(Interpreter.semanticError.Count > 0)
             {
@@ -297,7 +397,7 @@ namespace Compilator
                         Console.WriteLine(place + "info: " + error.Message);
                 }
             }
-            stopwatch.Stop();
+            
             if (Interpreter.isForExport)
             {
                 string lastname = "";
@@ -356,7 +456,7 @@ namespace Compilator
                         }
                         break;
                     }
-                    if (!block.SymbolTable.Find(name))
+                    if (block.SymbolTable.Get(name) is Error)
                     {
                         Console.WriteLine("Failed to get the \"" + name + "\" from SymbolTable");
                     }
@@ -395,19 +495,21 @@ namespace Compilator
             }
             else
             {
-                Console.WriteLine("Symbol table time: " + SymbolTable.stopwatch.Elapsed.Seconds + "." + SymbolTable.stopwatch.Elapsed.Milliseconds + "sec");
+                var now = DateTime.Now;         
+                Console.Write((now.Hour < 10 ? "0": "") + now.ToShortTimeString() + ": Main \t\t\t\t -> ");
+                Console.WriteLine(interpret.stopwatch.Elapsed.Seconds + "." + interpret.stopwatch.Elapsed.Milliseconds + "sec");
                 if (!iserror || Interpreter._WRITEDEBUG)
                 {
                     System.IO.StreamWriter file = null;
 
                     if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                     {
-                        outcom = new StringBuilder("//# sourceURL=PyrOutput.js\n//Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec\n//On " + DateTime.Now.ToLocalTime() + "\n//By PYR compiler\n" + outcom.ToString());
+                        outcom = new StringBuilder("//# sourceURL=PyrOutput.js\n//Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds.ToString("D3") + " sec\n//On " + DateTime.Now.ToLocalTime() + "\n//By PYR compiler\n" + outcom.ToString());
                         file = new System.IO.StreamWriter("output.js");
                     }
                     else
                     {
-                        outcom = new StringBuilder("#Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec\n#On " + DateTime.Now.ToLocalTime() + "\n#By PYR compiler\n" + outcom.ToString());
+                        outcom = new StringBuilder("#Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds.ToString("D3") + " sec\n#On " + DateTime.Now.ToLocalTime() + "\n#By PYR compiler\n" + outcom.ToString());
                         file = new System.IO.StreamWriter("output.py");
                     }
 
@@ -415,22 +517,33 @@ namespace Compilator
                     file.Close();
                     if (iserror && Interpreter._WRITEDEBUG)
                     {
-                        Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec, with error but writed to output!");
+                        Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds.ToString("D3") + " sec, with error but writed to output!");
                         Console.ReadKey();
                     }
                     else
                     {
-                        Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec");
-                        RunServer();
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
+                        Console.WriteLine("----------------------------------------------------------------");
+                        Console.ResetColor();
+                        Console.WriteLine("Word(all symbols) " + Interpreter.fileList.Select(x => x.Value.Length).Sum());
+                        Console.WriteLine("Interpretat " + stopw.Elapsed.Seconds + "." + stopw.Elapsed.Milliseconds.ToString("D3") + " sec");
+                        Console.WriteLine("Symboltable " + Interpreter.SymboltableStopwatch.Elapsed.Seconds + "." + Interpreter.SymboltableStopwatch.Elapsed.Milliseconds.ToString("D3") + " sec");
+                        Console.WriteLine("Compiled in " + stopwc.Elapsed.Seconds + "." + stopwc.Elapsed.Milliseconds.ToString("D3") + " sec");                        
+                        Console.WriteLine("Finished in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds.ToString("D3") + " sec");
+                        if(_runServer)
+                            RunServer();
                     }
                 }
                 else
                 {
+                    Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine("Compiled in " + stopwatch.Elapsed.Seconds + "." + stopwatch.Elapsed.Milliseconds + " sec, with errors.");
+                    Console.ResetColor();
                     Console.ReadKey();
                 }
             }
-            //Console.ReadKey();            
+            if(_wait)
+                Console.ReadKey();            
         }        
 
         public static void PrintInSymbolTable(SymbolTable s)

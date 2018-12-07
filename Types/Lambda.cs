@@ -3,19 +3,40 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     class Lambda : Types
     {
-        Variable name;
-        Types expresion;
-        ParameterList plist;
+        public Variable name;
+        public Types expresion;
+        public ParameterList plist;
         public Types predicate = null;
         public bool isInArgumentList = false;
         public bool isCallInArgument = false;
-        public bool isNormalLambda = false;        
+        public bool isNormalLambda = false;
+        public string replaceThis = null;
         //bool isDeclare = false;
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Variable Variable => name;
+        [JsonParam] public Types Exrpesion => expresion;
+        [JsonParam] public ParameterList ParameterList => plist;
+        [JsonParam] public bool IsInArgumentList => isInArgumentList;
+        [JsonParam] public bool IsCallInArgument => isCallInArgument;
+        [JsonParam] public bool IsNormalLambda => isNormalLambda;
+
+        public override void FromJson(JObject o)
+        {
+            name = JsonParam.FromJson<Variable>(o["Variable"]);
+            expresion = JsonParam.FromJson<Types>(o["Exrpesion"]);
+            plist = JsonParam.FromJson<ParameterList>(o["ParameterList"]);
+            isInArgumentList = (bool) o["IsInArgumentList"];
+            isCallInArgument = (bool) o["IsCallInArgument"];
+            isNormalLambda = (bool) o["IsNormalLambda"];
+        }
+        public Lambda() { }
 
         public Lambda(Variable name, Types expresion, ParameterList plist)
         {
@@ -39,8 +60,6 @@ namespace Compilator
             isNormalLambda = true;
         }
 
-        public ParameterList ParameterList { get { return plist; } }
-
         public override string Compile(int tabs = 0)
         {
             if (isNormalLambda)
@@ -54,13 +73,15 @@ namespace Compilator
                 if (plist.assingToToken == null)
                     plist.assingToToken = assingToToken;
                 ret += "function(" + plist.Compile() + ")";                
-                expresion.assingToType = this;
+                expresion.assingToType = this;                               
+
                 if (expresion is Block block)
                 {
                     foreach (var v in plist.Parameters)
                     {
                         if (v is Variable va)
                         {
+                            va.setType(new Token(Token.Type.CLASS, "object"));
                             block.SymbolTable.Add(va.Value, va);
                         }
                     }
@@ -69,11 +90,23 @@ namespace Compilator
                     ret +=  tbs + "}";
                 }
                 else
-                    ret += "{ return " + expresion.Compile() + "; }";
+                {
+                    if (replaceThis != null && expresion is UnaryOp uoe)
+                    {
+                        uoe.replaceThis = replaceThis;
+                    }
+                    var res = expresion.Compile();
+                    ret += "{ return " + res + (res[res.Length - 1] == ';' ? "" : ";") + " }";
+                }
+
                 return ret;
             }
             else
             {
+                foreach (var v in plist.Parameters)
+                    if (v is Variable va)
+                        va.setType(new Token(Token.Type.CLASS, "object"));
+
                 if (isInArgumentList)
                     return "lambda$" + name.Value;
                 if (isCallInArgument)

@@ -4,15 +4,28 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     public class Number: Types
     {
         Token token;
-        int value;
-        private float fvalue;
+        public int value;
+        public float fvalue;
         public bool isReal = false;
+
+        /*Serialization to JSON object for export*/
+        [JsonParam("Number")] public string _Number => token.Value;
+        [JsonParam] public bool IsReal => isReal;
+
+        public override void FromJson(JObject o)
+        {
+            token = Token.FromJson(o["Number"]);
+            isReal = (bool) o["IsReal"];
+        }
+        public Number() { }
+
         public Number(Token token, bool isReal = false)
         {
             this.isReal = isReal;

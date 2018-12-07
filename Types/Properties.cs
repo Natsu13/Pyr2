@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
@@ -12,6 +13,17 @@ namespace Compilator
         Types getter, setter;
         bool isAutoDefined = false;
         bool isOneNotDefined = false;
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Types Variable => variable;
+        [JsonParam] public Types Getter => getter;
+        [JsonParam] public Types Setter => setter;
+        
+        public override void FromJson(JObject o)
+        {
+            throw new NotImplementedException();
+        }
+        public Properties() { }
         
         public Properties(Types variable, Types getter = null, Types setter = null, Block current_block = null)
         {
@@ -31,10 +43,7 @@ namespace Compilator
             if ((getter is Block gbb && gbb.children.Count == 0) && (setter is Block ssb && ssb.children.Count == 0))
                 isAutoDefined = true;
         }
-
-        public Types Getter { get { return getter; } }
-        public Types Setter { get { return setter; } }
-
+        
         public override string Compile(int tabs = 0)
         {
             if (assingBlock.Type != Block.BlockType.CLASS)

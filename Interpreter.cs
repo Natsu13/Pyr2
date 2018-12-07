@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -38,9 +40,10 @@ namespace Compilator
         public static readonly bool _WAITFORPAGELOAD =   false;      //If you want call main in window.onload
         public static readonly bool _WRITEDEBUG =        false;      //If you want with faul write the output to file
         public static readonly bool _DEBUG =             false;      //If you want stop at compiling when you use attribute debug
+        public static readonly bool _RECOMPILE =         false;      //If you want recompile but you alerady have cache files
 
         /// Language settings
-        public enum     LANGUAGES { JAVASCRIPT, CSHARP, PYTHON, PHP, CPP };
+        public enum     LANGUAGES { JAVASCRIPT, CSHARP, PYTHON, PHP, CPP, LLVM };
         public static   LANGUAGES _LANGUAGE = LANGUAGES.JAVASCRIPT;
         public static bool isForExport = false;
         public Interpreter parent = null;
@@ -50,13 +53,19 @@ namespace Compilator
 
         public static int counterId = 1;
         public int _uid;
+        public Stopwatch stopwatch = new Stopwatch();
+        public static Stopwatch SymboltableStopwatch = new Stopwatch();
 
         public int UID { get { return _uid; } }
+        public Token FileSource { get; set; } = null;
+        public static Interpreter CurrentStaticInterpreter = null;
 
-        public Interpreter(string text, string filename = "", Interpreter parent = null, string projectFolder = "", Block parent_block = null)
+        public SymbolTable SymbolTable { get; }
+
+        public Interpreter(string text, string filename = "", Interpreter parent = null, string projectFolder = "", Block parent_block = null, SymbolTable symbolTable = null)
         {
             _uid = counterId;
-            counterId++;
+            counterId++;            
 
             this.text = text;
             this.parent = parent;
@@ -71,7 +80,17 @@ namespace Compilator
             current_char = text[pos];
             current_file = filename;
             current_block = new Block(this, true);
-            current_block.SymbolTable.Initialize();
+
+            if (symbolTable == null)
+            {
+                SymbolTable = new SymbolTable(this, current_block, true);
+                SymbolTable.Initialize();
+            }
+            else
+            {
+                SymbolTable = symbolTable;
+            }
+
             current_block.assignTo = (filename == "code.p" ? "main": "");
             MainBlock = current_block;
             //current_block.Parent = parent_block;
@@ -92,7 +111,7 @@ namespace Compilator
         {
             if (parent != null && _uid != parent.UID)
             {
-                return parent.MainBlock.SymbolTable.Find(name);
+                return !(parent.MainBlock.SymbolTable.Get(name) is Error);
             }
 
             return false;
@@ -113,7 +132,7 @@ namespace Compilator
             {
                 foreach (var import in imports)
                 {
-                    if (import.Value.Block.SymbolTable.Get(name, oncePleaseTakeImport: false) != null)
+                    if (!(import.Value.Block.SymbolTable.Get(name, oncePleaseTakeImport: false) is Error))
                         return true;
                 }
             }
@@ -121,13 +140,13 @@ namespace Compilator
             return false;
     }
 
-        public Import GetImport(string name, bool deep = false)
+        public Types GetImport(string name, bool deep = false, bool complet = false)
         {            
             if (imports.ContainsKey(name))
                 return imports[name];
             else
             {
-                var f = parent?.GetImport(name, deep);
+                var f = parent?.GetImport(name, deep, complet);
                 if (f != null)
                     return f;
             }
@@ -137,8 +156,12 @@ namespace Compilator
                 foreach (var import in imports)
                 {
                     var imp = import.Value.Block.SymbolTable.Get(name, oncePleaseTakeImport: false);
-                    if (imp != null)
+                    if (imp != null && !(imp is Error))
+                    {
+                        if (complet)
+                            return imp;
                         return import.Value;
+                    }
                 }
             }
 
@@ -268,28 +291,36 @@ namespace Compilator
                     Advance(); Advance();
                     return new Token(Token.Type.DEC, "--", current_token_pos, current_file);
                 }
-                if (current_char == '>') { Advance(); return new Token(Token.Type.MORE,     '>', current_token_pos, current_file); }
-                if (current_char == '<') { Advance(); return new Token(Token.Type.LESS,     '<', current_token_pos, current_file); }
-                if (current_char == '=') { Advance(); return new Token(Token.Type.ASIGN,    '=', current_token_pos, current_file); }
-                if (current_char == ';') { Advance(); return new Token(Token.Type.SEMI,     ';', current_token_pos, current_file); }
-                if (current_char == ':') { Advance(); return new Token(Token.Type.COLON,    ':', current_token_pos, current_file); }
-                if (current_char == ',') { Advance(); return new Token(Token.Type.COMMA,    ',', current_token_pos, current_file); }
-                if (current_char == '.') { Advance(); return new Token(Token.Type.DOT,      '.', current_token_pos, current_file); }
-                if (current_char == '+') { Advance(); return new Token(Token.Type.PLUS,     '+', current_token_pos, current_file); }
-                if (current_char == '-') { Advance(); return new Token(Token.Type.MINUS,    '-', current_token_pos, current_file); }
-                if (current_char == '*') { Advance(); return new Token(Token.Type.MUL,      '*', current_token_pos, current_file); }
-                if (current_char == '/') { Advance(); return new Token(Token.Type.DIV,      '/', current_token_pos, current_file); }
-                if (current_char == '(') { Advance(); return new Token(Token.Type.LPAREN,   '(', current_token_pos, current_file); }
-                if (current_char == ')') { Advance(); return new Token(Token.Type.RPAREN,   ')', current_token_pos, current_file); }
-                if (current_char == '{') { Advance(); return new Token(Token.Type.BEGIN,    '{', current_token_pos, current_file); }
-                if (current_char == '}') { Advance(); return new Token(Token.Type.END,      '}', current_token_pos, current_file); }
-                if (current_char == '[') { Advance(); return new Token(Token.Type.LSQUARE,  '[', current_token_pos, current_file); }
-                if (current_char == ']') { Advance(); return new Token(Token.Type.RSQUARE,  ']', current_token_pos, current_file); }
+                if (current_char == '?') { Advance(); return new Token(Token.Type.QUESTIOMARK, '?', current_token_pos, current_file); }
+                if (current_char == '!') { Advance(); return new Token(Token.Type.NEG,         '!', current_token_pos, current_file); }
+                if (current_char == '>') { Advance(); return new Token(Token.Type.MORE,        '>', current_token_pos, current_file); }
+                if (current_char == '<') { Advance(); return new Token(Token.Type.LESS,        '<', current_token_pos, current_file); }
+                if (current_char == '=') { Advance(); return new Token(Token.Type.ASIGN,       '=', current_token_pos, current_file); }
+                if (current_char == ';') { Advance(); return new Token(Token.Type.SEMI,        ';', current_token_pos, current_file); }
+                if (current_char == ':') { Advance(); return new Token(Token.Type.COLON,       ':', current_token_pos, current_file); }
+                if (current_char == ',') { Advance(); return new Token(Token.Type.COMMA,       ',', current_token_pos, current_file); }
+                if (current_char == '.') { Advance(); return new Token(Token.Type.DOT,         '.', current_token_pos, current_file); }
+                if (current_char == '+') { Advance(); return new Token(Token.Type.PLUS,        '+', current_token_pos, current_file); }
+                if (current_char == '-') { Advance(); return new Token(Token.Type.MINUS,       '-', current_token_pos, current_file); }
+                if (current_char == '*') { Advance(); return new Token(Token.Type.MUL,         '*', current_token_pos, current_file); }
+                if (current_char == '/') { Advance(); return new Token(Token.Type.DIV,         '/', current_token_pos, current_file); }
+                if (current_char == '(') { Advance(); return new Token(Token.Type.LPAREN,      '(', current_token_pos, current_file); }
+                if (current_char == ')') { Advance(); return new Token(Token.Type.RPAREN,      ')', current_token_pos, current_file); }
+                if (current_char == '{') { Advance(); return new Token(Token.Type.BEGIN,       '{', current_token_pos, current_file); }
+                if (current_char == '}') { Advance(); return new Token(Token.Type.END,         '}', current_token_pos, current_file); }
+                if (current_char == '[') { Advance(); return new Token(Token.Type.LSQUARE,     '[', current_token_pos, current_file); }
+                if (current_char == ']') { Advance(); return new Token(Token.Type.RSQUARE,     ']', current_token_pos, current_file); }
 
                 Error("Unexpeced token found");
                 return null;
             }            
             return new Token(Token.Type.EOF, "" , current_token_pos, current_file);
+        }
+
+        public void NextToken()
+        {
+            previous_token = current_token;
+            current_token = GetNextToken();
         }
 
         public void Eat(Token.Type tokenType, string errorMessage = "")
@@ -306,8 +337,10 @@ namespace Compilator
             }
         }
 
-        public void Advance()
+        public void Advance(bool skipWhiteSpace = false)
         {
+            if (skipWhiteSpace)
+                SkipWhiteSpace();
             pos++;
             if (pos >= text.Length)
                 current_char = '\0';
@@ -352,9 +385,10 @@ namespace Compilator
 
             if (Token.Reserved.ContainsKey(_result))
                 return new Token(Token.Reserved[_result], current_token_pos, current_file);
-            else if (current_block.SymbolTable.Find(_result))
-            {
-                Types tp = current_block.SymbolTable.Get(_result);
+
+            Types tp = current_block.SymbolTable.Get(_result);
+            if (!(tp is Error) && !(tp is Import))
+            {                
                 if(tp is Assign)
                 {
                     if (((Assign)tp).Right is Null)
@@ -379,8 +413,8 @@ namespace Compilator
                     return new Token(Token.Type.PROPERTIES, _result, current_token_pos, current_file);
                 return new Token(Token.Type.CLASS, _result, current_token_pos, current_file);
             }
-            else
-                return new Token(Token.Type.ID, _result, current_token_pos, current_file);
+            
+            return new Token(Token.Type.ID, _result, current_token_pos, current_file);
         }
         
         public void SkipWhiteSpace()
@@ -505,7 +539,7 @@ namespace Compilator
 
                     bool isInline = IsModifer(Token.Type.INLINE);
                     Token vname = current_token;
-                    Eat(Token.Type.ID);
+                    Eat(vname.type);
                     if (current_token.type == Token.Type.ASIGN)
                     {
                         Token assign = current_token;
@@ -641,7 +675,7 @@ namespace Compilator
                 {
                     UnaryOp up = new UnaryOp(token, className, null, current_block);
                     up.genericArgments = garg;
-                    if(size > -1)
+                    if (size > -1)
                         up.MadeArray(size);
                     if (arraySizeVariable != null)
                         up.MadeArray(arraySizeVariable);
@@ -660,7 +694,7 @@ namespace Compilator
                     up.assingBlock = current_block;
                     return up;
                 }
-            }            
+            }
             else if (token.type == Token.Type.PLUS)
             {
                 Eat(Token.Type.PLUS);
@@ -669,6 +703,11 @@ namespace Compilator
             else if (token.type == Token.Type.MINUS)
             {
                 Eat(Token.Type.MINUS);
+                return new UnaryOp(token, Factor());
+            }
+            else if (token.type == Token.Type.NEG)
+            {
+                Eat(Token.Type.NEG);
                 return new UnaryOp(token, Factor());
             }
             else if (token.type == Token.Type.INC)
@@ -706,11 +745,25 @@ namespace Compilator
                 var stoken = token;
                 Eat(Token.Type.LSQUARE);
                 var from = Expr();
+                if (current_token.type == Token.Type.COMMA)
+                {
+                    Eat(Token.Type.COMMA);
+                    var list = new List<Types>();
+                    list.Add(from);
+                    while (current_token.type != Token.Type.RSQUARE)
+                    {
+                        list.Add(Expr());
+                        if (current_token.type == Token.Type.COMMA)
+                            Eat(Token.Type.COMMA);
+                    }
+                    Eat(Token.Type.RSQUARE);
+                    return new Array(list);
+                }
                 Eat(Token.Type.TWODOT);
                 var to = Expr();
                 Eat(Token.Type.RSQUARE);
-                var uopr = new UnaryOp(new Token(Token.Type.RANGE, "..", stoken.Pos), new List<Types>{ from, to }, current_block);                
-                if(current_token.type == Token.Type.DOT)
+                var uopr = new UnaryOp(new Token(Token.Type.RANGE, "..", stoken.Pos), new List<Types> { from, to }, current_block);
+                if (current_token.type == Token.Type.DOT)
                 {
                     Types t = CatchOutside(uopr);
                     BinOp biop = new BinOp(uopr, new Token(Token.Type.DOT, "dot"), t, current_block);
@@ -719,22 +772,22 @@ namespace Compilator
 
                 return uopr;
             }
-            else if(token.type == Token.Type.LPAREN)
+            else if (token.type == Token.Type.LPAREN)
             {
                 bool isLambda = false;
                 bool isDeclared = false;
                 bool isNamedTuple = false;
                 SaveTokenState();
                 Eat(Token.Type.LPAREN);
-                if(current_token.type == Token.Type.ID || current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE)
+                if (current_token.type == Token.Type.ID || current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE)
                 {
-                    if(current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE)
+                    if (current_token.type == Token.Type.CLASS || current_token.type == Token.Type.INTERFACE)
                     {
                         isDeclared = true;
                         Eat(current_token.type);
                     }
                     Eat(Token.Type.ID);
-                    if(current_token.type == Token.Type.ID)
+                    if (current_token.type == Token.Type.ID)
                     {
                         Eat(Token.Type.ID);
                         isDeclared = true;
@@ -743,24 +796,34 @@ namespace Compilator
                     {
                         isNamedTuple = true;
                     }
-                    else if(current_token.type == Token.Type.COMMA)
+                    else if (current_token.type == Token.Type.COMMA)
                     {
-                        isLambda = true;   
+                        isLambda = true;
                         Eat(Token.Type.COMMA);
                         if (current_token.type == Token.Type.ID)
                         {
                             isLambda = false;
                             isNamedTuple = true;
+                            Eat(Token.Type.ID);
+                        }
+                        if (current_token.type == Token.Type.RPAREN)
+                        {
+                            Eat(Token.Type.RPAREN);
+                            if (current_token.type == Token.Type.DEFINERETURN)
+                            {
+                                isLambda = true;
+                                isNamedTuple = false;
+                            }
                         }
                     }
                     else
                     {
-                        if(current_token.type == Token.Type.RPAREN)
+                        if (current_token.type == Token.Type.RPAREN)
                         {
                             Eat(Token.Type.RPAREN);
-                            if (current_token.type == Token.Type.SET)
+                            if (current_token.type == Token.Type.DEFINERETURN)
                             {
-                                isLambda = true;                                
+                                isLambda = true;
                             }
                         }
                     }
@@ -772,12 +835,12 @@ namespace Compilator
                     Eat(Token.Type.LPAREN);
                     Dictionary<Token, Types> vars = new Dictionary<Token, Types>();
                     while (current_token.type != Token.Type.RPAREN)
-                    {                        
+                    {
                         var id = current_token;
                         Eat(Token.Type.ID);
                         Eat(Token.Type.COLON);
-                        vars.Add(id, Expr());                        
-                        if(current_token.type == Token.Type.COMMA)
+                        vars.Add(id, Expr());
+                        if (current_token.type == Token.Type.COMMA)
                             Eat(Token.Type.COMMA);
                     }
                     Eat(Token.Type.RPAREN);
@@ -793,7 +856,7 @@ namespace Compilator
                 else
                 {
                     ParameterList plist = Parameters(isDeclared);
-                    Eat(Token.Type.SET);
+                    Eat(Token.Type.DEFINERETURN);
                     Types block = null;
                     if (current_token.type == Token.Type.BEGIN)
                     {
@@ -811,6 +874,8 @@ namespace Compilator
                 return FunctionCatch();
             else if (token.type == Token.Type.LAMBDA)
                 return FunctionCatch(null, true);
+            else if (token.type == Token.Type.BEGIN)
+                return CatchJsObject();
             else
             {
                 Types result = Variable();
@@ -907,6 +972,17 @@ namespace Compilator
                 result = new BinOp(result, token, Comp(), current_block);
                 result.assingBlock = current_block;                
             }
+
+            if (current_token.type == Token.Type.QUESTIOMARK)
+            {
+                var question = result;
+                Eat(Token.Type.QUESTIOMARK);
+                var left = Expr();
+                Eat(Token.Type.COLON);
+                var right = Expr();
+                result = new TernaryOp(question, left, right, current_block);
+            }
+
             return result; 
         }
 
@@ -931,32 +1007,53 @@ namespace Compilator
 
         public Types Program()
         {
-            Types node = CompoundStatement();            
+            Types node = CompoundStatement(noNewBlock: true);            
             return node;
         }
 
-        public Types CompoundStatement(string assginTo = "")
+        public Types CompoundStatement(string assginTo = "", bool noNewBlock = false)
         {
-            Block save_block = current_block;
-            Block root = new Block(this);
-            if (current_block_with_variable != null)
+            if (_next_block_no_new_please)
             {
-                foreach (KeyValuePair<string, Assign> v in current_block_with_variable.variables)
-                {
-                    if(v.Value.Right is Lambda)
-                        root.variables[v.Key] = v.Value;
-                }
-                current_block_with_variable = null;
+                _next_block_no_new_please = false;
+                noNewBlock = true;
             }
-            root.assignTo = assginTo;
-            root.Parent = current_block;
-            current_block = root;
+            Block save_block, root;
+            if (noNewBlock)
+            {
+                save_block = current_block;
+                root = current_block;
+            }
+            else
+            {
+                save_block = current_block;
+                root = new Block(this);
+                if (current_block_with_variable != null)
+                {
+                    foreach (KeyValuePair<string, Assign> v in current_block_with_variable.variables)
+                    {
+                        if (v.Value.Right is Lambda)
+                            root.variables[v.Key] = v.Value;
+                    }
+
+                    current_block_with_variable = null;
+                }
+
+                root.assignTo = assginTo;
+                root.blockAssignTo = assginTo;
+                root.BlockParent = save_block;
+                current_block = root;
+            }
+
             List<Types> nodes = StatementList();
             current_block = save_block;
             if (nodes == null) return null;
             foreach (Types node in nodes)
             {
+                if(node is Assign na && na.Left is Variable nal)
+                    root.variables[nal.Value] = na;
                 root.children.Add(node);
+                node.parent = root;
             }            
             return root;
         }
@@ -987,7 +1084,7 @@ namespace Compilator
             if (current_token.type == Token.Type.BEGIN)
             {
                 Eat(Token.Type.BEGIN);
-                Types node = CompoundStatement();
+                Types node = CompoundStatement(); /* current_block_type == Block.BlockType.FUNCTION ? current_block.blockAssignTo : "" */
                 if (eatEnd)
                     Eat(Token.Type.END);
                 return node;
@@ -1000,6 +1097,8 @@ namespace Compilator
             }
             else if (current_token.type == Token.Type.IMPORT)
                 return Import();
+            else if (current_token.type == Token.Type.SOURCE)
+                return Source();
             else if (current_token.type == Token.Type.PROPERTIES)
                 return CatchProperties();
             else if (current_token.type == Token.Type.IF)
@@ -1020,6 +1119,8 @@ namespace Compilator
                 return DeclareVariable();
             else if (current_token.type == Token.Type.FUNCTION)
                 return FunctionCatch();
+            else if (current_token.type == Token.Type.ENUM)
+                return DeclareCatch();
             else if (current_token.type == Token.Type.NEWCLASS)
                 return DeclareClass();
             else if (current_token.type == Token.Type.NEWINTERFACE)
@@ -1051,7 +1152,59 @@ namespace Compilator
                 Eat(Token.Type.RETURN);
                 Types returnv = null;
                 if (current_token.type != Token.Type.SEMI)
+                {
+                    SaveTokenState();
+                    if(current_token.type == Token.Type.LPAREN)
+                    {
+                        Eat(Token.Type.LPAREN);
+                        if (current_token.type == Token.Type.RPAREN)
+                        {
+                            Eat(Token.Type.RPAREN);
+                            Eat(Token.Type.BEGIN);
+                            Types components = new NoOp();
+                            components = ParseComponent();
+                            //if (components is Component cc)
+                            //    cc.IsStart = true;
+                            return components;
+                        }
+                        else
+                        {
+                            var vars = new Dictionary<Token, Types>();      
+                            var vara = new List<Types>();
+                            var isNamed = false;                      
+                            
+                            SaveTokenState();
+                            Eat(current_token.type);
+                            if (current_token.type == Token.Type.COLON)
+                            {                                
+                                isNamed = true;
+                            }
+                            LoadTokenState();
+                            
+                            while (current_token.type != Token.Type.RPAREN)
+                            {
+                                if (isNamed)
+                                {
+                                    var id = current_token;
+                                    Eat(Token.Type.ID);
+                                    Eat(Token.Type.COLON);
+                                    vars.Add(id, Expr());
+                                }
+                                else
+                                {
+                                    vara.Add(Expr());
+                                }                                
+                                if (current_token.type == Token.Type.COMMA)
+                                    Eat(Token.Type.COMMA);
+                            }
+                            Eat(Token.Type.RPAREN);
+                            if(isNamed)
+                                return new NamedTuple(vars);
+                            return new NamedTuple(vara);
+                        }
+                    }
                     returnv = Expr();
+                }
                 return new UnaryOp(token, returnv, current_block);
             }
             else if (current_token.type == Token.Type.INLINE)
@@ -1153,6 +1306,257 @@ namespace Compilator
             return new NoOp();
         }
 
+        public Types ParseComponent()
+        {
+            Component component = new Component(current_block);
+            component.assignTo = _assignTo;
+
+            if(current_token.Value == "<")
+            {
+                pos--;
+                current_char = '<';
+            }
+
+            while (current_token.type != Token.Type.END)
+            {
+                if (current_char == '<')
+                {
+                    Advance();
+                    component.Token = Id();
+                    component.Name = component.Token.Value;
+                    if (current_char == '>')
+                    {
+                        Advance(true);                        
+                    }
+                    else
+                    {
+                        NextToken();
+                        component.Arguments = ComponentParameters();
+                        //Advance();
+                    }
+                }
+                if(current_token.type == Token.Type.DIV && current_char == '>')
+                {
+                    Advance();
+                    SkipWhiteSpace();
+                    NextToken();
+                    Eat(Token.Type.END);
+                    return component;
+                }
+                if(!(current_char == '<' && Peek() == '/'))
+                {
+                    SkipWhiteSpace();
+                    ParseComponentInner(component);
+                }
+                if(current_char == '<' && Peek() == '/')
+                {
+                    Advance();Advance();
+                    var closename = Id().Value;
+                    if(closename != component.Name)
+                    {
+                        Error("Componet \""+component.Name+"\" must be closed by same type!");
+                    }
+                    else
+                    {
+                        Advance(true);
+                        NextToken();
+                    }
+                }
+            }
+
+            NextToken();
+
+            return component;
+        }
+
+        public Component ParseComponentInner(Component outer)
+        {
+            StringBuilder sb = new StringBuilder();
+            while (!(current_char == '<' && Peek() == '/'))
+            {                
+                //SkipWhiteSpace();
+                if (current_char == '{')
+                {
+                    if (!string.IsNullOrEmpty(sb.ToString().Trim()))
+                    {
+                        outer.InnerComponent.Add(new Component(current_block){ InnerText = sb.ToString() });
+                        sb.Clear();
+                    }
+
+                    Advance(true);
+                    NextToken();
+                    var co = Expr();
+                    //Advance();
+                    if (current_block.assignTo == "" && current_block.BlockParent != null)
+                        current_block.assignTo = current_block.BlockParent.assignTo;
+                    outer.InnerComponent.Add(new Component(current_block){ Fun = co });
+                    continue;
+                }
+                if (current_char != '<')
+                {
+                    if (current_char == '\r' && Peek() == '\n')
+                    {
+                        Advance();Advance();
+                        sb.Append(" ");
+                    }
+                    else if (current_char == '\n')
+                    {
+                        Advance();
+                        sb.Append(" ");
+                    }
+                    else
+                    {                        
+                        sb.Append(current_char);
+                        Advance();
+                    }                                           
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(sb.ToString().Trim()))
+                {
+                    outer.InnerComponent.Add(new Component(current_block){ InnerText = sb.ToString() });
+                    sb.Clear();
+                }
+                
+                ParseComponentInnerInside(outer);
+            }
+
+            if (!string.IsNullOrEmpty(sb.ToString().Trim()))
+            {
+                outer.InnerComponent.Add(new Component(current_block){ InnerText = sb.ToString() });
+                sb.Clear();
+            }
+
+            return null;
+        }
+
+        public Component ParseComponentInnerInside(Component outer)
+        {
+            while(current_char == '<' && Peek() != '/')
+            {
+                Advance();
+                var component = new Component(current_block);
+                component.Token = Id();
+                component.Name = component.Token.Value;
+                component.assignTo = _assignTo;
+                if (current_char == '>')
+                {
+                    Advance(true);                        
+                }
+                else
+                {
+                    NextToken();
+                    component.Arguments = ComponentParameters();
+                }
+
+                if(current_token.type == Token.Type.DIV && current_char == '>')
+                {
+                    Advance();
+                    SkipWhiteSpace();
+                    outer.InnerComponent.Add(component);
+                    continue;                    
+                }
+                else if(!(current_char == '<' && Peek() == '/'))
+                {
+                    SkipWhiteSpace();
+                    var componentinner = ParseComponentInner(component);
+                    if (componentinner != null)
+                    {
+                        component.InnerComponent.Add(componentinner);
+                        continue;                        
+                    }
+                }
+                if(current_char == '<' && Peek() == '/')
+                {
+                    Advance();Advance();
+                    var closename = Id().Value;
+                    if(closename != component.Name)
+                    {
+                        Error("Componet \""+component.Name+"\" must be closed by same type!");
+                    }
+                    else
+                    {
+                        Advance();
+                        SkipWhiteSpace();
+                    }
+                }
+
+                outer.InnerComponent.Add(component);
+            }
+            /*
+            string innerText = "";
+            while (current_char != '<')
+            {
+                innerText += current_char;
+                Advance();
+            }
+            outer.InnerText = innerText;
+            */
+            return null;    
+        }
+
+        public Dictionary<string, Types> ComponentParameters()
+        {
+            var dict = new Dictionary<string, Types>();
+            var svct = current_block_type;
+            current_block_type = Block.BlockType.COMPONENT;
+
+            while(current_token.type != Token.Type.MORE && current_token.type != Token.Type.DIV)
+            {
+                string name = "";
+                if(current_token.type == Token.Type.COLON)
+                {
+                    Eat(Token.Type.COLON);
+                    name += ":";
+                }
+                name += current_token.Value;
+                Eat(current_token.type);
+                if(current_token.type == Token.Type.ASIGN)
+                {
+                    Eat(Token.Type.ASIGN);
+                    if (current_token.type == Token.Type.BEGIN)
+                    {
+                        Eat(Token.Type.BEGIN);
+                        dict[name] = Expr();
+                        Eat(Token.Type.END);
+                    }
+                    else if(current_token.type == Token.Type.STRING)
+                    {                        
+                        dict[name] = new CString(current_token);
+                        Eat(Token.Type.STRING);
+                    }
+                    else if (current_token.type == Token.Type.INTEGER)
+                    {                        
+                        dict[name] = new Number(current_token);
+                        Eat(Token.Type.INTEGER);
+                    }
+                    else if (current_token.type == Token.Type.REAL)
+                    {                        
+                        dict[name] = new Number(current_token, true);
+                        Eat(Token.Type.REAL);
+                    }
+                    else if(current_token.type == Token.Type.TRUE)
+                    {
+                        dict[name] = new Variable(new Token(Token.Type.BOOL, "true"), current_block);
+                        Eat(Token.Type.TRUE);
+                    }
+                    else if(current_token.type == Token.Type.FALSE)
+                    {
+                        dict[name] = new Variable(new Token(Token.Type.BOOL, "false"), current_block);
+                        Eat(Token.Type.FALSE);
+                    }
+                }
+                else
+                {
+                    dict.Add(name, new Variable(new Token(Token.Type.BOOL, "true"), current_block));
+                }
+            }
+
+            current_block_type = svct;
+
+            return dict;
+        }
+
         public Types CatchProperties()
         {
             List<_Attribute> att = new List<_Attribute>(attributes);
@@ -1164,6 +1568,16 @@ namespace Compilator
             Types node = new Assign(new Variable(token, current_block), token, right, current_block) { attributes = att };               
             node.assingBlock = current_block;
             return node;
+        }
+
+        public Types Source()
+        {
+            if(this.UID != 1 || this.FileSource != null)
+                Error("Source can be defined only in main file and can't be changed!");
+            Eat(Token.Type.SOURCE);
+            this.FileSource = new Token(Token.Type.STRING, current_token.Value, current_token.Pos, current_file);
+            Eat(Token.Type.STRING);
+            return new NoOp();
         }
 
         public Types Import()
@@ -1228,6 +1642,62 @@ namespace Compilator
                 return DeclareInterface();
             else if (current_token.type == Token.Type.BEGIN)
                 return CatchBlock(Block.BlockType.NONE);
+            else if (current_token.type == Token.Type.EXTERNAL)
+            {
+                Token modifer = current_token;
+                current_modifer.Add(current_token);
+                Eat(Token.Type.EXTERNAL);
+                if (current_token.type == Token.Type.STATIC ||
+                    current_token.type == Token.Type.DYNAMIC ||
+                    current_token.type == Token.Type.OPERATOR ||
+                    current_token.type == Token.Type.NEWCLASS ||
+                    current_token.type == Token.Type.NEWFUNCTION ||
+                    current_token.type == Token.Type.ID ||
+                    current_token.type == Token.Type.NEWINTERFACE)
+                {
+                    Types type = Statement();
+                    current_modifer.Remove(modifer);
+                    return type;
+                }
+                Error("The external modifer can modify only class, interface, function or variable and must be before static and dynamic modifer");
+                return null;
+            }
+            else if (current_token.type == Token.Type.DYNAMIC)
+            {
+                Token modifer = current_token;
+                current_modifer.Add(current_token);
+                Eat(Token.Type.DYNAMIC);
+                if (current_token.type == Token.Type.NEWCLASS ||
+                    current_token.type == Token.Type.NEWFUNCTION ||
+                    current_token.type == Token.Type.OPERATOR ||
+                    current_token.type == Token.Type.ID)
+                {
+                    Types type = Statement();
+                    current_modifer.Remove(modifer);
+                    return type;
+                }
+                Error("The dynamic modifer can modify only class, function or variable");
+                return null;
+            }
+            else if (current_token.type == Token.Type.STATIC)
+            {
+                Token modifer = current_token;
+                current_modifer.Add(current_token);
+                Eat(Token.Type.STATIC);
+                if (current_token.type == Token.Type.NEWCLASS ||
+                    current_token.type == Token.Type.NEWFUNCTION ||
+                    current_token.type == Token.Type.OPERATOR ||
+                    current_token.type == Token.Type.DYNAMIC ||
+                    current_token.type == Token.Type.CLASS ||
+                    current_token.type == Token.Type.ID)
+                {
+                    Types type = Statement();
+                    current_modifer.Remove(modifer);
+                    return type;
+                }
+                Error("The static modifer can modify only class, function or variable and must be before dynamic modifer");
+                return null;
+            }
             return DeclareVariable();
         }
 
@@ -1285,32 +1755,43 @@ namespace Compilator
             return l;
         }
 
+        private bool _next_block_no_new_please = false;
         public Block CatchBlock(Block.BlockType btype, bool eatEnd = true, Block ablock = null)
         {
             List<_Attribute> att = new List<_Attribute>(attributes);
             attributes.Clear();
+            var saveblock = current_block;
+            current_block = ablock;
             Block _bloc;
             current_block_with_variable = ablock;
-            current_block.Add(ablock);
+            //current_block.Add(ablock);
             Block.BlockType last_block_type = current_block_type;
             current_block_type = btype;
             if(btype != Block.BlockType.CONDITION && btype != Block.BlockType.FOR)
                 main_block_type = btype;
-            Block save_block = current_block;
+            //Block save_block = current_block;
             Token token = current_token;
+            if (current_block_type == Block.BlockType.FUNCTION)
+            {
+                _next_block_no_new_please = true;
+                current_block.Type = Block.BlockType.FUNCTION;
+            }
             Types block = Statement(eatEnd);
+            _next_block_no_new_please = false;
             if (!(block is Block))
             {
                 _bloc = new Block(this);
                 _bloc.children.Add(block);
+                block.parent = ablock;
             }
             else _bloc = (Block)block;
-            _bloc.Parent = save_block;
+            _bloc.BlockParent = saveblock;
             if (block == null || block is NoOp) return null;
             _bloc.Type = current_block_type;
             _bloc.Attributes = att;
             _bloc.setToken(token);
             current_block_type = last_block_type;
+            current_block = saveblock;
             return _bloc;
         }
 
@@ -1329,6 +1810,7 @@ namespace Compilator
             
             while (current_token.type == Token.Type.ELSEIF)
             {
+                Eat(Token.Type.ELSEIF);
                 Eat(Token.Type.LPAREN);
                 condition = Expr();
                 Eat(Token.Type.RPAREN);
@@ -1350,6 +1832,38 @@ namespace Compilator
             }
 
             return new If(conditions);
+        }
+
+        public Types DeclareCatch()
+        {
+            Eat(Token.Type.ENUM);
+            var name = current_token;
+            Eat(Token.Type.ID);
+            Eat(Token.Type.BEGIN);
+            var list = new Dictionary<Token, Types>();
+            while(current_token.type != Token.Type.END)
+            {
+                var pname = current_token;
+                Types val = null;
+                Eat(Token.Type.ID);
+                if(current_token.type == Token.Type.ASIGN)
+                {
+                    Eat(Token.Type.ASIGN);
+                    val = Expr();
+                }
+                list.Add(pname, val);
+
+                if(current_token.type != Token.Type.END)
+                    Eat(Token.Type.COMMA);
+            }
+            if (current_token.type == Token.Type.COMMA)
+                    Eat(Token.Type.COMMA);
+
+            Eat(Token.Type.END);
+            var e = new _Enum(name, list, this, current_block);
+            current_block.SymbolTable.Add(name.Value, e);
+
+            return e;
         }
 
         public Types FunctionCatch(Token fname = null, bool isLambda = false)
@@ -1451,6 +1965,7 @@ namespace Compilator
             return t;
         }
 
+        private string _assignTo = null;
         public Types DeclareFunction()
         {
             List<_Attribute> att = new List<_Attribute>(attributes);
@@ -1458,6 +1973,7 @@ namespace Compilator
             if (!IsModifer(Token.Type.DELEGATE))
                 Eat(Token.Type.NEWFUNCTION);
             Token name = current_token;
+            _assignTo = name.Value;
             Eat(current_token.type);
             if (brekall) return null;
 
@@ -1483,47 +1999,73 @@ namespace Compilator
 
             Block sb = current_block;
             current_block = new Block(this);
-            current_block.Parent = sb;            
+            current_block.BlockParent = new ParentBridge(name, this){ parent = sb };            
             ParameterList p = Parameters(true);
-            Token returnt = null;            
+            Token returnt = null;      
+            var listType = new List<Token>();
             List<string> garg = new List<string>();
             bool returnrArray = false;
             if(current_token.type == Token.Type.DEFINERETURN)
-            {
+            {                
                 Eat(Token.Type.DEFINERETURN);
+
                 returnt = current_token;
-                Eat(current_token.type);
 
-                if(current_token.type == Token.Type.LSQUARE)
+                if (current_token.type == Token.Type.LPAREN)
                 {
-                    Eat(Token.Type.LSQUARE);
-                    returnrArray = true;
-                    Eat(Token.Type.RSQUARE);
-                }
-                
-                if (current_token.type == Token.Type.LESS)
-                {
-                    Eat(Token.Type.LESS);
-                    while (current_token.type != Token.Type.MORE)
+                    Eat(Token.Type.LPAREN);                    
+                    while (current_token.type != Token.Type.RPAREN)
                     {
-                        if (current_token.type == Token.Type.COMMA)
-                        {
-                            garg.Add(previous_token.Value);
+                        listType.Add(current_token);
+                        Eat(current_token.type);
+                        if(current_token.type == Token.Type.COMMA)
                             Eat(Token.Type.COMMA);
-                        }
-                        else Eat(current_token.type);
                     }
-                    if (previous_token.type != Token.Type.LESS)
-                        garg.Add(previous_token.Value);
-                    else
-                        Error("You need specify generic arguments!");
-                    Eat(Token.Type.MORE);
-                }
+                    Eat(Token.Type.RPAREN);
 
+                }
+                else
+                {
+                    Eat(current_token.type);
+
+                    if (current_token.type == Token.Type.LSQUARE)
+                    {
+                        Eat(Token.Type.LSQUARE);
+                        returnrArray = true;
+                        Eat(Token.Type.RSQUARE);
+                    }
+
+                    if (current_token.type == Token.Type.LESS)
+                    {
+                        Eat(Token.Type.LESS);
+                        while (current_token.type != Token.Type.MORE)
+                        {
+                            if (current_token.type == Token.Type.COMMA)
+                            {
+                                garg.Add(previous_token.Value);
+                                Eat(Token.Type.COMMA);
+                            }
+                            else Eat(current_token.type);
+                        }
+
+                        if (previous_token.type != Token.Type.LESS)
+                            garg.Add(previous_token.Value);
+                        else
+                            Error("You need specify generic arguments!");
+                        Eat(Token.Type.MORE);
+                    }
+                }
             }
-            Block sendb = current_block;
+
+            var saveBlock = current_block;
             current_block = sb;
-            Block _bloc = CatchBlock(Block.BlockType.FUNCTION, false, sendb);
+            //var sba = current_block.blockAssignTo;
+            //current_block.blockAssignTo = name.Value;
+            saveBlock.setToken(name);
+            saveBlock.blockAssignTo = name.Value;
+            Block _bloc = CatchBlock(Block.BlockType.FUNCTION, false, saveBlock);
+            //current_block.blockAssignTo = sba;
+            //TODO: fix
             if (brekall) return null;
             string sname = name.Value;
             if (IsModifer(Token.Type.OPERATOR))
@@ -1533,10 +2075,10 @@ namespace Compilator
             }
             List<Types> paramas = new List<Types>();
 
-            if (IsModifer(Token.Type.DELEGATE))
+            if (IsModifer(Token.Type.DELEGATE))            
             {
                 Block block = new Block(this);
-                block.Parent = sb;
+                block.BlockParent = sb;
                 foreach(var q in p.parameters)
                 {
                     q.assingBlock = block;
@@ -1552,6 +2094,7 @@ namespace Compilator
                 deleg.assignTo = current_block.assignTo;
                 deleg.assingToType = current_block.assingToType;
                 deleg.attributes = att;
+                deleg.returnTuple = listType.Count > 0;
                 return deleg;
             }
 
@@ -1562,7 +2105,8 @@ namespace Compilator
             }
             p.parameters = paramas;
 
-            Function func = new Function(name, _bloc, p, returnt, this, sendb);
+            var func = listType.Count == 0 ? new Function(name, _bloc, p, returnt, this, sb) : new Function(name, _bloc, p, listType, this, sb);
+
             if(_bloc != null)
                 _bloc.assingToType = func;
             func.returnAsArray = returnrArray;
@@ -1795,9 +2339,10 @@ namespace Compilator
                 c._dynamic = GetModifer(Token.Type.DYNAMIC);
             }
 
-            if (current_block.SymbolTable.Find(name.Value))
+            var fnd = current_block.SymbolTable.Get(name.Value, false, true);
+            if (!(fnd is Error))
             {
-                var import = current_block.SymbolTable.Get(name.Value, false, true);
+                var import = fnd;
                 if(import is Import)
                 {
                     ((Import)import).As = null;
@@ -1829,7 +2374,7 @@ namespace Compilator
             if (sDateType == null)
             {
                 dateType = current_token;
-                if (!current_block.SymbolTable.Find(dateType.Value))
+                if (current_block.SymbolTable.Get(dateType.Value) is Error)
                 {
                     Error("The date type " + dateType.Value + " not a found!");
                     return null;
@@ -1932,7 +2477,7 @@ namespace Compilator
                     ((Assign)node).isStatic = true;
                     ((Assign)node)._static = GetModifer(Token.Type.STATIC);
                 }
-                node.assingBlock = current_block;
+                //node.assingBlock = current_block; TODO: blub blub
                 return node;
             }
             else if (current_token.type == Token.Type.SEMI)
@@ -1958,7 +2503,7 @@ namespace Compilator
             {
                 var saveToken = current_token;
                 left = Variable();
-                if (left is UnaryOp)
+                if (left is UnaryOp || current_block_type == Block.BlockType.COMPONENT)
                     return left;
                 if (current_token.type == Token.Type.ID)
                 {
@@ -1984,11 +2529,34 @@ namespace Compilator
                 }
             }
             Token token = current_token;
+            Types right = null;
             Eat(Token.Type.ASIGN); 
-            Types right = Expr();
+            if(current_token.type == Token.Type.BEGIN)
+            {
+                right = CatchJsObject();
+            }else
+                right = Expr();
             Types node = new Assign(left, token, right, current_block);            
-            node.assingBlock = current_block;
+            //node.assingBlock = current_block;
             return node;
+        }
+
+        public Types CatchJsObject()
+        {
+            Dictionary<Token, Types> _object = new Dictionary<Token, Types>();
+            Eat(Token.Type.BEGIN);
+            while(current_token.type != Token.Type.END)
+            {
+                var name = current_token;
+                Eat(Token.Type.ID);
+                Eat(Token.Type.COLON);
+                var val = Expr();
+                _object[name] = val;
+                if (current_token.type == Token.Type.COMMA)
+                    Eat(Token.Type.COMMA);
+            }
+            Eat(Token.Type.END);
+            return new Array(_object);
         }
 
         public Types Variable(Token dateType = null, bool isVal = false)
@@ -2009,6 +2577,19 @@ namespace Compilator
             if(current_token.type == Token.Type.LPAREN)
             {
                 return FunctionCatch(((Variable)node).getToken());
+            }
+            if (current_token.type == Token.Type.LESS)
+            {
+                SaveTokenState();
+                Eat(Token.Type.LESS);
+                Eat(current_token.type);
+                Eat(Token.Type.MORE);
+                if (current_token.type == Token.Type.LPAREN)
+                {
+                    LoadTokenState();
+                    return FunctionCatch(((Variable)node).getToken());
+                }
+                LoadTokenState();
             }
             if(current_token.type == Token.Type.DEFINERETURN)
             {

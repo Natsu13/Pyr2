@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
@@ -13,41 +15,83 @@ namespace Compilator
         Interpreter interpret;
         public string blockAssignTo = "";
         public string blockClassTo = "";
-        Block parent = null;
-        SymbolTable symbolTable;        
-        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR, WHILE, PROPERTIES, LAMBDA };
+        SymbolTable symbolTable => interpret.SymbolTable;        
+        public enum BlockType { NONE, FUNCTION, CLASS, CONDITION, INTERFACE, FOR, WHILE, PROPERTIES, LAMBDA, COMPONENT };
         BlockType type = BlockType.NONE;
         public bool _isInConstructor = false;
         public Import import = null;
         List<_Attribute> attributes = new List<_Attribute>();
         Token token = null;
+        private bool _first;
+        private static int _idCounter = 0;
+        public int _id = _idCounter++;
+
+        public Block _blockParent = null;
+        public Block BlockParent
+        {
+            get
+            {
+                return _blockParent ?? (parent as Block);
+            }
+            set
+            {
+                if (value is Block)
+                    _blockParent = value;
+                else
+                    parent = value;
+            }
+        }
 
         public bool isInConstructor
         {
             get {
-                if (parent != null && !_isInConstructor)
-                    return parent.isInConstructor;
+                if (parent != null && !_isInConstructor && parent is Block)
+                    return ((Block)parent).isInConstructor;
                 return _isInConstructor;
             }
             set { _isInConstructor = value; }
         }
 
+        /*Serialization to JSON object for export*/
+        [JsonParam("BlockType")] public int _BlockType => (int)type;
+        [JsonParam] public List<_Attribute> Attributes { get => attributes; set => attributes = value; }
+        [JsonParam] public List<Types> Childrens => children;
+        //[JsonParam] public Dictionary<string, JObject> Variables => variables.ToDictionary(x => x.Key, x => JsonParam.ToJson(x.Value));
+        [JsonParam] public bool IsInConstructor => isInConstructor;
+        [JsonParam] public bool First => _first;
+
+        public override void FromJson(JObject o)
+        {
+            interpret = Interpreter.CurrentStaticInterpreter;
+            //symbolTable = new SymbolTable(interpret, this, (bool)o["First"]);
+            type = (BlockType)(int)o["BlockType"];
+            attributes = JsonParam.FromJsonArray<_Attribute>((JArray) o["Attributes"]);
+            children = JsonParam.FromJsonArray<Types>((JArray) o["Childrens"]);
+            isInConstructor = (bool) o["IsInConstructor"];
+            foreach (var typese in children.ToList())
+            {
+                if (typese is NoOp)
+                    children.Remove(typese);
+                else
+                    typese.assingBlock = this;                
+            }
+        }
+        public Block() { }
+
         public Block(Interpreter interpret, bool first = false, Token token = null)
         {
             this.interpret = interpret;
-            symbolTable = new SymbolTable(interpret, this, first);
+            this._first = first;
         }        
-        public Block Parent { get { return parent; } set { parent = value; } }
         public BlockType Type { get { return type; } set { type = value; } }
         public Interpreter Interpret { get { return this.interpret; } }
-        public SymbolTable SymbolTable { get { return symbolTable; } }
-        public List<_Attribute> Attributes { get { return attributes; } set { attributes = value; } }
+        public SymbolTable SymbolTable { get { return symbolTable; } }        
         
         public bool isType(BlockType type)
         {
             if (this.type == type)
                 return true;
-            if (parent != null && parent.isType(type))
+            if (BlockParent != null && BlockParent.isType(type))
                 return true;
             return false;
         }
@@ -59,7 +103,7 @@ namespace Compilator
                 if (attr.GetName(true) == name)
                     return true;
             }
-            if (!one && parent != null && parent.isAttribute(name))
+            if (!one && BlockParent != null && BlockParent.isAttribute(name))
                 return true;
             return false;
         }
@@ -69,11 +113,33 @@ namespace Compilator
             if (blockClassTo != "")
                 return blockClassTo;
             if (parent != null)
-                return parent.getClass();
+                return ((Block)parent).getClass();
             return "";
         }
 
-        public override Token getToken(){ return token; }
+        public override Token getToken()
+        {
+            /*
+            return token == null ? 
+                    (new Token(Token.Type.STRING, 
+                        (!string.IsNullOrEmpty(blockAssignTo) ? 
+                            blockAssignTo : 
+                            "block"+_id )
+                        )
+                    ) : token;  
+                        */
+            if (assingToType != null)
+            {
+                var ast = assingToType.getToken();
+                if (ast != null)
+                    return ast;
+            }
+
+            return (new Token(Token.Type.STRING,
+                (!string.IsNullOrEmpty(blockAssignTo) ? blockAssignTo : "block" + _id)
+            ));
+            //return new Token(Token.Type.STRING, "block_" + blockAssignTo + "_" + _id);
+        }
         public void setToken(Token t) { token = t; }
 
         public void CheckReturnType(string type, bool isNull)
@@ -155,9 +221,7 @@ namespace Compilator
                 return variables[name];
             else
             {
-                if (parent != null)
-                    return parent.FindVariable(name);
-                return null;
+                return ((Block)parent)?.FindVariable(name);
             }
         }
 
@@ -168,10 +232,10 @@ namespace Compilator
             
             if (parent != null)
             {               
-                if(parent.type == type)
-                    return parent;
-                if (nottype == null || !nottype.Contains(parent.type))
-                    return parent.GetBlock(type, nottype);
+                if(((Block)parent).type == type)
+                    return ((Block)parent);
+                if (nottype == null || !nottype.Contains(((Block)parent).type))
+                    return ((Block)parent).GetBlock(type, nottype);
             }            
 
             return null;
@@ -181,24 +245,28 @@ namespace Compilator
         {
             if (block == null)
                 return;
-            symbolTable.Add(block);
-            foreach (var blockVariable in block.variables)
+            //symbolTable.Add(block);
+            foreach (var blockVariable in (block.variables).ToList())
             {
                 variables[blockVariable.Key] = blockVariable.Value;
             }
         }
-
-        public string Compile(int tabs = 0, bool noAssign = false)
+        
+        public string Compile(int tabs = 0, bool noAssign = false, bool componentSetFirst = false)
         {
-            string tbs = DoTabs(tabs);
-            string ret = "";
+            var tbs = DoTabs(tabs);
+            var ret = new StringBuilder();
             foreach (Types child in children)
-            {
+            {                
                 if (child == null) continue;
                 if (noAssign && child is Assign) continue;
                 child.assignTo = (assingBlock == null?blockAssignTo:assingBlock.assignTo);    
-                if(!(child is Class))
+                if (child is Component chc && componentSetFirst)
+                    chc.IsStart = true;
+                /*
+                if(!(child is Class) && !(child is _Enum))
                     child.assingBlock = this;
+                */
                 string p = child.Compile(0);
                 if (tabs != 0)
                 {
@@ -214,19 +282,22 @@ namespace Compilator
                     }
 
                     if (p != "" && p.Substring(p.Length - 2, 1) != "\n")
-                        ret += tbs + p + "\n";
+                        ret.Append(tbs + p + "\n");
                     else if(p != "")
-                        ret += p + "\n";
+                        ret.Append(p + "\n");
                 }
                 else
                 {
                     if (p != "" && p.Substring(p.Length - 2, 1) != "\n")
-                        ret += tbs + p + "\n";
+                        ret.Append(tbs + p + "\n");
                     else
-                        ret += p + "\n";
+                        ret.Append(p + "\n");
                 }
             }
-            return ret;
+
+            ret.Append(tbs + "{" + ret + tbs + "}"); 
+
+            return ret.ToString();
         }
         public override string Compile(int tabs = 0)
         {

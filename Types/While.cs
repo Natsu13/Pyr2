@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
@@ -10,6 +11,16 @@ namespace Compilator
     {
         Types expr;
         Block block;
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Types Expr => expr;
+        [JsonParam] public Block Block => block;
+
+        public override void FromJson(JObject o)
+        {
+            throw new NotImplementedException();
+        }
+        public While() { }
 
         public While(Types expr, Block block)
         {

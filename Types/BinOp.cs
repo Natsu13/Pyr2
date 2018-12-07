@@ -3,16 +3,35 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     public class BinOp: Types
     {
-        Types left, right;
-        Token op, token;
-        Block block;
-        Token outputType;
-        Token rtok;
+        public Types left;
+        public Types right;
+        public Token op;
+        Token token;
+        public Block block;
+        public Token outputType;
+        public Token rtok;
+        
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Types Left => left;
+        [JsonParam] public Token Op => op;
+        [JsonParam] public Types Right => right;
+        [JsonParam] public Token RightToken => rtok;        
+
+        public override void FromJson(JObject o)
+        {
+            left = JsonParam.FromJson<Types>(o["Left"]);
+            right = JsonParam.FromJson<Types>(o["Right"]);
+            op = Token.FromJson(o["Op"]);
+            rtok = Token.FromJson(o["RightToken"]);
+        }
+        public BinOp() { }
+
         public BinOp(Types left, Token op, Types right, Block block)
         {
             this.left = left;
@@ -109,10 +128,11 @@ namespace Compilator
                     riuo.Block = assingBlock?.SymbolTable.Get(outputType.Value).assingBlock;
                 }
                 else if(op.Value == "dot" && right is Variable riva)
-                {                    
-                    if(assingBlock.SymbolTable.Find(leuo.OutputType.Value))
+                {
+                    var fnd = assingBlock?.SymbolTable.Get(leuo.OutputType.Value);
+                    if(fnd != null && !(fnd is Error))
                     {
-                        Types t = ((Class)assingBlock.SymbolTable.Get(leuo.OutputType.Value)).Block.SymbolTable.Get(riva.Value);
+                        Types t = ((Class)fnd).Block.SymbolTable.Get(riva.Value);
                         if(t is Assign ta)
                         {
                             if (ta.Left is Variable tav)
@@ -137,7 +157,7 @@ namespace Compilator
                 left.Compile();
                 v = left.TryVariable();
             }
-            if ((v._class != null && v.class_ == null) || (v.class_ != null && v.class_.JSName != ""))
+            if (((v._class != null && v.class_ == null) || (v.class_ != null && v.class_.JSName != "")))
             {
                 if (op.Value == "dot")
                     return (inParen ? "(" : "") + left.Compile(0) + Variable.GetOperatorStatic(op.type) + right.Compile(0) + (inParen ? ")" : "");
@@ -185,6 +205,11 @@ namespace Compilator
             }
             right.Semantic();
 
+            if (left.assingBlock == null)
+                left.assingBlock = assingBlock;
+            if (right.assingBlock == null)
+                right.assingBlock = assingBlock;
+
             Variable v = left.TryVariable();
             Variable r = right.TryVariable();
 
@@ -192,12 +217,12 @@ namespace Compilator
             {
                 if(bi.op.Value == "dot")
                 {
-                    
+                    Console.WriteLine("xxx");
                 }
             }
             if(op.Value == "dot" && left is UnaryOp leuop && right is Variable riva)
             {
-                if(assingBlock.SymbolTable.Find(leuop.OutputType.Value))
+                if(!(assingBlock.SymbolTable.Get(leuop.OutputType.Value) is Error))
                 {
                     Types t = ((Class)assingBlock.SymbolTable.Get(leuop.OutputType.Value)).Block.SymbolTable.Get(riva.Value);
                     if(t is Assign ta)
@@ -217,13 +242,21 @@ namespace Compilator
             else
                 this.outputType = v.OutputType(op.type, v, r);
 
-            if (!v.SupportOp(op.type))
+            if (v.Type != "auto")
             {
-                Interpreter.semanticError.Add(new Error("#300 Varible type '" + v.Type + "' not support operator " + Variable.GetOperatorStatic(op.type), Interpreter.ErrorType.ERROR, left.getToken()));
+                if (!v.SupportOp(op.type))
+                {
+                    Interpreter.semanticError.Add(new Error("#300 Varible type '" + v.Type + "' not support operator " + Variable.GetOperatorStatic(op.type), Interpreter.ErrorType.ERROR, left.getToken()));
+                }
+                else if (!v.SupportSecond(op.type, right, r))
+                {
+                    Interpreter.semanticError.Add(new Error("#301 Operator " + Variable.GetOperatorStatic(op.type) + " cannot be applied for '" + v.Type + "' and '" + r.Type + "'", Interpreter.ErrorType.ERROR, op));
+                }
             }
-            else if (!v.SupportSecond(op.type, right, r))
+
+            if (op.Value == "dot")
             {
-                Interpreter.semanticError.Add(new Error("#301 Operator " + Variable.GetOperatorStatic(op.type) + " cannot be applied for '" + v.Type + "' and '" + r.Type + "'", Interpreter.ErrorType.ERROR, op));
+                Console.WriteLine("UnaryOp dot semantic: " + left.getToken().Value + " dot " + right.getToken().Value);
             }
         }        
 
@@ -234,9 +267,10 @@ namespace Compilator
 
                 if(op.Value == "dot" && left is UnaryOp leuop && right is Variable riva)
                 {
-                    if(assingBlock != null && assingBlock.SymbolTable.Find(leuop.OutputType.Value))
+                    var fnd = assingBlock?.SymbolTable.Get(leuop.OutputType.Value);
+                    if(assingBlock != null && fnd != null && !(fnd is Error))
                     {
-                        Types t = ((Class)assingBlock.SymbolTable.Get(leuop.OutputType.Value)).Block.SymbolTable.Get(riva.Value);
+                        Types t = ((Class)fnd).Block.SymbolTable.Get(riva.Value);
                         if(t is Assign ta)
                         {
                             if (ta.Left is Variable tav)

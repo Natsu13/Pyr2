@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
@@ -13,7 +15,7 @@ namespace Compilator
             NONE, ERROR, EOF, NULL,
             INTEGER, STRING, REAL, BOOL, AUTO,
             COMMA, SEMI, DOT, COLON, IS, THREEDOT, AS,
-            PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN, INC, DEC,
+            PLUS, MINUS, MUL, DIV, ASIGN, NEW, RETURN, INC, DEC, NEG,
             CLASS, ID, FUNCTION, INTERFACE, LAMBDA, 
             NEWCLASS, NEWFUNCTION, NEWINTERFACE, NEWLAMBDA,
             LPAREN, RPAREN, BEGIN, END, VAR, VAL, DEFINERETURN, CALL, LSQUARE, RSQUARE, 
@@ -26,7 +28,8 @@ namespace Compilator
             DELEGATE,
             PROPERTIES,
             TWODOT,
-            RANGE, YIELD, CONTINUE, BREAK, INLINE, NAMEDTUPLE
+            RANGE, YIELD, CONTINUE, BREAK, INLINE, NAMEDTUPLE, ENUM, SOURCE,
+            ARRAY, QUESTIOMARK
         };
         public static readonly Dictionary<string, Token> Reserved = new Dictionary<string, Token>()
         {
@@ -60,7 +63,9 @@ namespace Compilator
             { "continue",   new Token(Type.CONTINUE, "continue") },
             { "break",      new Token(Type.BREAK, "break") },
             { "inline",     new Token(Type.INLINE, "inline") },
-            { "val",        new Token(Type.VAL, "val") }
+            { "val",        new Token(Type.VAL, "val") },
+            { "enum",       new Token(Type.ENUM, "enum") },
+            { "source",     new Token(Type.SOURCE, "source") }
         };        
 
         public Type type;
@@ -68,10 +73,39 @@ namespace Compilator
         int         pos;
         string      file;
         int         endpos = -1;
+          
+        /*Serialization to JSON object for export*/
+        [JsonParam("Type")] public int _Type => (int)type;
+        [JsonParam] public string Value => value;
+        [JsonParam] public int Pos => pos;
+        [JsonParam] public string File => file;
+        [JsonParam] public int EndPos => endpos;
 
-        public int      Pos     => pos;
-        public string   File    => file;
-        public string   Value   => value;        
+        public static Token FromJson(object o)
+        {
+            if (o == null)
+                return null;
+            if (o is JValue ov)
+            {
+                if(ov.HasValues)
+                    return FromJson(ov.Value.ToString());
+                return null;
+            }
+            return FromJson((JObject) o);
+        }
+
+        public static Token FromJson(string o)
+        {
+            return new Token(Type.STRING, o);
+        }
+
+        public static Token FromJson(JObject o)
+        {
+            if(o["type"].ToString() != typeof(Token).Namespace + "." + typeof(Token).Name)
+                throw new Exception("This is not valid Token!");
+            o = (JObject)o["construct"];
+            return new Token((Type)((int)o["Type"]), o["Value"].ToString(), (int)o["Pos"], (int?)o["Endpos"] ?? -1, o["File"].ToString());
+        }
 
         public Token(Type type, string value, int pos = -1, string file = "")
         {

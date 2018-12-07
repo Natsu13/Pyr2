@@ -3,21 +3,22 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     public class Variable : Types
     {
         Token token;
-        string value;
-        Token dateType;
-        Block block;
+        public string value;
+        public Token dateType;
+        public Block block;
         public TypeObject   _class;
         public Class        class_;
         public Interface    inter_;
         public Generic      genei_;
-        Types key;
-        bool isKey = false;
+        public Types key;
+        public bool isKey = false;
         public List<string> genericArgs = new List<string>();
         public Token asDateType = null;
         public bool isis = true;
@@ -26,8 +27,29 @@ namespace Compilator
         public bool isDateType = false;
         private bool isVal;
         public bool asvar = false;
-        bool getFoundButBadArgs = false;
+        public bool getFoundButBadArgs = false;
         List<string> generic = new List<string>();
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Token Token => token;        
+        [JsonParam] public Token DateType => dateType;
+        [JsonParam] public bool IsVal { get => isVal; set => isVal = value; }
+        [JsonParam] public bool IsKey => isKey;
+        [JsonParam] public Types Key => key;        
+        [JsonParam] public List<string> GenericList => generic;
+
+        public Block Block => block;
+
+        public override void FromJson(JObject o)
+        {
+            token = Token.FromJson(o["Token"]);
+            dateType = Token.FromJson(o["dateType"]);
+            isVal = (bool) o["IsVal"];
+            isKey = (bool) o["IsKey"];
+            key = JsonParam.FromJson(o["Key"]);
+            generic = JsonParam.FromJsonArrayBase<string>((JArray) o["GenericList"]);
+        }
+        public Variable() { }
 
         public Variable(Token token, Types block, Token dateType = null, List<string> generic = null, bool isVal = false)
         {
@@ -48,13 +70,16 @@ namespace Compilator
                     Type type = this.block.SymbolTable.GetType(dateType.Value);
                     _class = (TypeObject)Activator.CreateInstance(type);
                 }
-                else if (this.block.SymbolTable.Find(dateType.Value))
+                else 
                 {
-                    Types fic = this.block.SymbolTable.Get(dateType.Value);
-                    if (fic is Class)
-                        class_ = (Class)fic;
-                    else if (fic is Interface)
-                        inter_ = (Interface)fic;
+                    var fic = this.block.SymbolTable.Get(dateType.Value);
+                    if (!(fic is Error))
+                    {                        
+                        if (fic is Class)
+                            class_ = (Class) fic;
+                        else if (fic is Interface)
+                            inter_ = (Interface) fic;
+                    }
                 }
             }
             if(_class == null && class_ == null && inter_ == null)
@@ -71,42 +96,36 @@ namespace Compilator
                     Type type = this.block.SymbolTable.GetType(dateType.Value);
                     _class = (TypeObject)Activator.CreateInstance(type);
                 }
-                else if (this.block.SymbolTable.Find(dateType.Value))
+                else
                 {
-                    _class = null;
-                    Types fic = this.block.SymbolTable.Get(dateType.Value);
-                    if (fic is Class)
-                        class_ = (Class)fic;
-                    else if (fic is Interface)
-                        inter_ = (Interface)fic;
+                    var fic = block.SymbolTable.Get(dateType.Value);
+                    if (!(fic is Error))
+                    {
+                        _class = null;                        
+                        if (fic is Class)
+                            class_ = (Class) fic;
+                        else if (fic is Interface)
+                            inter_ = (Interface) fic;
+                    }
                 }
             }
         }
+        public void MadeArray(bool isArray) { this.isArray = isArray; }
         public Token  getType() => dateType;
         public string Value => value;
         public string Type => dateType.Value;
-        public Block  Block => block;
-        public bool   IsVal
-        {
-            get => isVal;
-            set => isVal = value;
-        }
         public override Token getToken() => token;
-        public Token  GetDateType() => dateType;
-        public bool   IsKey => isKey;
-        public Types  Key => key;
-        public void MadeArray(bool isArray) { this.isArray = isArray; }
-        public List<string> GenericList => generic;
+        public Token  GetDateType() => dateType;        
 
         public Token AsDateType
         {
             set
             {                
                 Token dateType = value;
-                if (this.block.SymbolTable.Find(dateType.Value))
+                var fic = this.block.SymbolTable.Get(dateType.Value);
+                if (!(fic is Error))
                 {
-                    _class = null;
-                    Types fic = this.block.SymbolTable.Get(dateType.Value);
+                    _class = null;                    
                     if (fic is Class)
                     {
                         class_ = (Class)fic;
@@ -145,8 +164,13 @@ namespace Compilator
             }
         }
 
+        private int hash = 0;
         public void Check()
         {
+            if (hash == GetHashCode())
+                return;
+            hash = GetHashCode();
+
             string newname = this.value;
             if (newname.Split('.')[0] == "this" && this.value != "this")
             {                
@@ -155,8 +179,8 @@ namespace Compilator
             if(Value == "this")
             {
                 Types s;
-                if(this.assingBlock?.Parent != null)
-                    s = this.assingBlock.SymbolTable.Get(this.assingBlock.Parent.assignTo.Split('.')[0]);
+                if(this.assingBlock?.BlockParent != null)
+                    s = this.assingBlock.SymbolTable.Get(this.assingBlock.BlockParent.assignTo.Split('.')[0]);
                 else
                     s = this.assingBlock?.SymbolTable.Get(this.assingBlock.assignTo.Split('.')[0]);
 
@@ -167,106 +191,133 @@ namespace Compilator
                 else if (s is Function sf && sf.Returnt != null)
                     this.dateType = ((Function) s).Returnt;
             }
-            if (this.dateType.Value == "auto")
+            if (newname.Contains("."))
             {
-                Types fvar = this.block.FindVariable(newname);
-                if (this.block.SymbolTable.Find(newname))
+                var prep = newname.Split('.');
+                for (var i = 0; i < prep.Length - 1; i++)
                 {
-                    Types t = this.block.SymbolTable.Get(newname);
-                    if(t is Generic)
+                    var get = this.block.SymbolTable.Get(prep[i]);
+                    if(get != null)
                     {
-                        this.dateType = new Token(Token.Type.CLASS, "object");
-                    }
-                    else if (t is Properties prop)
-                    {
-                        this.dateType = prop.variable.TryVariable().dateType;
-                    }
-                    else if (t is Function tf)
-                    {
-                        this.dateType = tf.Returnt;
-                    }
-                    else if (t is Assign && ((Assign)t).Right is UnaryOp)
-                    {
-                        if (((UnaryOp)((Assign)t).Right).Op == "call")
-                        {
-                            Token fname = ((UnaryOp)((Assign)t).Right).Name;
-                            Types sd = this.block.SymbolTable.Get(fname.Value);
-                            if (!(sd is Error))
-                            {
-                                Function f = (Function)sd;
-                                this.dateType = f.Returnt;
-                            }
-                        }else
-                            this.dateType = ((Variable)(((Assign)t).Left)).dateType;
-                    }
-                    else if (t is Variable)
-                    {
-                        this.dateType = ((Variable) t).dateType;
-                    }
-                    else if (t is Class)
-                        this.dateType = ((Class) t).Name;
-                    else if (t is Assign ta)
-                    {
-                        var right = ta.Right;
-                        if(right is CString)
-                            this.dateType = new Token(Token.Type.CLASS, "string");
-                        else if (right is Number && ((Number)right).isReal)
-                            this.dateType = new Token(Token.Type.CLASS, "float");
-                        else if (right is Number)
-                            this.dateType = new Token(Token.Type.CLASS, "int");
-                        else if (right.getToken().Value == "true" || right.getToken().Value == "false")
-                            this.dateType = new Token(Token.Type.CLASS, "bool");
-                        else
-                            this.dateType = ((Variable)(((Assign)t).Left)).dateType;
+                        newname = string.Join(".", prep.Skip(1));
+                        this.block = get.assingBlock;
                     }
                     else
-                        this.dateType = ((Variable)(((Assign)t).Left)).dateType;
-                }
-                else if (fvar != null)
-                {
-                    this.dateType = ((Variable)((Assign)fvar).Left).dateType;
-                }
-                else if (this.token.type == Token.Type.TRUE || this.token.type == Token.Type.FALSE)
-                {
-                    this.dateType = new Token(Token.Type.BOOL, "bool");
-                }
-                else
-                {
-                    if (this.block.SymbolTable.Find(this.block.assignTo))
                     {
-                        Function asfunc;
-                        Types qq = this.block.SymbolTable.Get(this.block.assignTo);
-                        if (!(qq is Function))
-                            asfunc = (Function)this.block.SymbolTable.Get("constructor " + this.block.assignTo);
-                        else
-                            asfunc = (Function)qq;
-
-                        Variable var = asfunc.ParameterList.Find(this.value);
-                        if (var != null)
-                        {
-                            this.dateType = var.dateType;
-                        }
-                    }                    
+                        break;
+                    }
                 }
             }
-            if (this.dateType == null)
-                this.dateType = new Token(Token.Type.AUTO, "auto");
-            if (this.dateType.Value != "auto")
+            if (this.dateType.Value == "auto")
             {
-                if (this.block.SymbolTable.FindInternal(dateType.Value))
+                if (this.block == null)
+                    this.block = assingBlock;     
+                
+                if (this.token.type == Token.Type.TRUE || this.token.type == Token.Type.FALSE)
+                {
+                    dateType = new Token(Token.Type.BOOL, "bool");
+                }                                            
+                else
+                {
+                    var fnd = block?.SymbolTable.Get(newname, assingBlock);
+                    if (!(fnd is Error))
+                    {
+                        var t = fnd;
+                        if (t is Generic)
+                        {
+                            dateType = new Token(Token.Type.CLASS, "object");
+                        }
+                        else if (t is Properties prop)
+                        {
+                            dateType = prop.variable.TryVariable().dateType;
+                        }
+                        else if (t is Function tf)
+                        {
+                            dateType = tf.Returnt;
+                        }
+                        else if (t is Assign && ((Assign) t).Right is UnaryOp)
+                        {
+                            if (((UnaryOp) ((Assign) t).Right).Op == "call")
+                            {
+                                Token fname = ((UnaryOp) ((Assign) t).Right).Name;
+                                Types sd = this.block.SymbolTable.Get(fname.Value, assingBlock);
+                                if (!(sd is Error))
+                                {
+                                    Function f = (Function) sd;
+                                    dateType = f.Returnt;
+                                }
+                            }
+                            else
+                                dateType = ((Variable) (((Assign) t).Left)).dateType;
+                        }
+                        else if (t is Variable)
+                        {
+                            dateType = ((Variable) t).dateType;
+                        }
+                        else if (t is Class)
+                            dateType = ((Class) t).Name;
+                        else if (t is Assign ta)
+                        {
+                            var right = ta.Right;
+                            if (right is CString)
+                                dateType = new Token(Token.Type.CLASS, "string");
+                            else if (right is Number && ((Number) right).isReal)
+                                dateType = new Token(Token.Type.CLASS, "float");
+                            else if (right is Number)
+                                dateType = new Token(Token.Type.CLASS, "int");
+                            else if (right.getToken().Value == "true" || right.getToken().Value == "false")
+                                dateType = new Token(Token.Type.CLASS, "bool");
+                            else
+                                dateType = ((Variable) (((Assign) t).Left)).dateType;
+                        }
+                        else if (t is Number tn)
+                            dateType = new Token(Token.Type.CLASS, "int");
+                        else if (t is _Enum te)
+                            dateType = new Token(Token.Type.CLASS, "Enum");
+                        else if (t != null)
+                            dateType = ((Variable) ((Assign) t).Left).dateType;
+                    }
+                    else
+                    {
+                        var qq = block.SymbolTable.Get(block.assignTo, assingBlock);
+                        if (!(qq is Error))
+                        {
+                            Function asfunc;
+                            if (!(qq is Function))
+                                asfunc = (Function) block.SymbolTable.Get("constructor " + this.block.assignTo, assingBlock);
+                            else
+                                asfunc = (Function) qq;
+
+                            Variable var = asfunc.ParameterList.Find(this.value);
+                            if (var != null)
+                            {
+                                dateType = var.dateType;
+                            }
+                        }
+                    }
+                }
+            }
+            if (dateType == null)
+                dateType = new Token(Token.Type.AUTO, "auto");
+            if (dateType.Value != "auto")
+            {
+                if (block.SymbolTable.FindInternal(dateType.Value))
                 {
                     Type type = this.block.SymbolTable.GetType(dateType.Value);
                     _class = (TypeObject)Activator.CreateInstance(type);
                 }
-                else if (this.block.SymbolTable.Find(dateType.Value) && class_ == null)
+                else 
                 {
-                    Types fic = this.block.SymbolTable.Get(dateType.Value);
-                    if (fic is Class)
-                        class_ = (Class)fic;
-                    else if (fic is Interface)
-                        inter_ = (Interface)fic;
-                    else if (fic is Generic)
-                        genei_ = (Generic)fic;
+                    var fic = this.block.SymbolTable.Get(dateType.Value, assingBlock);
+                    if (class_ == null && !(fic is Error))
+                    {                        
+                        if (fic is Class @class)
+                            class_ = @class;
+                        else if (fic is Interface)
+                            inter_ = (Interface) fic;
+                        else if (fic is Generic)
+                            genei_ = (Generic) fic;
+                    }
                 }
             }
         }
@@ -276,6 +327,15 @@ namespace Compilator
             return CompileHard(tabs, null);
         }
 
+        public string GetAssignTo()
+        {
+            if (assignTo != "")
+                return assignTo;
+            if(assingBlock?.assignTo != "")
+                return assingBlock?.assignTo;
+            return assingBlock?.assingBlock?.assignTo;
+        }
+        
         public string CompileHard(int tabs = 0, Types ti = null)
         {
             if (key != null)
@@ -309,8 +369,10 @@ namespace Compilator
 
                 var split = Value.Split(new[] {'.'}, 1);
                 var usingBlock = assingBlock ?? block;
-                if (usingBlock != null && (usingBlock = usingBlock.GetBlock(Block.BlockType.FUNCTION, new List<Block.BlockType>{ Block.BlockType.CLASS, Block.BlockType.INTERFACE })) != null)
+                var _usingBlock = usingBlock?.GetBlock(Block.BlockType.FUNCTION, new List<Block.BlockType> {Block.BlockType.CLASS, Block.BlockType.INTERFACE});
+                if (_usingBlock != null)
                 {
+                    usingBlock = _usingBlock;
                     if (usingBlock.SymbolTable.Get(usingBlock.assignTo) is Function ass && ass.isInline && ass.inlineId > 0)
                     {
                         if (split[0] == "this")
@@ -323,7 +385,7 @@ namespace Compilator
                         }
                     }
                 }
-                var t__ = "this" + (Value == "this" ? "" : ".");
+                var t__ = (assingBlock != null && assingBlock.isInConstructor ? "$this" : "this") + (Value == "this" ? "" : ".");
                 if (assingBlock != null && assingBlock.isType(Block.BlockType.PROPERTIES))
                     t__ = "this.$self" + (Value == "this" ? "" : ".");
                 if (value.Split('.')[0] != "this")
@@ -338,7 +400,8 @@ namespace Compilator
 
                 if (Value.Split('.')[0] == "this")
                 {
-                    not = t__ + string.Join(".", value.Split('.').Skip(1));
+                    var ths = Value == "this" ? "this" : "this.";
+                    not = (t__ == "this." && usingBlock.isInConstructor ? "$" + ths : ths) + string.Join(".", value.Split('.').Skip(1));
                     vname = string.Join(".", value.Split('.').Skip(1)) + (isKey ? "[" + key.Compile() + "]" : "");
 
                     if (block.isInConstructor)
@@ -367,7 +430,10 @@ namespace Compilator
                     Types tavt = block.SymbolTable.Get(tav.Type, genericArgs: tav.genericArgs.Count);
                     if (tavt is Delegate)
                     {
-                        vname = t__ + "delegate$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+                        if(t__ != "")
+                            vname = (assingBlock != null && assingBlock.isInConstructor ? "$this" : "this") + ".delegate$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
+                        else
+                            vname = "delegate$" + withouthis + (isKey ? "[" + key.Compile() + "]" : "");
                     }
                     else
                     {
@@ -546,6 +612,9 @@ namespace Compilator
                 case Token.Type.MUL:
                     o = "*";
                     break;
+                case Token.Type.NEG:
+                    o = "!";
+                    break;
                 case Token.Type.DOT:
                     o = ".";
                     break;
@@ -581,26 +650,27 @@ namespace Compilator
         public static string GetOperatorNameStatic(Token.Type op)
         {
             string o = "";
-            if (op == Token.Type.EQUAL)     o = "equal";
-            if (op == Token.Type.NOTEQUAL)  o = "equal";
-            if (op == Token.Type.AND)       o = "and";
-            if (op == Token.Type.OR)        o = "or";
-            if (op == Token.Type.MORE)      o = "compareTo";
-            if (op == Token.Type.LESS)      o = "compareTo";
-
-            if (op == Token.Type.DOT)       o = "dot";
-            if (op == Token.Type.PLUS)      o = "plus";
-            if (op == Token.Type.INC)       o = "inc";            
-            if (op == Token.Type.MINUS)     o = "minus";
-            if (op == Token.Type.DEC)       o = "dec";
-            if (op == Token.Type.DIV)       o = "divide";
-            if (op == Token.Type.MUL)       o = "multiple";
-            if (op == Token.Type.NEW)       o = "new";
-            if (op == Token.Type.RETURN)    o = "return";
-            if (op == Token.Type.CALL)      o = "invoke";
-            if (op == Token.Type.GET)       o = "get";
-            if (op == Token.Type.IS)        o = "is";
-            if (op == Token.Type.RANGE)     o = "range";
+            if (op == Token.Type.EQUAL)          o = "equal";
+            else if (op == Token.Type.NOTEQUAL)  o = "equal";
+            else if (op == Token.Type.AND)       o = "and";
+            else if (op == Token.Type.OR)        o = "or";
+            else if (op == Token.Type.MORE)      o = "compareTo";
+            else if (op == Token.Type.LESS)      o = "compareTo";
+             
+            else if (op == Token.Type.DOT)       o = "dot";
+            else if (op == Token.Type.PLUS)      o = "plus";
+            else if (op == Token.Type.INC)       o = "inc";            
+            else if (op == Token.Type.MINUS)     o = "minus";
+            else if (op == Token.Type.DEC)       o = "dec";
+            else if (op == Token.Type.NEG)       o = "negation";
+            else if (op == Token.Type.DIV)       o = "divide";
+            else if (op == Token.Type.MUL)       o = "multiple";
+            else if (op == Token.Type.NEW)       o = "new";
+            else if (op == Token.Type.RETURN)    o = "return";
+            else if (op == Token.Type.CALL)      o = "invoke";
+            else if (op == Token.Type.GET)       o = "get";
+            else if (op == Token.Type.IS)        o = "is";
+            else if (op == Token.Type.RANGE)     o = "range";
             return o;
         }        
         public Token OutputType(Token.Type op, object first, object second)
@@ -645,6 +715,8 @@ namespace Compilator
         {
             if(_class != null)
                 return _class?.Operator(GetOperator(op), first, second);
+            if (Type == "int" && second is int)
+                return (int)first + (int)second;
             return "";
         }
         public object GetClass() { return _class; }
@@ -653,7 +725,9 @@ namespace Compilator
         {
             if (this.dateType.Value == "auto")
                 Check();
-            if (isKey && !SupportOp(Token.Type.GET))
+            //if(block.SymbolTable.Get(this.value) is Assign va && va.Left is Variable vav && vav.isArray && !isKey)
+                //Interpreter.semanticError.Add(new Error("#302 Date type "+dateType.Value+" is defined as Array but you dont access it throught index", Interpreter.ErrorType.ERROR, token));
+            if (isKey && !SupportOp(Token.Type.GET) && !(block.SymbolTable.Get(this.value) is Assign va && va.Left is Variable vav && vav.isArray))
                 Interpreter.semanticError.Add(new Error("#302 Date type "+dateType.Value+" not support 'get' operator", Interpreter.ErrorType.ERROR, token));
             if(isKey && getFoundButBadArgs)
                 Interpreter.semanticError.Add(new Error("#303 Date type " + dateType.Value + " support 'get' operator, but arguments are wrong", Interpreter.ErrorType.ERROR, token));
@@ -689,6 +763,14 @@ namespace Compilator
                             }                            
                         }
                     }
+                }
+            }
+
+            if (!((parent is ParameterList pl) && pl.declare))
+            {
+                if (block.SymbolTable.Get(value, assingBlock) is Error)
+                {
+                    Interpreter.semanticError.Add(new Error("#3x2 Variable " + token.Value + " not exists", Interpreter.ErrorType.ERROR, getToken()));
                 }
             }
         }

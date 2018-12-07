@@ -3,16 +3,31 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     class For : Types
     {
-        Variable variable;
-        Types source;
-        Block block;
-        bool isIterable = false;
-        string className = "";
+        public Variable variable;
+        public Types source;
+        public Block block;
+        public bool isIterable = false;
+        public string className = "";
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Variable Variable => variable;
+        //[JsonParam] public Types Source => source;
+        [JsonParam] public bool IsIterable => isIterable;
+        [JsonParam] public string ClassName => className;
+
+        public override void FromJson(JObject o)
+        {
+            variable = JsonParam.FromJson<Variable>(o["Variable"]);
+            isIterable = (bool) o["IsIterable"];
+            className = o["ClassName"].ToString();
+        }
+        public For() { }
 
         public For(Variable variable, Types source, Block block)
         {

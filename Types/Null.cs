@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
@@ -24,6 +25,11 @@ namespace Compilator
         public override void Semantic()
         {
 
+        }
+
+        public override void FromJson(JObject o)
+        {
+            
         }
 
         public override int Visit()

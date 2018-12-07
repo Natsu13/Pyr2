@@ -1,14 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     public class If:Types
     {
-        Dictionary<Types, Block> conditions = new Dictionary<Types, Block>();
+        public Dictionary<Types, Block> conditions = new Dictionary<Types, Block>();
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Dictionary<JObject, JObject> Conditions => conditions.ToDictionary(x => JsonParam.ToJson(x.Key), x => JsonParam.ToJson(x.Value));
+
+        public override void FromJson(JObject o)
+        {
+            conditions = JsonParam.FromJsonDictionary<Types, Block>(o["Conditions"]);            
+        }
+        public If() { }
 
         public If(Dictionary<Types, Block> conditions)
         {
@@ -25,7 +36,7 @@ namespace Compilator
             tabs++;
             foreach (var c in conditions)
             {
-                c.Value.Parent = assingBlock;
+                c.Value.BlockParent = assingBlock;
                 if(c.Key != null)
                     c.Key.endit = false;
                 if (first)

@@ -5,22 +5,41 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     public class Assign:Types
     {
-        Types left, right;
+        public Types left;
+        public Types right;
         Token op, token;
-        bool isDeclare = false;
+        public bool isDeclare = false;
         bool isMismash = false;
         bool isRedeclared = false;
         string originlDateType = "";
         public List<_Attribute> attributes;
-        private bool isNull;
+        public bool isNull;
 
         public bool isStatic = false;
         public Token _static = null;
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Types Left => left;
+        [JsonParam] public Types Right { get => right; set => right = value; }
+        [JsonParam] public Token Op => op;
+        //[JsonParam] public Block AssignBlock => assingBlock;
+        [JsonParam] public bool IsNull => isNull;
+        
+        public override void FromJson(JObject o)
+        {
+            left = JsonParam.FromJson(o["Left"]);
+            right = JsonParam.FromJson(o["Right"]);
+            op = Token.FromJson(o["Op"]);
+            isNull = (bool) o["IsNull"];
+        }
+        public Assign() { }
+        
 
         public Assign(Types left, Token op, Types right, Block current_block = null, bool isNull = false, bool isVal = false)
         {
@@ -34,11 +53,12 @@ namespace Compilator
                 //left.Semantic();
                 ((Variable) left).IsVal = isVal;                
                 string name = ((Variable)left).Value;
-                bool notfound = current_block != null && current_block.SymbolTable.Find(name);
+                bool notfound = current_block != null && !(current_block.SymbolTable.Get(name) is Error);
                 if (current_block != null && !current_block.variables.ContainsKey(name) && !notfound)
                 {
                     isDeclare = true;
-                    current_block.variables[name] = this;
+                    //current_block.variables[name] = this;
+                    current_block.SymbolTable.Add(left.getToken().Value, this, parent: assingBlock);
                 }
                 else if (!((Variable)left).Block.variables.ContainsKey(name) && !notfound)
                 {
@@ -47,11 +67,19 @@ namespace Compilator
                 }
                 else if (((Variable)left).Type != "auto")
                 {
-                    var v = ((Variable)(((Assign)((Variable)left).Block.SymbolTable.Get(name)).Left));
-                    if (!Interpreter._REDECLARATION && v.getType().Value != ((Variable)this.left).getType().Value)
+                    var vl = ((Variable)left);
+                    var fn = vl.Block.SymbolTable.Get(name, vl.Type);
+                    if (fn is Assign)
                     {
-                        originlDateType = v.getType().Value;
-                        isRedeclared = true;
+                        var v = ((Variable)(((Assign)vl.Block.SymbolTable.Get(name, vl.Type)).Left));
+                        if (!Interpreter._REDECLARATION && v.getType().Value != vl.getType().Value)
+                        {
+                            if (v.GetAssignTo() == assingBlock?.assignTo)
+                            {
+                                originlDateType = v.getType().Value;
+                                isRedeclared = true;
+                            }
+                        }
                     }
                 }
                 else
@@ -73,15 +101,7 @@ namespace Compilator
             return "new Assign("+left.InterpetSelf()+", "+token.InterpetSelf()+ ", "+right.InterpetSelf()+", "+ left.assingBlock.InterpetSelf()+ ")";
         }
 
-        public override Token getToken() { return null; }
-
-        public Types Left => left;
-
-        public Types Right
-        {
-            get { return right; }
-            set => right = value;
-        }
+        public override Token getToken() { return this.token; }        
 
         public override int Visit()
         {            
@@ -97,7 +117,7 @@ namespace Compilator
         {
             return right.Visit().ToString();
         }
-
+        
         public override string Compile(int tabs = 0)
         {            
             string addCode = "";
@@ -111,14 +131,14 @@ namespace Compilator
             string addName = "";
             if (left is Variable variable)
             {
-                if (assingBlock.Parent != null && assingBlock.SymbolTable.Find(variable.Value))
+                var fvar = assingBlock.SymbolTable.Get(variable.Value);
+                if (assingBlock.BlockParent != null && !(fvar is Error))
                 {
-                    var fvar = assingBlock.SymbolTable.Get(variable.Value);
-                    if(fvar.GetHashCode() != this.GetHashCode())
+                    if(fvar.GetHashCode() != GetHashCode())
                         isDeclare = false;
                 }
 
-                if (variable.Block.Type == Block.BlockType.CONDITION && variable.Block.Parent.variables.ContainsKey(variable.Value))
+                if (variable.Block.Type == Block.BlockType.CONDITION && variable.Block.BlockParent.variables.ContainsKey(variable.Value))
                     isDeclare = false;
             }
 
@@ -170,20 +190,22 @@ namespace Compilator
                     }
                     rightcompile = (rightCompiled == "" ? right?.Compile(0) ?? "" : rightCompiled);
 
-                    if (assingBlock.SymbolTable.Find(left.TryVariable().Value) && maybeIs is Properties)
+                    var ltryvar = left.TryVariable();
+                    var rtryvar = right.TryVariable();
+                    var fleft = assingBlock.SymbolTable.Get(ltryvar.Value);
+
+                    if (!(fleft is Error) && maybeIs is Properties)
                     {
-                        string[] varname = left.TryVariable().Value.Split('.');
+                        string[] varname = ltryvar.Value.Split('.');
                         if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
                             varname[0] = "$this";
-                        //return DoTabs(tabs) + addCode + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".set(" +  + ");";
                         returnAssigment = varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".set($[<code>])";
                     }
-                    else if (maybeIs2 != null && assingBlock.SymbolTable.Find(right.TryVariable().Value) && maybeIs2 is Properties)
+                    else if (maybeIs2 != null && !(assingBlock.SymbolTable.Get(rtryvar.Value) is Error) && maybeIs2 is Properties)
                     {
-                        string[] varname = right.TryVariable().Value.Split('.');
+                        string[] varname = rtryvar.Value.Split('.');
                         if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
-                            varname[0] = "$this";
-                        //return DoTabs(tabs) + addCode + (isDeclare ? "var " : "") + addName + left.Compile(0) + " = " + varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".get();";
+                            varname[0] = "$this";                        
                         returnAssigment = (isDeclare ? "var " : "") + addName + left.Compile(0) + " = $[<code>];";
                         rightcompile = varname[0] + ".Property$" + string.Join(".", varname.Skip(1)) + ".get()";
                     }
@@ -261,14 +283,14 @@ namespace Compilator
                         if (usingFunc.Block.children.Count == 2 && usingFunc.ParameterList.IsAllPrimitive)
                         {
                             rightCode = (rightCode.Substring(rightCode.Length - 1, 1) == "\n" ? rightCode.Substring(0, rightCode.Length - 1) : rightCode);
-                            rightCode = rightCode.Replace(varname + " = ", "");
-                            ret = returnAssigment.Replace("$[<code>]", rightCode.Substring(0, rightCode.Length - 1));
+                            rightCode = new StringBuilder(rightCode).Replace(varname + " = ", "").ToString();
+                            ret = new StringBuilder(returnAssigment).Replace("$[<code>]", rightCode.Substring(0, rightCode.Length - 1)).ToString();
                         }
                         else
                         {                            
                             ret = DoTabs(tabs) + "var " + varname + " = '';\n";
                             ret += rightCode;
-                            ret += returnAssigment.Replace("$[<code>]", varname);
+                            ret += new StringBuilder(returnAssigment).Replace("$[<code>]", varname);
                         }
 
                         return ret;
@@ -276,14 +298,14 @@ namespace Compilator
                 }
                 else if(Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                 {
-                    if (assingBlock.SymbolTable.Find(left.TryVariable().Value) && maybeIs is Properties)
+                    if (!(assingBlock.SymbolTable.Get(left.TryVariable().Value) is Error) && maybeIs is Properties)
                     {
                         string[] varname = left.TryVariable().Value.Split('.');
                         if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
                             varname[0] = "self";
                         return DoTabs(tabs) + addCode + varname[0] + ".Property__" + string.Join(".", varname.Skip(1)) + ".set(" + (rightCompiled == "" ? right.Compile(0) : rightCompiled) + ");";
                     }
-                    else if (maybeIs2 != null && assingBlock.SymbolTable.Find(right.TryVariable().Value) && maybeIs2 is Properties)
+                    else if (maybeIs2 != null && !(assingBlock.SymbolTable.Get(right.TryVariable().Value) is Error) && maybeIs2 is Properties)
                     {
                         string[] varname = right.TryVariable().Value.Split('.');
                         if (assingBlock.isInConstructor || assingBlock.isType(Block.BlockType.PROPERTIES))
@@ -317,18 +339,27 @@ namespace Compilator
 
                 break;
             }
-            return DoTabs(tabs) + returnAssigment.Replace("$[<code>]", rightcompile);
+            return DoTabs(tabs) + new StringBuilder(returnAssigment).Replace("$[<code>]", rightcompile);
         }
 
         public override void Semantic()
         {
             Semantic(false);
-        }
-            
+        }       
 
         public void Semantic(bool isParam = false)
-        {
-            var leftFromSymbolTable = assingBlock?.SymbolTable.Get(left.TryVariable().Value);
+        { 
+            var lfv = left.TryVariable().Value;
+            var leftFromSymbolTable = assingBlock?.SymbolTable.Get(lfv, assingBlock);
+            if(leftFromSymbolTable is Error)
+            {
+                var parent = assingBlock.SymbolTable.Get(GetAssingTo(Block.BlockType.CLASS));
+                if(parent is Class pc)
+                {
+                    var _parent = pc.GetParent();
+                    leftFromSymbolTable = _parent.assingBlock.SymbolTable.Get(lfv);
+                }
+            }
             if (leftFromSymbolTable is Properties ps)
             {
                 if(ps.Setter == null)
@@ -385,7 +416,8 @@ namespace Compilator
                             else if (right is BinOp) type = ((BinOp)right).OutputType.Value;
                             else if (right is UnaryOp) type = ((UnaryOp)right).OutputType.Value;
 
-                            if (left_type != type)
+                            //TODO: maybe check better xD
+                            if (left_type != type && left_type != "object")
                             {
                                 Interpreter.semanticError.Add(new Error("#101 Variable " + ((Variable)left).Value + " with type '" + left_type + "' can't be implicitly converted to '" + type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                             }
@@ -422,9 +454,10 @@ namespace Compilator
                             else
                             {
                                 Block rblock = ((Variable)right).Block;
-                                if (rblock.SymbolTable.Find(rblock.assignTo))
+                                var fnd = rblock.SymbolTable.Get(rblock.assignTo);
+                                if (!(fnd is Error))
                                 {
-                                    Function asfunc = (Function)rblock.SymbolTable.Get(rblock.assignTo);
+                                    Function asfunc = (Function)fnd;
                                     Variable var = asfunc.ParameterList.Find(((Variable)right).Value);
                                     Types vaq = (Types)rblock.SymbolTable.Get(((Variable)right).Value);
                                     if (vaq != null)
@@ -433,8 +466,21 @@ namespace Compilator
                                         {
                                             right = vaq;
                                         }
+
                                         if (vaq is Error)
-                                            Interpreter.semanticError.Add(new Error("#103 Variable " + ((Variable)right).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)right).getToken()));
+                                        {
+                                            if (right is Variable rv)
+                                            {
+                                                var cls = assingBlock.SymbolTable.Get(this.assingBlock.getClass());
+                                                if (cls is Class clsc)
+                                                {
+                                                    var parent = clsc.GetParent();
+                                                    vaq = parent.assingBlock.SymbolTable.Get(((Variable) right).Value);
+                                                }
+                                            }
+                                            if(vaq is Error)
+                                                Interpreter.semanticError.Add(new Error("#103 Variable " + ((Variable) right).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable) right).getToken()));                                            
+                                        }
                                     }
                                     else if (var != null)
                                     {
@@ -444,7 +490,7 @@ namespace Compilator
                                         Interpreter.semanticError.Add(new Error("#104 Variable " + ((Variable)right).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)right).getToken()));
                                 }
                             }
-                            if (right is Variable && ((Variable)left).Type != ((Variable)right).Type)
+                            if (right is Variable && ((Variable)left).Type != ((Variable)right).Type && ((Variable)left).Type != ((Variable)right).AsDateType.Value)
                                 Interpreter.semanticError.Add(new Error("#105 Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + ((Variable)right).Type + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
                         }
                         else
@@ -469,6 +515,9 @@ namespace Compilator
                         Interpreter.semanticError.Add(new Error("#114 Variable " + ((Variable)left).Value + " with type '" + ((Variable)left).Type + "' can't be implicitly converted to '" + ((BinOp)right).OutputType.Value + "'", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));                        
                     }
                 }
+
+                if(leftFromSymbolTable is Error && left is Variable)
+                    Interpreter.semanticError.Add(new Error("#10x Variable " + ((Variable)left).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
 
                 if (!isDeclare && !isParam)
                 {

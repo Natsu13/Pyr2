@@ -4,14 +4,15 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     public class Function:Types
     {
         Token name;
-        Block block;
-        ParameterList paraml;
+        public Block block;
+        public ParameterList paraml;
         Token returnt;
         public bool isStatic = false;
         public Token _static;
@@ -29,17 +30,56 @@ namespace Compilator
         public bool returnAsArray = false;
         public List<_Attribute> attributes = new List<_Attribute>();
         public List<string> returnGeneric = new List<string>();
-        List<string> genericArguments = new List<string>();
+        public List<string> genericArguments = new List<string>();
         public int inlineId = 0;
         public Types assigmentInlineVariable = null;
         public static int inlineIdCounter = 1;
 
-        bool parentNotDefined = false;
-        bool parentIsNotClassOrInterface = false;        
+        private Interpreter interpret;
 
+        readonly bool parentNotDefined = false;
+        readonly bool parentIsNotClassOrInterface = false;
+
+        private List<Token> returnTuple = null;
+
+        /*Serialization to JSON object for export*/
+        [JsonParam("Name")] public string RealName => name.Value;
+        [JsonParam] public List<string> GenericArguments => genericArguments;
+        [JsonParam] public ParameterList ParameterList => paraml;
+        [JsonParam] public Token Returnt => returnt;
+        [JsonParam] public Block Block => block;
+        [JsonParam] public string ExtendingClass => extendingClass;
+        [JsonParam] public bool IsConstructor => isConstructor;
+        [JsonParam] public string CacheName => Name;
+
+        private string _cacheName = null;
+ 
+        public override void FromJson(JObject o)
+        {
+            name = Token.FromJson(o["Name"]);
+            genericArguments = JsonParam.FromJsonArrayBase<string>((JArray)o["GenericArguments"]);
+            paraml = JsonParam.FromJson<ParameterList>(o["ParameterList"]);
+            returnt = Token.FromJson(o["Returnt"]);
+            block = JsonParam.FromJson<Block>(o["Block"]);
+            assingBlock = block;
+            extendingClass = o["ExtendingClass"].ToString();
+            isConstructor = (bool) o["IsConstructor"];
+            _cacheName = o["CacheName"].ToString();
+        }
+        public Function() { }
+
+        public Function(Token name, Block _block, ParameterList paraml, List<Token> returnTuple, Interpreter interpret, Block parent_block = null):this(name, _block,paraml,(Token)null,interpret,parent_block)
+        {
+            this.returnTuple = returnTuple;
+        }
         public Function(Token name, Block _block, ParameterList paraml, Token returnt, Interpreter interpret, Block parent_block = null)
-        {            
+        {
+            this.interpret = interpret;
             this.name = name;
+            
+            if(_block != null)
+                _block.parent = this;
+
             if (name.Value.Contains("."))
             {
                 string[] _name = name.Value.Split('.');
@@ -49,12 +89,13 @@ namespace Compilator
                 if(_block == null)
                 {
                     _block = new Block(interpret);
-                    _block.Parent = parent_block;
+                    _block.BlockParent = parent_block;
                 }
-                if (_block.SymbolTable.Find(_className))
+                Types t = _block.SymbolTable.Get(_className);
+                if (!(t is Error))
                 {
                     isExtending = true;
-                    Types t = _block.SymbolTable.Get(_className);
+                    
                     Type tg = _block.SymbolTable.GetType(_className);
                     if (t is Class c)
                     {
@@ -87,12 +128,17 @@ namespace Compilator
             this.paraml.assingBlock = this.block;
             this.returnt = returnt;
 
-            if (this.name.Value == extendingClass || (_block?.Parent != null && this.name.Value == _block?.Parent.assignTo))
+            if (this.name.Value == extendingClass || (_block?.BlockParent != null && this.name.Value == _block?.BlockParent.assignTo && _block?.BlockParent.Type == Block.BlockType.CLASS))
             {
                 isConstructor = true;
                 if(block != null)
                     block.isInConstructor = true;
             }
+        }
+
+        public override string ToString()
+        {
+            return "<Function\""+Name+"\">";
         }
 
         public void AddGenericArg(string name)
@@ -103,18 +149,14 @@ namespace Compilator
         {
             genericArguments = list;
         }
-        public List<string> GenericArguments { get { return genericArguments; } }
-
-        public ParameterList ParameterList { get { return paraml; } }
-        public override Token getToken() { return name; }
-        public Token Returnt { get { return returnt; } }
-        public Block Block { get { return block; } }        
+        
+        public override Token getToken() { return name; }        
 
         public string _hash = "";
         public string getHash()
         {
             if (assingBlock == null) assingBlock = block;
-            if (isOperator || isConstructor || assingBlock.SymbolTable.GetAll(name.Value)?.Count > 1)
+            if (isOperator || isConstructor || assingBlock.SymbolTable.GetAll(assingBlock.blockAssignTo+"::"+name.Value)?.Count > 1)
             {
                 if (_hash == "")
                     _hash = $"{(name.Value + paraml.List() + block?.GetHashCode()).GetHashCode():X8}";
@@ -123,14 +165,15 @@ namespace Compilator
             return "";
         }
         public string Name {
-            get {
+            get
+            {
+                if (_cacheName != null) return _cacheName;
                 string hash = getHash();
                 if (isConstructor)
                     return "constructor_" + hash;
                 return name.Value + (hash != "" ? "_" + hash : "");
             }
         }
-        public string RealName => name.Value;
 
         public string Return()
         {
@@ -139,10 +182,11 @@ namespace Compilator
             return returnt?.Value + (returnGeneric.Count > 0 ? "<" + string.Join(", ", returnGeneric) + ">" : "") + (returnAsArray ? "[]" : "");
         }
 
+        public string functionOpname = "";
         public override string Compile(int tabs = 0)
         {
-            string functionOpname = "";
-            string ret = "";
+            functionOpname = "";
+            var ret = new StringBuilder();
 
             string addCode = "";
             if (attributes?.Where(x => x.GetName(true) == "Debug").Count() > 0)
@@ -170,61 +214,58 @@ namespace Compilator
 
                 if (isExtending)
                 {
-                    if (assingBlock.SymbolTable.Find(extendingClass))
+                    var ex = assingBlock.SymbolTable.Get(extendingClass, false, true);
+                    if (ex is Import import)
                     {
-                        var ex = assingBlock.SymbolTable.Get(extendingClass, false, true);
-                        if(ex is Import)
-                        {
-                            extendingClass = ((Import)ex).GetName() + "." + extendingClass;
-                        }
+                        extendingClass = import.GetName() + "." + extendingClass;
                     }
                     fromClass = extendingClass;
                     if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                     {
                         if (isStatic || isConstructor)
                         {
-                            ret += tbs + extendingClass + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                            ret.Append(tbs + extendingClass + "." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : ""));
                             functionOpname = extendingClass + "." + Name;
                         }
                         else
                         {
-                            ret += tbs + extendingClass + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : "");
+                            ret.Append(tbs + extendingClass + ".prototype." + Name + " = function(" + paraml.Compile(0) + "){" + (block != null ? "\n" : ""));
                             functionOpname = extendingClass + ".prototype." + Name;
                         }
                     }
                     else if(Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                     {                        
                         python_fun = extendingClass + "." + Name + " = extending_function__"+tmpc+";\n";     
-                        ret += tbs + "def extending_function__"+tmpc+"(" + paraml.Compile(0) + "):" + (block != null ? "\n" : "");
+                        ret.Append(tbs + "def extending_function__"+tmpc+"(" + paraml.Compile(0) + "):" + (block != null ? "\n" : ""));
                         functionOpname = extendingClass + "." + Name;
                     }
                 }
                 else if (assignTo == "")
                 {
                     if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-                        ret = tbs + "def " + Name + "(" + paraml.Compile(0);
+                        ret.Append(tbs + "def " + Name + "(" + paraml.Compile(0));
                     else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                        ret += tbs + "function " + Name + "(" + paraml.Compile(0);
+                        ret.Append(tbs + "function " + Name + "(" + paraml.Compile(0));
 
                     if(genericArguments.Count > 0)
                     {
                         int q = 0;
                         foreach (string generic in genericArguments)
                         {
-                            if (q != 0) ret += ", ";
-                            else if (paraml.Parameters.Count > 0) { ret += ", "; }
+                            if (q != 0) ret.Append(", ");
+                            else if (paraml.Parameters.Count > 0) { ret.Append(", "); }
                             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-                                ret += "generic__" + generic;
+                                ret.Append("generic__" + generic);
                             else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                                ret += "generic$" + generic;
+                                ret.Append("generic$" + generic);
                             q++;
                         }
                     }
 
                     if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-                        ret += "):" + (block != null ? "\n" : "");
+                        ret.Append("):" + (block != null ? "\n" : ""));
                     else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                        ret += "){" + (block != null ? "\n" : "");                    
+                        ret.Append("){" + (block != null ? "\n" : ""));                    
                     functionOpname = Name;
                 }
                 else
@@ -251,55 +292,55 @@ namespace Compilator
                             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                             {
                                 python_fun = hash_name + "." + Name + " = extending_function__" + tmpc + ";\n";
-                                ret += tbs + "def extending_function__" + tmpc + "(" + paraml.Compile(0);
+                                ret.Append(tbs + "def extending_function__" + tmpc + "(" + paraml.Compile(0));
                             }
                             else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                                ret += tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0);
+                                ret.Append(tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0));
                             
                             functionOpname = hash_name + "." + Name;
                             bool f = !(paraml.Parameters.Count > 0);
                             foreach (string generic in c.GenericArguments)
                             {
-                                if (!f) ret += ", ";
+                                if (!f) ret.Append(", ");
                                 f = false;
                                 if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-                                    ret += "generic__" + generic;
+                                    ret.Append("generic__" + generic);
                                 else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                                    ret += "generic$" + generic;
+                                    ret.Append("generic$" + generic);
                             }
                             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-                                ret += "):" + (block != null ? "\n" : "");
+                                ret.Append("):" + (block != null ? "\n" : ""));
                             else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                                ret += "){" + (block != null ? "\n" : "");
+                                ret.Append("){" + (block != null ? "\n" : ""));
                         }
                         else
                         {
                             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                             {
                                 python_fun = hash_name + "." + Name + " = extending_function__" + tmpc + ";\n";
-                                ret += tbs + "def extending_function__" + tmpc + "(" + paraml.Compile(0);
+                                ret.Append(tbs + "def extending_function__" + tmpc + "(" + paraml.Compile(0));
                             }
                             else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                                ret += tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0);
+                                ret.Append(tbs + hash_name + "." + Name + " = function(" + paraml.Compile(0));
                             
                             if(genericArguments.Count > 0)
                             {
                                 int q = 0;
                                 foreach (string generic in genericArguments)
                                 {
-                                    if (q != 0) ret += ", ";
-                                    else if (paraml.Parameters.Count > 0) { ret += ", "; }
+                                    if (q != 0) ret.Append(", ");
+                                    else if (paraml.Parameters.Count > 0) { ret.Append(", "); }
                                     if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-                                        ret += "generic__" + generic;
+                                        ret.Append("generic__" + generic);
                                     else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                                        ret += "generic$" + generic;
+                                        ret.Append("generic$" + generic);
                                     q++;
                                 }
                             }
                             if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-                                ret += "):" + (block != null ? "\n" : "");
+                                ret.Append("):" + (block != null ? "\n" : ""));
                             else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                                ret += "){" + (block != null ? "\n" : "");
+                                ret.Append("){" + (block != null ? "\n" : ""));
 
                             functionOpname = hash_name + "." + Name;
                         }
@@ -309,35 +350,35 @@ namespace Compilator
                         if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                         {
                             python_fun = hash_name + "." + Name + " = extending_function__" + tmpc + ";\n";
-                            ret += tbs + "def extending_function__" + tmpc + "(" + paraml.Compile(0);
+                            ret.Append(tbs + "def extending_function__" + tmpc + "(" + paraml.Compile(0));
                         }
                         else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                            ret += tbs + hash_name + ".prototype." + Name + " = function(" + paraml.Compile(0);
+                            ret.Append(tbs + hash_name + ".prototype." + Name + " = function(" + paraml.Compile(0));
 
                         if(genericArguments.Count > 0)
                         {
                             int q = 0;
                             foreach (string generic in genericArguments)
                             {
-                                if (q != 0) ret += ", ";
-                                else if (paraml.Parameters.Count > 0) { ret += ", "; }
+                                if (q != 0) ret.Append(", ");
+                                else if (paraml.Parameters.Count > 0) { ret.Append(", "); }
                                 if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-                                    ret += "generic__" + generic;
+                                    ret.Append("generic__" + generic);
                                 else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                                    ret += "generic$" + generic;
+                                    ret.Append("generic$" + generic);
                                 q++;
                             }
                         }
                         if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
-                            ret += "):" + (block != null ? "\n" : "");
+                            ret.Append("):" + (block != null ? "\n" : ""));
                         else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
-                            ret += "){" + (block != null ? "\n" : "");
+                            ret.Append("){" + (block != null ? "\n" : ""));
                         functionOpname = hash_name + ".prototype." + Name;
                     }
                 }
 
                 if(addCode != "")
-                    ret += tbs + "  " + addCode + "\n";
+                    ret.Append(tbs + "  " + addCode + "\n");
 
                 //if (genericArguments.Count != 0) ret += "\n";
                 foreach (var generic in genericArguments)
@@ -349,25 +390,25 @@ namespace Compilator
                 {
                     if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                     {
-                        if (block == null) ret += "\n";
+                        if (block == null) ret.Append("\n");
                         if (c != null)
                         {
                             foreach (string generic in c.GenericArguments)
                             {
-                                ret += tbs + "  self.generic__" + generic + " = generic__" + generic + ";\n";
+                                ret.Append(tbs + "  self.generic__" + generic + " = generic__" + generic + ";\n");
                             }
                         }
                     }
                     else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                     {
-                        if (block == null) ret += "\n";
-                        ret += tbs + "  var $this = Object.create(" + fromClass + ".prototype);\n";
-                        ret += tbs + "  " + fromClass + ".call($this);\n";
+                        if (block == null) ret.Append("\n");
+                        ret.Append(tbs + "  var $this = Object.create(" + fromClass + ".prototype);\n");
+                        ret.Append(tbs + "  " + fromClass + ".call($this);\n");
                         if (c != null)
                         {
                             foreach (string generic in c.GenericArguments)
                             {
-                                ret += tbs + "  $this.generic$" + generic + " = generic$" + generic + ";\n";
+                                ret.Append(tbs + "  $this.generic$" + generic + " = generic$" + generic + ";\n");
                             }
                         }
                     }
@@ -379,45 +420,51 @@ namespace Compilator
                     {
                         if (t is Assign a)
                         {
-                            ret += tbs + "  if(typeof " + a.Left.Compile() + " == \"undefined\") " + a.Left.Compile() + " = " + a.Right.Compile() + ";\n";
+                            ret.Append(tbs + "  if(" + a.Left.Compile() + " == void 0) " + a.Left.Compile() + " = " + a.Right.Compile() + ";\n");
                         }
                     }
                 }
 
-                if (block != null)
-                    ret += block.Compile(tabs+1);
+                
+                ret.Append(block?.Compile(tabs + 1, componentSetFirst: true));
+                
                 if (isConstructor && Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                 {
-                    ret += tbs + "  return $this;\n";
+                    ret.Append(tbs + "  return $this;\n");
                 }                
 
                 if(Interpreter._LANGUAGE == Interpreter.LANGUAGES.PYTHON)
                 {
-                    ret += "\n" + python_fun;
+                    ret.Append("\n" + python_fun);
                 }
                 else if (Interpreter._LANGUAGE == Interpreter.LANGUAGES.JAVASCRIPT)
                 {
-                    ret += tbs + "}\n";
+                    ret.Append(tbs + "}\n");
 
-                    if (functionOpname.Split('.').Count() > 1)
-                        ret += tbs + functionOpname + "$META = function(){\n";
-                    else
-                        ret += tbs + "var " + functionOpname + "$META = function(){\n";
-                    ret += tbs + "  return {";
-                    ret += "\n" + tbs + "    type: '" + (isConstructor ? "constructor" : "function") + "'" + (attributes.Count > 0 ? ", " : "");
-                    if (attributes.Count > 0)
+                    if (Interpreter._DEBUG)
                     {
-                        ret += "\n" + tbs + "    attributes: {";
-                        int i = 0;
-                        foreach (_Attribute a in attributes)
+                        if (functionOpname.Split('.').Count() > 1)
+                            ret.Append(tbs + functionOpname + "$META = function(){\n");
+                        else
+                            ret.Append(tbs + "var " + functionOpname + "$META = function(){\n");
+                        ret.Append(tbs + "  return {");
+                        ret.Append("\n" + tbs + "    type: '" + (isConstructor ? "constructor" : "function") + "'" + (attributes.Count > 0 ? ", " : ""));
+                        if (attributes.Count > 0)
                         {
-                            ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
-                            i++;
+                            ret.Append("\n" + tbs + "    attributes: {");
+                            int i = 0;
+                            foreach (_Attribute a in attributes)
+                            {
+                                ret.Append("\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", "));
+                                i++;
+                            }
+
+                            ret.Append("\n" + tbs + "    },");
                         }
-                        ret += "\n" + tbs + "    },";
+
+                        ret.Append("\n" + tbs + "  };\n");
+                        ret.Append(tbs + "};\n");
                     }
-                    ret += "\n" + tbs + "  };\n";
-                    ret += tbs + "};\n";
                 }
 
             }
@@ -429,7 +476,7 @@ namespace Compilator
                     useBlock.SymbolTable.Add(generic, new Generic(this, useBlock, generic) { assingBlock = useBlock });
                 }
             }
-            return ret;
+            return ret.ToString();
         }
         public override int Visit()
         {

@@ -2,29 +2,52 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {    
     public class UnaryOp:Types
-    {        
-        Token token, op, name;
-        Types expr;
-        List<Types> exptList = new List<Types>();
-        ParameterList plist;
-        Block block;        
-        Token arraySizeVariable = null;
-        Types arraySizeVariableTypes = null;
-        bool isArray = false;
-        int arraySize = -1;                      
-        bool founded = false;
+    {
+        Token token;
+        public Token op;
+        public Token name;
+        public Types expr;
+        public List<Types> exptList = new List<Types>();
+        public ParameterList plist;        
+        public Token arraySizeVariable = null;
+        public Types arraySizeVariableTypes = null;
+        public bool isArray = false;
+        public int arraySize = -1;
+        public bool founded = false;
 
         public bool post = false;
         public List<string> genericArgments = new List<string>();
         public bool asArgument = false;
         public bool isInString = false;
         public Types assignToParent = null;
+        public string replaceThis = null;
+
+        /*Serialization to JSON object for export*/
+        [JsonParam("Op")] public Token _Op => op;
+        [JsonParam] public Types Expr => expr;        
+        [JsonParam] public ParameterList ParameterList => plist;
+        [JsonParam] public List<Types> ExptList => exptList;
+        [JsonParam] public bool EndIt => endit;
+        [JsonParam] public Token Name => name;        
+
+        public override void FromJson(JObject o)
+        {
+            op = Token.FromJson(o["Op"]);
+            expr = JsonParam.FromJson(o["Expr"]);
+            plist = JsonParam.FromJson<ParameterList>(o["ParameterList"]);
+            exptList = JsonParam.FromJsonArray<Types>((JArray) o["ExptList"]);
+            endit = (bool) o["EndIt"];
+            name = Token.FromJson(o["Name"]);
+        }
+        public UnaryOp() { }
 
         public UnaryOp(Token op, Types expr, Block block = null)
         {
@@ -51,21 +74,24 @@ namespace Compilator
         
         public override Token getToken() { return token; }
         public string Op { get { return Variable.GetOperatorStatic(op.type); } }
-        public Types  Expr { get { return expr; } }
-        public Token Name { get { return name; } }
         public void MadeArray(int size) { isArray = true; arraySize = size; }
         public void MadeArray(Token name) { isArray = true; arraySizeVariable = name; }
         public void MadeArray(Types name) { isArray = true; arraySizeVariableTypes = name; }
-        public Block Block { get { return block; } set { block = value; } }
 
         public Function usingFunction = null;
 
-        private Types _myt = null;
-        private string newname = "";
-        private bool isDynamic = false;
-        private string generic = "";
+        public Types _myt = null;
+        public string newname = "";
+        public bool isDynamic = false;
+        public string generic = "";
+        public string _myBefore = "";
+        private int hash = 0;
         public Function FindUsingFunction()
         {
+            if (hash == GetHashCode())
+                return usingFunction;
+            hash = GetHashCode();
+
             string o = Variable.GetOperatorStatic(op.type);
             if (o != "call")
                 return null;
@@ -74,9 +100,11 @@ namespace Compilator
             //    return usingFunction;
 
             string nwnam = name.Value;
+            string oldnam = name.Value;
             Types myfunc = null;
-            isDynamic = false;
-            if (!block.SymbolTable.Find(name.Value, true))
+            isDynamic = false;            
+            //if (block.SymbolTable.Get(block.blockAssignTo + "::" + name.Value, true) is Error)
+            if (block.SymbolTable.Get(name.Value, GetParent()) is Error)
             {
                 nwnam = name.Value.Split('.')[0];
                 if (name.Value.Split('.')[0] == "this")
@@ -84,8 +112,8 @@ namespace Compilator
                 Types q = block.SymbolTable.Get(nwnam);
 
                 if (q is Class @class && @class.isDynamic) { isDynamic = true; }
-                if (q is Interface @interface && @interface.isDynamic) { isDynamic = true; }
-                if (q is Error && assignToParent != null && assignToParent is UnaryOp auop)
+                else if (q is Interface @interface && @interface.isDynamic) { isDynamic = true; }
+                else if (q is Error && assignToParent != null && assignToParent is UnaryOp auop)
                 {
                     var output = auop.OutputType;
                     var outClass = assingBlock.SymbolTable.Get(output.Value);
@@ -100,6 +128,45 @@ namespace Compilator
                     }
                     //assignToParent.assingBlock.SymbolTable.Get(nwnam);
                 }
+                else if (q is Import)
+                {
+                    q = new Error("");
+                }
+                else if(q is Assign qa)
+                {
+                    if(qa.Right is UnaryOp qaru && qaru.Op == "new")
+                    {
+                        var clsn = qaru.Name.Value;
+                        var cls = qaru.assingBlock.SymbolTable.Get(clsn);
+                        nwnam = string.Join(".", name.Value.Split('.').Skip(1));
+                        var fn = ((Class)cls).Get(nwnam, false);//.assingBlock.SymbolTable.Get(nwnam);
+                        if(fn is Function fnf)
+                        {
+                            name = fnf.getToken();
+                            myfunc = fnf;
+                            _myBefore = oldnam.Split('.')[0] + ".";
+                        }
+                    }
+                }
+                if(q is Error)
+                {
+                    if (this.assingBlock == null)
+                        this.assingBlock = this.block;
+                    var asoi = GetAssingTo(Block.BlockType.CLASS);
+                    if (asoi != "")
+                    {
+                        var parents = ((Class) assingBlock.SymbolTable.Get(asoi)).Parents.Where(x => x is UnaryOp && ((UnaryOp) x).Name.Value != "object").Select(x => (UnaryOp) x).ToList();
+                        if (parents.Count > 0)
+                        {
+                            var parentClass = assingBlock.SymbolTable.Get(parents.First().Name.Value);
+                            var _t = parentClass.assingBlock.SymbolTable.Get(nwnam);
+                            if (!(_t is Error))
+                            {
+                                myfunc = _t;
+                            }
+                        }
+                    }
+                }
                 if(!isDynamic && (!(q is Function) && !(q is Assign) && myfunc == null))
                     return null;
             }
@@ -108,8 +175,8 @@ namespace Compilator
             bool fir = true;
             string gname = "";
             if(genericArgments.Count == 0)
-            {
-                var funcs = (myfunc == null ? block.SymbolTable.GetAll(name.Value) : new List<Types>(){ myfunc });
+            {                
+                var funcs = (myfunc == null ? block.SymbolTable.GetAll(name.Value, parent: GetParent()) : new List<Types>(){ myfunc });
                 if (funcs == null)
                     funcs = block.SymbolTable.GetAll(nwnam);
                 if (funcs != null && funcs.Count == 1)
@@ -157,7 +224,7 @@ namespace Compilator
                 plist.assingToToken = Name;
             }
 
-            List<Types> allf = (myfunc == null ? block.SymbolTable.GetAll(nwnam) : new List<Types>(){ myfunc });
+            List<Types> allf = (myfunc == null ? block.SymbolTable.GetAll(nwnam, parent: GetParent()) : new List<Types>(){ myfunc });
             Types t = null;
             if (allf != null && allf.Count > 1)
             {
@@ -178,7 +245,7 @@ namespace Compilator
                     }
                 }
 
-            }else
+            }else if(allf != null)
                 t = allf[0];                
             
             newname = nwnam;
@@ -199,20 +266,27 @@ namespace Compilator
                 expr.assingBlock = assingBlock;
             string tbs = DoTabs(tabs);
             string o = Variable.GetOperatorStatic(op.type);
-            Types myfunc = null;
             if(o == "call")
             {
                 FindUsingFunction();
 
                 var t = _myt;
 
+                if (t == null)
+                    return "";
+                 
                 string before = "";
                 if(name.Value.Split('.')[0] == "this")
                 {
                     if (block != null && block.isInConstructor)
-                        before = "$this.";
+                        before = "$this" + (name.Value == "this" ? "" : ".");
+                    else if(replaceThis != null)
+                        before = replaceThis + (name.Value == "this" ? "" : ".");
                     else
-                        before = "this.";
+                        before = "this" + (name.Value == "this" ? "" : ".");
+                }else if(_myBefore != "")
+                {
+                    before = _myBefore;
                 }
 
                 if (t is Assign && ((Assign)t).Right is Lambda)
@@ -232,6 +306,13 @@ namespace Compilator
                         var func = name.Value.Split('.')[1];                        
                         var functio = (Function)assingBlock.SymbolTable.Get("Array."+func);
                         return tbs + (inParen ? "(" : "") + before + newname + "." + functio.Name + "(" + plist.Compile(0, usingFunction?.ParameterList) + (plist.Parameters.Count > 0 && generic != "" ?", ":"") + generic + ")" + (inParen ? ")" : "") + (endit ? ";" : "");
+                    }
+                }
+                if(t is Assign ta2 && ta2.Right is Null && assingBlock != null)
+                {
+                    var cls = assingBlock.SymbolTable.Get(ta2.Left.TryVariable()?.Value);
+                    if (cls is Assign asig && asig.Left is Variable asv) {                        
+                        t = assingBlock.SymbolTable.Get(asv.Type + "." + string.Join(".", name.Value.Split('.').Skip(1)));
                     }
                 }
                 if (t is Assign && block?.SymbolTable.Get(((Variable)((Assign)t).Left).Type) is Delegate)
@@ -255,16 +336,18 @@ namespace Compilator
                     string[] nnaml = name.Value.Split('.');
                     string nname = "";
                     var vario = block?.SymbolTable.Get(string.Join(".", nnaml.Take(nnaml.Length - 1)));
-                    if(!(vario is Error) && vario is Properties prop)
+                    if (!(vario is Error) && vario is Properties prop)
                     {
-                        var type = block?.SymbolTable.Get(((Variable)prop.variable).Type+"."+nnaml[nnaml.Length - 1]);
+                        var type = block?.SymbolTable.Get(((Variable)prop.variable).Type + "." + nnaml[nnaml.Length - 1]);
                         nname = string.Join(".", nnaml.Take(nnaml.Length - 2)) + ".Property$" + nnaml[nnaml.Length - 2] + ".get()." + ((Function)type)?.Name;
                         founded = true;
                     }
-                    else if (isDynamic)
+                    else if (isDynamic || (t is Class tc && tc.Name.Value == "object"))
                         nname = name.Value;
                     else
+                    {
                         nname = string.Join(".", nnaml.Take(nnaml.Length - 1)) + "." + ((Function)t)?.Name;
+                    }
                     if (nname.Split('.')[0] == "this")
                         nname = string.Join(".", nname.Split('.').Skip(1));
 
@@ -368,7 +451,7 @@ namespace Compilator
                     else _name = ((Class)t).Name.Value;
                 }                
                 
-                if (t is Class && ((Class)t).assingBlock.SymbolTable.Find("constructor " + _name))
+                if (t is Class && !(((Class)t).assingBlock.SymbolTable.Get("constructor " + _name) is Error))
                 {
                     string generic = "";
                     bool fir = true;
@@ -387,7 +470,7 @@ namespace Compilator
                     if (isArray)
                     {
                         Variable va = null;
-                        if (arraySizeVariable != null && block.SymbolTable.Find(arraySizeVariable.Value))
+                        if (arraySizeVariable != null && !(block.SymbolTable.Get(arraySizeVariable.Value) is Error))
                         {
                             va = (Variable)block.SymbolTable.Get(arraySizeVariable.Value);
                         }
@@ -410,7 +493,7 @@ namespace Compilator
                     {
                         if (t.assingBlock.Interpret.FindImport(string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1))))
                         {
-                            Import im = t.assingBlock.Interpret.GetImport(string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1)));
+                            Import im = t.assingBlock.Interpret.GetImport(string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1))) as Import;
                             if(im.As != null)
                                 rt = tbs + im.As + "." + _name + "." + f.Name + "(" + plist?.Compile(0, f.ParameterList, plist);
                             else if(string.Join(".", name.Value.Split('.').Take(name.Value.Split('.').Length - 1)) != name.Value)
@@ -452,7 +535,7 @@ namespace Compilator
                             generic += gname;
                         }
                         Variable va = null;
-                        if (arraySizeVariable != null && block.SymbolTable.Find(arraySizeVariable.Value))
+                        if (arraySizeVariable != null && !(block.SymbolTable.Get(arraySizeVariable.Value) is Error))
                         {
                             va = ((Variable)((Assign)block.SymbolTable.Get(arraySizeVariable.Value)).Left);
                         }
@@ -583,7 +666,10 @@ namespace Compilator
             {
                 if (founded) return;
                 if (asArgument) return;
-                Types t = null;               
+                Types t = null;
+
+                if (usingFunction == null)
+                    FindUsingFunction();
 
                 if (usingFunction is Function && usingFunction.attributes.Where(qt => ((_Attribute)qt).GetName(true) == "Obsolete").Count() > 0)
                     Interpreter.semanticError.Add(new Error("#704 Function " + name.Value + " is Obsolete", Interpreter.ErrorType.ERROR, name));
@@ -644,14 +730,14 @@ namespace Compilator
                     plist.assingBlock = assingBlock;
                 plist.Semantic(usingFunction?.ParameterList, usingFunction?.RealName);
 
-                if (block.Parent?.Parent == null)
+                if (block.First)
                     Interpreter.semanticError.Add(new Error("#000 Expecting a top level declaration", Interpreter.ErrorType.ERROR, name));
 
                 string nwnam = name.Value.Split('.')[0];
                 if (name.Value.Split('.')[0] == "this")
                     nwnam = string.Join(".", name.Value.Split('.').Skip(1));
 
-                if (block.assingBlock != null && (!block.assingBlock.SymbolTable.Find(name.Value) && !block.assingBlock.SymbolTable.Find(nwnam)))
+                if (block.assingBlock?.SymbolTable.Get(name.Value) is Error && block.assingBlock.SymbolTable.Get(nwnam) is Error)
                 {
                     t = block.assingBlock.SymbolTable.Get(nwnam);
                     if (t is Class || t is Interface)
@@ -660,12 +746,29 @@ namespace Compilator
                         if (t is Interface && ((Interface)t).isDynamic) { return; }
                     }
                     if (t is Error)
-                        Interpreter.semanticError.Add(new Error("#707-1 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
-                    else if (!block.assingBlock.SymbolTable.Find(name.Value) && t is Assign)
                     {
-                        if(name.Value.Contains(".") && !block.assingBlock.SymbolTable.Find(string.Join(".", name.Value.Split('.').Skip(1))))
+                        var cls = block.assingBlock.SymbolTable.Get(this.assignTo);
+                        if (cls is Class)
+                        {
+                            var parents = ((Class) cls).GetParent();
+                            if (parents != null)
+                            {
+                                var parentClass = block.assingBlock.SymbolTable.Get(parents.Name.Value);
+                                t = parentClass.assingBlock.SymbolTable.Get(nwnam);
+                                if (t is Error)
+                                {
+                                    Interpreter.semanticError.Add(new Error("#707-4 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                                }
+                            }
+                            else
+                                Interpreter.semanticError.Add(new Error("#707-1 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
+                        }
+                    }
+                    else if (block.assingBlock.SymbolTable.Get(name.Value) is Error && t is Assign)
+                    {
+                        if (name.Value.Contains(".") && block.assingBlock.SymbolTable.Get(string.Join(".", name.Value.Split('.').Skip(1))) is Error)
                             Interpreter.semanticError.Add(new Error("#707-2 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
-                        else if(!name.Value.Contains("."))
+                        else if (!name.Value.Contains("."))
                             Interpreter.semanticError.Add(new Error("#707-3 Function with name " + name.Value + " not found", Interpreter.ErrorType.ERROR, name));
                     }
                 }
@@ -759,12 +862,13 @@ namespace Compilator
                                         if (realtype is Delegate)
                                         {
                                             Function usefun = null;
-                                            if (plist.parameters[i] is UnaryOp fuop)
+                                            FindUsingFunction();
+                                            if (plist.parameters.Count > i && plist.parameters[i] is UnaryOp fuop)
                                             {
                                                 if (fuop.usingFunction != null)
                                                     usefun = fuop.usingFunction;
                                             }
-                                            else if(plist.parameters[i] is Variable fuva)
+                                            else if(plist.parameters.Count > i && plist.parameters[i] is Variable fuva)
                                             {
                                                 if (assingBlock.SymbolTable.Get(fuva.Value) is Function fuvafu)
                                                     usefun = fuvafu;
@@ -785,14 +889,18 @@ namespace Compilator
                             }
                             Interpreter.semanticError.Add(new Error("#706 Function with name " + name.Value + "("+plist.List()+") has been found but parameters are wrong. Here is possible solution:" + possible, Interpreter.ErrorType.ERROR, name));
                         }
+                    }else if (t is null)
+                    {
+                        Interpreter.semanticError.Add(new Error("#706 Function with name " + name.Value + "("+plist.List()+") not been found!", Interpreter.ErrorType.ERROR, name));
+                        FindUsingFunction();
                     }
                 }
                 //if (plist != null && !asArgument) plist.Semantic();
             }
-            if(o == "new")
+            else if(o == "new")
             {
                 if (plist != null) plist.Semantic();
-                if (!assingBlock.SymbolTable.Find(name.Value))
+                if (assingBlock.SymbolTable.Get(name.Value) is Error)
                 {
                     Interpreter.semanticError.Add(new Error("#603 Class '" + name.Value + "' not found", Interpreter.ErrorType.ERROR, name));
                 }
@@ -815,7 +923,7 @@ namespace Compilator
                         Interpreter.semanticError.Add(new Error("#708 Class " + name.Value + " is Obsolete", Interpreter.ErrorType.ERROR, name));
                 }
             }
-            if (o == "return")
+            else if (o == "return")
             {
                 if (expr != null)
                     expr.Semantic();

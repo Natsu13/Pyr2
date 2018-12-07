@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
@@ -16,7 +17,20 @@ namespace Compilator
         Delegate delegateAss = null;
         string name = "";
         Block block;
-        TypeObject bt = new TypeObject();       
+        TypeObject bt = new TypeObject();     
+        
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Class Class => classAss;
+        [JsonParam] public Function Function => functionAss;
+        [JsonParam] public Delegate Delegate => delegateAss;
+        //[JsonParam] public Block Block => block;
+        [JsonParam] public string Name => name;
+
+        public override void FromJson(JObject o)
+        {
+            throw new NotImplementedException();
+        }
+        public Generic() { }
 
         public Generic(Class c, Block block, string name)
         {
@@ -36,8 +50,6 @@ namespace Compilator
             this.name = name;
             setDelegate(p);
         }  
-
-        public string Name { get { return name; } }
 
         public void setClass(Class classs)
         {

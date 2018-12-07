@@ -3,13 +3,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
     public class CString : Types
     {
         Token token;
-        string value;
+        public string value;
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Token Token => token;    
+        
+        public override void FromJson(JObject o)
+        {
+            token = Token.FromJson(o["Token"]);
+        }
+        public CString() { }
+
         public CString(Token token)
         {
             this.token = token;
@@ -57,7 +68,7 @@ namespace Compilator
             {
                 if (state == 1 && value[i] == '}')
                 {
-                    if(assingBlock?.SymbolTable.Find(consume) == null)
+                    if(assingBlock?.SymbolTable.Get(consume) is Error)
                     {
                         Interpreter.semanticError.Add(new Error("#112 Variable " + consume + " not exist!", Interpreter.ErrorType.ERROR, token));
                     }

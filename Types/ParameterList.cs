@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
@@ -17,6 +19,25 @@ namespace Compilator
         public bool cantDefaultThenNormal = false;
         Dictionary<string, Types> genericTusage = new Dictionary<string, Types>();
         public Dictionary<string, Types> defaultCustom = new Dictionary<string, Types>();
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public List<Types> Parameters => parameters;
+        [JsonParam] public bool AllowMultipel => allowMultipel;
+        [JsonParam] public Token AllowMultipelName => allowMultipelName;
+        [JsonParam] public Dictionary<string, JObject> DefaulCustom => defaultCustom.ToDictionary(x => x.Key, x => JsonParam.ToJson(x.Value));
+
+        public override void FromJson(JObject o)
+        {
+            parameters = JsonParam.FromJsonArray<Types>((JArray)o["Parameters"]);
+            allowMultipel = (bool) o["AllowMultipel"];
+            allowMultipelName = Token.FromJson(o["AllowMultipelName"]);
+            var dfcstm = JsonParam.FromJsonDictionaryKeyBase<string, Types>(o["DefaulCustom"]);            
+            if (dfcstm.Count > 0)
+            {
+                Debugger.Break();
+            }
+        }
+        public ParameterList() { }
 
         public ParameterList(bool declare)
         {
@@ -136,7 +157,7 @@ namespace Compilator
 
         public string Compile(int tabs = 0, ParameterList plist = null, ParameterList myList = null)
         {
-            string ret = "";
+            var ret = new StringBuilder();
             Dictionary<string, bool> argDefined = new Dictionary<string, bool>();
             List<string> argNamed = plist?.ToList();
             int i = 0;
@@ -153,14 +174,14 @@ namespace Compilator
             {
                 if(argNamed != null && i >= argNamed.Count && !startne)
                 {
-                    ret += (ret == ""?"":", ")+"[";
+                    ret.Append(ret.ToString() == "" ? "" : ", " + "[");
                     startne = true;
                 }
                 if(argNamed != null && argNamed.Count > i)
                     argDefined[argNamed[i]] = true;
 
                 par.endit = false;
-                if (assingBlock != null && par is Variable && !assingBlock.SymbolTable.Find(((Variable)par).Value))
+                if (assingBlock != null && par is Variable && assingBlock.SymbolTable.Get(((Variable)par).Value) is Error)
                 {                    
                     par.assingBlock = assingBlock;
                     var assign = new Assign(
@@ -178,7 +199,7 @@ namespace Compilator
                         parl.IsVal = (assingBlock != null && assingBlock.assingToType is Function asif && asif.isInline);
                     }
                 }
-                if (ret != "" && ret[ret.Length-1] != '[') ret += ", ";
+                if (ret.ToString() != "" && ret[ret.Length-1] != '[') ret.Append(", ");
                 if (declare)
                 {
                     if (par is Variable parv)
@@ -186,17 +207,17 @@ namespace Compilator
                         parv.IsVal = (assingBlock != null && assingBlock.assingToType is Function asif && asif.isInline);
                     }
                     if (par is Assign)
-                        ret += ((Assign)par).Left.Compile();
+                        ret.Append(((Assign)par).Left.Compile());
                     else if (par is Variable && ((Variable)par).Block?.SymbolTable.Get(((Variable)par).Type) is Delegate)
                     {
                         string rrr = par.Compile(0);
                         if (rrr.Split('$')[0] != "delegate")
-                            ret += "delegate$" + rrr;
+                            ret.Append("delegate$" + rrr);
                         else
-                            ret += rrr;
+                            ret.Append(rrr);
                     }
                     else
-                        ret += par.Compile(0);
+                        ret.Append(par.Compile(0));
                 }
                 else
                 {
@@ -205,7 +226,7 @@ namespace Compilator
                         lambda.predicate = plist.parameters[i];
                         lambda.assingBlock = assingBlock ?? plist.assingBlock;
                         lambda.assingToToken = assingToToken;
-                        ret += lambda.Compile();
+                        ret.Append(lambda.Compile());
                     }
                     else if (assingToType != null && assingToType is Variable varia && varia.Type == assingToType.TryVariable().Type && par is Variable variable && variable.Type == "auto")
                     {
@@ -236,16 +257,16 @@ namespace Compilator
                             }
                         }
                         var assignpredic = varia.Block.SymbolTable.Get(varia.Type);
-                        ret += variable.CompileHard(0, par);
+                        ret.Append(variable.CompileHard(0, par));
                     }
                     else
-                        ret += par.Compile(0);
+                        ret.Append(par.Compile(0));
                 }
                 i++;
             }
             if (startne)
             {                
-                ret += "]";
+                ret.Append("]");
             }
             if (myList != null)
             {
@@ -255,14 +276,14 @@ namespace Compilator
                     {
                         if (!argDefined.ContainsKey(para.Left.TryVariable().Value))
                         {
-                            ret += (ret != "" ? ", " : "") + "undefined";
+                            ret.Append((ret.ToString() != "" ? ", " : "") + "undefined");
                         }
                     }
                     else if(par is Variable parv)
                     {
                         if (!argDefined.ContainsKey(parv.Value))
                         {
-                            ret += (ret != "" ? ", " : "") + "undefined";
+                            ret.Append((ret.ToString() != "" ? ", " : "") + "undefined");
                         }
                     }
                 }
@@ -282,31 +303,31 @@ namespace Compilator
                         {
                             if (pa.Left.TryVariable().Value == q.Key)
                             {
-                                ret += ", " + q.Value.Compile();
+                                ret.Append(", " + q.Value.Compile());
                                 found = true;
                             }
                         }
                     }
                     if (!found)
                     {
-                        ret += (ret != "" ? ", " : "") + "undefined";
+                        ret.Append((ret.ToString() != "" ? ", " : "") + "undefined");
                     }
                 }
             }
 
             if (plist != null && plist.allowMultipel && parameters.Count == argNamed.Count)
             {
-                ret += (ret != "" ? ", " : "") + "undefined";
+                ret.Append((ret.ToString() != "" ? ", " : "") + "undefined");
             }
             if(allowMultipel && myList == null)
             {
-                ret += (ret != "" ? ", " : "") + allowMultipelName.Value;
+                ret.Append((ret.ToString() != "" ? ", " : "") + allowMultipelName.Value);
             }
             assingBlock = null;
-            return ret;
+            return ret.ToString();
         }
 
-        public List<Types> Parameters { get { return parameters; } }
+        
 
         public bool Compare(ParameterList p)
         {
@@ -391,12 +412,14 @@ namespace Compilator
                 {
                     ((Variable)p.parameters[i]).Check();
                 }
-                if (!def && dtype != p.parameters[i].TryVariable().Type && !isGeneric && !isDelegate)
+
+                var rtype = p.parameters[i].TryVariable().Type;
+                if (!def && (dtype != rtype) && dtype != "object" && !isGeneric && !isDelegate)
                 {
                     bool bad = true;
-                    if (assingBlock != null && assingBlock.SymbolTable.Find(p.parameters[i].TryVariable().Type))
+                    var qq = assingBlock.SymbolTable.Get(p.parameters[i].TryVariable().Type);
+                    if (assingBlock != null && !(qq is Error))
                     {
-                        Types qq = assingBlock.SymbolTable.Get(p.parameters[i].TryVariable().Type);
                         if(qq is Class qqc)
                         {
                             if (qqc.haveParent(dtype))
@@ -497,6 +520,7 @@ namespace Compilator
                 Interpreter.semanticError.Add(new Error("#113 Optional parameters must follow all required parameters", Interpreter.ErrorType.ERROR, token));
             foreach (Types par in parameters)
             {
+                par.parent = this;
                 if (par.assingBlock == null)
                     par.assingBlock = assingBlock;
                 if(par is Assign para)

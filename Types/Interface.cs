@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace Compilator
 {
@@ -18,6 +19,21 @@ namespace Compilator
         public string JSName = "";
         public List<_Attribute> attributes;
         List<string> genericArguments = new List<string>();
+
+        /*Serialization to JSON object for export*/
+        [JsonParam] public Token Name => name;
+        [JsonParam] public Block Block => block;
+        [JsonParam] public List<string> GenericArguments => genericArguments;
+        [JsonParam] public List<Token> Parens => parents;
+        [JsonParam] public List<_Attribute> Attributes => attributes;   
+        [JsonParam] public bool IsDynamic => isDynamic;
+        [JsonParam] public bool IsExternal => isExternal;
+        
+        public override void FromJson(JObject o)
+        {
+            throw new NotImplementedException();
+        }
+        public Interface() { }
 
         public Interface(Token name, Block block, List<Token> parents)
         {
@@ -41,9 +57,7 @@ namespace Compilator
         {
             genericArguments = list;
         }
-        public List<string> GenericArguments { get { return genericArguments; } }
-
-        public Block Block { get { return block; } }
+        
         public override string Compile(int tabs = 0)
         {
             if (!isExternal)
@@ -67,22 +81,27 @@ namespace Compilator
                 }
                 ret += tbs + "}\n";
 
-                ret += tbs + "var " + getName() + "$META = function(){\n";
-                ret += tbs + "  return {";
-                ret += "\n" + tbs + "    type: 'interface'" + (attributes.Count > 0 ? ", " : "");
-                if (attributes.Count > 0)
+                if (Interpreter._DEBUG)
                 {
-                    ret += "\n" + tbs + "    attributes: {";
-                    int i = 0;
-                    foreach (_Attribute a in attributes)
+                    ret += tbs + "var " + getName() + "$META = function(){\n";
+                    ret += tbs + "  return {";
+                    ret += "\n" + tbs + "    type: 'interface'" + (attributes.Count > 0 ? ", " : "");
+                    if (attributes.Count > 0)
                     {
-                        ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
-                        i++;
+                        ret += "\n" + tbs + "    attributes: {";
+                        int i = 0;
+                        foreach (_Attribute a in attributes)
+                        {
+                            ret += "\n" + tbs + "      " + a.GetName() + ": " + a.Compile() + ((attributes.Count - 1) == i ? "" : ", ");
+                            i++;
+                        }
+
+                        ret += "\n" + tbs + "    },";
                     }
-                    ret += "\n" + tbs + "    },";
+
+                    ret += "\n" + tbs + "  };\n";
+                    ret += tbs + "};\n";
                 }
-                ret += "\n" + tbs + "  };\n";
-                ret += tbs + "};\n";
 
                 ret += block.Compile(tabs);
                 return ret;
@@ -90,7 +109,6 @@ namespace Compilator
             return "";
         }
 
-        public Token Name { get { return name; } }
         string _hash = "";
         public string getHash()
         {
@@ -105,7 +123,7 @@ namespace Compilator
                 return name.Value + "_" + getHash();
             if (JSName == null || JSName == "") return name.Value; else return JSName; 
         }        
-        public override Token getToken() { return null; }
+        public override Token getToken() { return new Token(Token.Type.STRING, "interface"); }
 
         public bool haveParent(string name)
         {
@@ -141,39 +159,22 @@ namespace Compilator
 
         public Token OutputType(string op, object a, object b)
         {
-            if (block.SymbolTable.Find("operator " + op))
-            {
-                Types t = block.SymbolTable.Get("operator " + op);
-                if (t is Function f)
-                {
-                    return f.Returnt;
-                }
+            var t = block.SymbolTable.Get("operator " + op);
+            if (t is Function f)
+            {                
+                return f.Returnt;
             }
             return new Token(Token.Type.VOID, "void");
         }
         public bool SupportOp(string op)
         {
-            if (block.SymbolTable.Find("operator " + op))
-            {
-                Types t = block.SymbolTable.Get("operator " + op);
-                if (t is Function f)
-                {
-                    return true;
-                }
-            }
-            return false;
+            var t = block.SymbolTable.Get("operator " + op);
+            return t is Function;
         }
         public bool SupportSecond(string op, object second, object secondAsVariable)
         {
-            if (block.SymbolTable.Find("operator " + op))
-            {
-                Types t = block.SymbolTable.Get("operator " + op);
-                if (t is Function f)
-                {
-                    return true;
-                }
-            }
-            return false;
+            var t = block.SymbolTable.Get("operator " + op);
+            return t is Function;
         }
 
         public override string InterpetSelf()

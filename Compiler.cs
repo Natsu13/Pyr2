@@ -1231,10 +1231,10 @@ namespace Compilator
             else if (variable._class != null)
                 nameclass = variable._class.Name;
 
-            var fasign = variable.block.SymbolTable.Get(variable.value);
+            var fasign = variable.block.SymbolTable.Get(variable.value, variable.assingBlock);
             if (fasign is Assign fass)
             {
-                if (fass.Left is Variable fasv && fasv.GetHashCode() != GetHashCode() && !(fass.Right is Null))
+                if (fass.Left is Variable fasv && fasv.GetHashCode() != variable.GetHashCode() && !(fass.Right is Null))
                 {
                     if (fasv.IsVal && fasv.IsPrimitive)
                     {
@@ -1250,7 +1250,7 @@ namespace Compilator
             if (_usingBlock != null)
             {
                 usingBlock = _usingBlock;
-                if (usingBlock.SymbolTable.Get(usingBlock.assignTo) is Function ass && ass.isInline && ass.inlineId > 0)
+                if (usingBlock.SymbolTable.Get(usingBlock.assignTo, usingBlock) is Function ass && ass.isInline && ass.inlineId > 0)
                 {
                     if (split[0] == "this")
                     {
@@ -1326,7 +1326,7 @@ namespace Compilator
             }
             else
             {
-                vname = not + (variable.isKey ? "[" + Compile(variable.key) + "]" : "");
+                vname = (overidename != "" ? overidename : not) + (variable.isKey ? "[" + Compile(variable.key) + "]" : "");
             }
             if (variable.dateType.Value == "auto")
                 variable.Check();
@@ -1376,7 +1376,7 @@ namespace Compilator
                     argDefined[argNamed[i]] = true;
 
                 par.endit = false;
-                if (parameterList.assingBlock != null && par is Variable && parameterList.assingBlock.SymbolTable.Get(((Variable)par).Value) is Error)
+                if (parameterList.assingBlock != null && par is Variable && parameterList.assingBlock.SymbolTable.Get(((Variable)par).Value, par.assingBlock) is Error)
                 {
                     par.assingBlock = parameterList.assingBlock;
                     var assign = new Assign(
@@ -2134,7 +2134,7 @@ namespace Compilator
             if (block.children.Count > 1 && addBl)
             {
                 var r2 = ret.Replace("\n", "\n" + Types.TABS + Types.TABS).ToString();
-                ret = new StringBuilder(tbs + "{\n" + Types.TABS + Types.TABS + r2.Substring(0, r2.Length - (Types.TABS.Length * 2)) + "}");
+                ret = new StringBuilder(tbs + "{\n" + Types.TABS + Types.TABS + r2.Substring(0, r2.Length - (Types.TABS.Length * 2)) + "}");                
             }
 
             return ret;

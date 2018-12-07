@@ -383,7 +383,7 @@ namespace Compilator
                 //if (genericArguments.Count != 0) ret += "\n";
                 foreach (var generic in genericArguments)
                 {
-                    block?.SymbolTable.Add(generic, new Generic(this, block, generic) { assingBlock = block });
+                    block?.SymbolTable.Add(generic, new Generic(this, block, generic) { assingBlock = block }, parent: assingBlock);
                 }
 
                 if(isConstructor)

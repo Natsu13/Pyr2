@@ -516,7 +516,7 @@ namespace Compilator
                     }
                 }
 
-                if(leftFromSymbolTable is Error && left is Variable)
+                if(leftFromSymbolTable is Error && left is Variable && !isParam)
                     Interpreter.semanticError.Add(new Error("#10x Variable " + ((Variable)left).Value + " not exist!", Interpreter.ErrorType.ERROR, ((Variable)left).getToken()));
 
                 if (!isDeclare && !isParam)

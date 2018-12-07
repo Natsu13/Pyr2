@@ -1999,12 +1999,24 @@ namespace Compilator
 
             Block sb = current_block;
             current_block = new Block(this);
-            current_block.BlockParent = new ParentBridge(name, this){ parent = sb };            
+            current_block.BlockParent = new ParentBridge(name, this){ parent = sb };    
+            
+            var saveBlock = current_block;
+            current_block = sb;
+            //var sba = current_block.blockAssignTo;
+            //current_block.blockAssignTo = name.Value;
+            saveBlock.setToken(name);
+            saveBlock.blockAssignTo = name.Value;
+            saveBlock.Type = Block.BlockType.FUNCTION;
+            current_block = saveBlock;
             ParameterList p = Parameters(true);
+            current_block = sb;
+
             Token returnt = null;      
             var listType = new List<Token>();
             List<string> garg = new List<string>();
-            bool returnrArray = false;
+            bool returnrArray = false;            
+
             if(current_token.type == Token.Type.DEFINERETURN)
             {                
                 Eat(Token.Type.DEFINERETURN);
@@ -2056,13 +2068,7 @@ namespace Compilator
                     }
                 }
             }
-
-            var saveBlock = current_block;
-            current_block = sb;
-            //var sba = current_block.blockAssignTo;
-            //current_block.blockAssignTo = name.Value;
-            saveBlock.setToken(name);
-            saveBlock.blockAssignTo = name.Value;
+            
             Block _bloc = CatchBlock(Block.BlockType.FUNCTION, false, saveBlock);
             //current_block.blockAssignTo = sba;
             //TODO: fix
